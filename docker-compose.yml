@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8085:8081"
+    environment:
+      - BACKEND_URL=https://web.codenetic.online
+    restart: always
