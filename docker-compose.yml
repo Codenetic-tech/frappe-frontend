@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8085:8081"
+      - "8081:8081"
     environment:
-      - BACKEND_URL=https://web.codenetic.online
+      - BACKEND_URL=http://192.168.1.11
     restart: always
