@@ -3,7 +3,6 @@ dist
 .git
 .env
 .gitignore
-package-lock.json
 bun.lockb
 README.md
 docker-compose.yml
