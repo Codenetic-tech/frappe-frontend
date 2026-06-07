@@ -1,0 +1,110 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=DM+Serif+Display:ital@0;1&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 95%;
+    --foreground: 0 0% 8%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 8%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 8%;
+
+    --primary: 270 91% 65%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 8%;
+
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+
+    --accent: 270 91% 96%;
+    --accent-foreground: 270 91% 35%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 152 60% 38%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 55%;
+    --warning-foreground: 0 0% 8%;
+
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 270 91% 65%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --font-sans: 'DM Sans', system-ui, sans-serif;
+    --font-serif: 'DM Serif Display', Georgia, serif;
+  }
+
+  .dark {
+    --background: 220 15% 8%;
+    --foreground: 210 20% 96%;
+    --card: 220 15% 11%;
+    --card-foreground: 210 20% 96%;
+    --popover: 220 15% 11%;
+    --popover-foreground: 210 20% 96%;
+    --primary: 270 91% 65%;
+    --primary-foreground: 220 15% 12%;
+    --secondary: 220 15% 16%;
+    --secondary-foreground: 210 20% 96%;
+    --muted: 220 15% 16%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 270 91% 15%;
+    --accent-foreground: 270 91% 90%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 220 15% 18%;
+    --input: 220 15% 18%;
+    --ring: 270 91% 65%;
+    --sidebar-background: 220 15% 8%;
+    --sidebar-foreground: 210 20% 96%;
+    --sidebar-primary: 270 91% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 15% 14%;
+    --sidebar-accent-foreground: 210 20% 96%;
+    --sidebar-border: 220 15% 18%;
+    --sidebar-ring: 270 91% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+    height: 100%;
+    overflow: hidden;
+  }
+}
+
+html {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* RSuite Date Picker Overlap Fix */
+.rs-picker-menu, .rs-picker-popup {
+  z-index: 1000 !important;
+}

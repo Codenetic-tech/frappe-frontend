@@ -1,0 +1,10 @@
+export const TICKETING_DEPARTMENTS = [
+  'RMS',
+  'IT',
+  'DP',
+  'KYC',
+  'OPERATIONS',
+  'COMPLIANCE',
+  'DIGITAL MARKETING',
+  'CUSTOMER SUPPORT'
+];
