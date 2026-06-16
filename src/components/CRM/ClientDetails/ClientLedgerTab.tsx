@@ -33,7 +33,7 @@ interface LedgerEntry {
 }
 
 const ClientLedgerTab: React.FC<ClientLedgerTabProps> = ({ clientCode, refreshKey }) => {
-  const { token, logout } = useAuth();
+  const { logout, user } = useAuth();
 
   // Default range: last 1 month
   const [dateRange, setDateRange] = useState<[Date, Date]>(() => {
@@ -48,7 +48,7 @@ const ClientLedgerTab: React.FC<ClientLedgerTabProps> = ({ clientCode, refreshKe
   const [error, setError] = useState<string | null>(null);
 
   const fetchLedger = useCallback(async () => {
-    if (!token) return;
+    if (!user) return;
     setIsLoading(true);
     setError(null);
 
@@ -64,8 +64,7 @@ const ClientLedgerTab: React.FC<ClientLedgerTabProps> = ({ clientCode, refreshKe
       const response = await fetch(`${API_BASE_URL}/api/method/rms.clientdetails.get_client_ledger`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'token': token
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           client_code: clientCode,
@@ -75,11 +74,6 @@ const ClientLedgerTab: React.FC<ClientLedgerTabProps> = ({ clientCode, refreshKe
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        if (errorData.message?.status === 'error' && errorData.message?.message === 'Token has been revoked or does not match') {
-          logout();
-          return;
-        }
         throw new Error('Failed to fetch Ledger data');
       }
 
@@ -97,7 +91,7 @@ const ClientLedgerTab: React.FC<ClientLedgerTabProps> = ({ clientCode, refreshKe
     } finally {
       setIsLoading(false);
     }
-  }, [clientCode, dateRange, token, logout]);
+  }, [clientCode, dateRange, logout, user]);
 
   useEffect(() => {
     fetchLedger();

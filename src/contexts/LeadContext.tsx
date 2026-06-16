@@ -161,7 +161,7 @@ export const useLead = () => {
 };
 
 export const LeadProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const { token, isAuthenticated, logout, user } = useAuth();
+    const { isAuthenticated, logout, user } = useAuth();
     const [leadsData, setLeadsData] = useState<LeadItem[] | null>(() => {
         const stored = sessionStorage.getItem('leadsData');
         return stored ? JSON.parse(stored) : null;
@@ -186,7 +186,7 @@ export const LeadProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const lastParamsRef = React.useRef<FetchLeadParams>({});
 
     const fetchLeadsData = useCallback(async (params: FetchLeadParams = {}, silent: boolean = false) => {
-        if (!token || isFetching.current) return;
+        if (!user || isFetching.current) return;
         
         // Save these params for polling
         lastParamsRef.current = params;
@@ -211,8 +211,7 @@ export const LeadProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'token': token
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(payload),
                 mode: 'cors',
@@ -220,20 +219,11 @@ export const LeadProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                if (errorData.message && errorData.message.status === 'error' && errorData.message.message === 'Token has been revoked or does not match') {
-                    logout();
-                    return;
-                }
                 const errorMessage = errorData.exception || errorData.message || response.statusText;
                 throw new Error(`Failed to fetch Leads data: ${typeof errorMessage === 'string' ? errorMessage : 'Unknown error'}`);
             }
 
             const result: any = await response.json();
-
-            if (result.message && result.message.status === 'error' && result.message.message === 'Token has been revoked or does not match') {
-                logout();
-                return;
-            }
 
             if (result.message && result.message.data) {
                 setLeadsData(result.message.data);
@@ -269,7 +259,7 @@ export const LeadProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setIsLoading(false);
             isFetching.current = false;
         }
-    }, [token, logout]);
+    }, [logout, user]);
 
     const clearLeadsData = useCallback(() => {
         setLeadsData(null);
@@ -291,22 +281,15 @@ export const LeadProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }, [isAuthenticated, clearLeadsData]);
 
     useEffect(() => {
-        if (isAuthenticated && token && !hasInitialFetched.current) {
+        if (isAuthenticated && user && !hasInitialFetched.current) {
             fetchLeadsData({}, true);
             hasInitialFetched.current = true;
         }
-    }, [isAuthenticated, token, fetchLeadsData]);
+    }, [isAuthenticated, user, fetchLeadsData]);
 
     // Polling Every 5 Minutes
     useEffect(() => {
-        if (!token || !user?.department) return;
-
-        // Skip polling if user is from a ticketing department
-        const isTicketingUser = TICKETING_DEPARTMENTS.includes(user.department.toUpperCase());
-        if (isTicketingUser) {
-            console.log('Skipping Lead polling for ticketing department user');
-            return;
-        }
+        if (!user) return;
 
         const pollingInterval = setInterval(() => {
             console.log('Background polling for Leads data...');
@@ -314,14 +297,14 @@ export const LeadProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }, 5 * 60 * 1000); // 5 minutes
 
         return () => clearInterval(pollingInterval);
-    }, [token, fetchLeadsData, user?.department]);
+    }, [fetchLeadsData, user]);
 
     const refreshLeadsData = useCallback(async (params?: FetchLeadParams) => {
         await fetchLeadsData(params || {}, false);
     }, [fetchLeadsData]);
 
     const updateLeadStatus = useCallback(async (leadName: string, newStatus: string): Promise<boolean> => {
-        if (!token) return false;
+        if (!user) return false;
 
         // Prevent status update if current status is 'Client' or 'won'
         const currentLead = leadsData?.find(l => l.name === leadName);
@@ -337,19 +320,13 @@ export const LeadProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'token': token
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ lead_name: leadName, status: newStatus }),
                 mode: 'cors',
             });
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                if (errorData.message?.status === 'error' && errorData.message?.message === 'Token has been revoked or does not match') {
-                    logout();
-                    return false;
-                }
                 throw new Error('Failed to update lead status');
             }
 
@@ -371,10 +348,10 @@ export const LeadProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             console.error('Error updating lead status:', err);
             return false;
         }
-    }, [token, logout, leadsData]);
+    }, [logout, leadsData, user]);
 
     const updateLeadGroup = useCallback(async (leadName: string, newGroup: string): Promise<boolean> => {
-        if (!token) return false;
+        if (!user) return false;
         try {
             const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
             const apiUrl = `${API_BASE_URL}/api/method/rms.branch.update_lead_group`;
@@ -382,19 +359,13 @@ export const LeadProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'token': token
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ lead_name: leadName, group: newGroup }),
                 mode: 'cors',
             });
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                if (errorData.message?.status === 'error' && errorData.message?.message === 'Token has been revoked or does not match') {
-                    logout();
-                    return false;
-                }
                 throw new Error('Failed to update lead group');
             }
 
@@ -427,10 +398,10 @@ export const LeadProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             console.error('Error updating lead group:', err);
             return false;
         }
-    }, [token, logout]);
+    }, [logout, user]);
 
     const assignLeads = useCallback(async (leadNames: string[], assignedTo: string): Promise<boolean> => {
-        if (!token || leadNames.length === 0) return false;
+        if (!user || leadNames.length === 0) return false;
         try {
             const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
             const apiUrl = `${API_BASE_URL}/api/method/rms.branch.assign_leads`;
@@ -438,19 +409,13 @@ export const LeadProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'token': token
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ lead_names: leadNames, assigned_to: assignedTo }),
                 mode: 'cors',
             });
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                if (errorData.message?.status === 'error' && errorData.message?.message === 'Token has been revoked or does not match') {
-                    logout();
-                    return false;
-                }
                 throw new Error('Failed to assign leads');
             }
 
@@ -472,10 +437,10 @@ export const LeadProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             console.error('Error assigning leads:', err);
             return false;
         }
-    }, [token, logout]);
+    }, [logout, user]);
 
     const addLeadNote = useCallback(async (parent: string, notes: string, commentedBy: string): Promise<boolean> => {
-        if (!token) return false;
+        if (!user) return false;
         try {
             const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
             const apiUrl = `${API_BASE_URL}/api/method/rms.branch.add_lead_note`;
@@ -498,19 +463,13 @@ export const LeadProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'token': token
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(payload),
                 mode: 'cors',
             });
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                if (errorData.message?.status === 'error' && errorData.message?.message === 'Token has been revoked or does not match') {
-                    logout();
-                    return false;
-                }
                 throw new Error('Failed to add lead note');
             }
 
@@ -546,7 +505,7 @@ export const LeadProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             console.error('Error adding lead note:', err);
             return false;
         }
-    }, [token, logout]);
+    }, [logout, user]);
 
     return (
         <LeadContext.Provider value={{

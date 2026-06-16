@@ -31,10 +31,13 @@ const getPriority = (category?: string) => {
 
 interface HierarchyNode {
   name: string;
-  parent_gopocket_tree: string | null;
+  parent_crm_heirarchy?: string | null;
   category?: string;
+  org_type?: string;
   is_group?: number;
   label?: string; // Compatibility
+  nameLower?: string; // Cache lowercased name for fast search
+  code?: string | null;
 }
 
 interface FlatNode extends HierarchyNode {
@@ -87,62 +90,94 @@ export const VirtualizedTree = ({
     setSelectedIds(new Set(value || []));
   }, [value]);
 
+  // Normalize data for internal processing and pre-compute lowercased name for search performance
+  const normalizedData = React.useMemo(() => {
+    const len = data.length;
+    const result = new Array(len);
+    for (let i = 0; i < len; i++) {
+      const node = data[i];
+      const parent = node.parent_crm_heirarchy ?? null;
+      const category = node.org_type ?? node.category ?? '';
+      const displayLabel = node.code || node.name;
+      result[i] = {
+        ...node,
+        parent_crm_heirarchy: parent,
+        category: category,
+        org_type: category,
+        nameLower: displayLabel.toLowerCase()
+      };
+    }
+    return result;
+  }, [data]);
+
   // Pre-process data into a map for fast lookups
   const nodesMap = React.useMemo(() => {
-    const map = new Map<string, HierarchyNode & { children: string[] }>();
-    data.forEach((node) => {
+    const map = new Map<string, HierarchyNode & { children: string[]; nameLower?: string }>();
+    const len = normalizedData.length;
+    for (let i = 0; i < len; i++) {
+      const node = normalizedData[i];
       map.set(node.name, { ...node, children: [] });
-    });
-    data.forEach((node) => {
-      if (node.parent_gopocket_tree && map.has(node.parent_gopocket_tree)) {
-        map.get(node.parent_gopocket_tree)!.children.push(node.name);
+    }
+    for (let i = 0; i < len; i++) {
+      const node = normalizedData[i];
+      if (node.parent_crm_heirarchy && map.has(node.parent_crm_heirarchy)) {
+        map.get(node.parent_crm_heirarchy)!.children.push(node.name);
       }
-    });
+    }
 
-    // Sort children based on category priority and then name
+    // Sort children based on category priority and then name using fast comparison
     map.forEach((node) => {
       node.children.sort((a, b) => {
         const priorityA = getPriority(map.get(a)?.category);
         const priorityB = getPriority(map.get(b)?.category);
         if (priorityA !== priorityB) return priorityA - priorityB;
-        return a.localeCompare(b);
+        return a < b ? -1 : a > b ? 1 : 0;
       });
     });
 
     return map;
-  }, [data]);
+  }, [normalizedData]);
 
   const roots = React.useMemo(() => {
-    const rootNodes = data.filter((node) => !node.parent_gopocket_tree || !nodesMap.has(node.parent_gopocket_tree));
+    const rootNodes = [];
+    const len = normalizedData.length;
+    for (let i = 0; i < len; i++) {
+      const node = normalizedData[i];
+      if (!node.parent_crm_heirarchy || !nodesMap.has(node.parent_crm_heirarchy)) {
+        rootNodes.push(node);
+      }
+    }
 
     return rootNodes
       .sort((a, b) => {
         const priorityA = getPriority(a.category);
         const priorityB = getPriority(b.category);
         if (priorityA !== priorityB) return priorityA - priorityB;
-        return a.name.localeCompare(b.name);
+        return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
       })
       .map(n => n.name);
-  }, [data, nodesMap]);
+  }, [normalizedData, nodesMap]);
 
   // Handle Search and Filtering
   const filteredNodes = React.useMemo(() => {
     if (!search) return null;
     const lowerSearch = search.toLowerCase();
     const result = new Set<string>();
+    const len = normalizedData.length;
 
     // Find matching nodes and their ancestors
-    data.forEach(node => {
-      if (node.name.toLowerCase().includes(lowerSearch)) {
+    for (let i = 0; i < len; i++) {
+      const node = normalizedData[i];
+      if (node.nameLower && node.nameLower.includes(lowerSearch)) {
         let curr: string | null = node.name;
         while (curr && !result.has(curr)) {
           result.add(curr);
-          curr = nodesMap.get(curr)?.parent_gopocket_tree || null;
+          curr = nodesMap.get(curr)?.parent_crm_heirarchy || null;
         }
       }
-    });
+    }
     return result;
-  }, [search, data, nodesMap]);
+  }, [search, normalizedData, nodesMap]);
 
   // Generate the visible flat list
   const visibleNodes = React.useMemo(() => {
@@ -244,7 +279,7 @@ export const VirtualizedTree = ({
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[300px] p-0" align="start">
+      <PopoverContent className="w-[360px] p-0" align="start">
         <div className="flex flex-col h-[400px]">
           <div className="flex items-center border-b px-3 py-2">
             <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
@@ -298,7 +333,7 @@ export const VirtualizedTree = ({
                           className="h-4 w-4"
                           onClick={(e) => e.stopPropagation()}
                         />
-                        <span className="text-sm truncate">{node.name}</span>
+                        <span className="text-sm truncate">{node.code || node.name}</span>
                         {node.category && (
                           <Badge
                             variant="outline"

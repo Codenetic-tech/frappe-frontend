@@ -7,7 +7,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { parse } from 'date-fns';
 
-import { KycStageHistory } from '@/contexts/KycContext';
+export interface KycStageHistory {
+    stage_name?: string;
+    kyc_stage?: string;
+    stage_status?: string;
+    rejection_reason?: string;
+    updated_on?: string;
+}
 
 interface KycTimelineProps {
     applicationId: string;
@@ -39,6 +45,7 @@ const ALL_STAGES = [
     "SIGNATURE",
     "IPV",
     "PDF DOWNLOAD",
+    "ESIGN GENERATED",
     "END PAGE",
     "ACCOUNT OPENED"
 ];
@@ -55,30 +62,30 @@ const KycTimeline: React.FC<KycTimelineProps> = ({ applicationId, applicationSta
     }
 
     const timeline: TimelineEntry[] = [...ALL_STAGES].reverse().map(stageName => {
-        let apiData = historyData.find((d) => d.kyc_stage === stageName);
+        let apiData = historyData.find((d) => (d.stage_name || d.kyc_stage) === stageName);
 
         // Handle interchangeable income proof names
         if (!apiData && stageName === "INCOME PROOF") {
-            apiData = historyData.find((d) => d.kyc_stage === "CANCELLED_CHEQUE_OR_STATEMENT");
+            apiData = historyData.find((d) => (d.stage_name || d.kyc_stage) === "CANCELLED_CHEQUE_OR_STATEMENT");
         }
 
         // Handle account opened / application status
         if (stageName === "ACCOUNT OPENED") {
             let accountApiData = apiData || historyData.find((d) => {
-                const name = d.kyc_stage;
+                const name = d.stage_name || d.kyc_stage;
                 return name === "APPLICATION STATUS" ||
                     name === "APPLICATION" ||
                     ["IN PROGRESS", "PENDING FOR APPROVAL", "REJECTED", "APPROVED", "ACCOUNT OPENED"].includes(name?.toUpperCase())
             });
 
-            const hasEndPage = historyData.some((d) => d.kyc_stage === "END PAGE");
+            const hasEndPage = historyData.some((d) => (d.stage_name || d.kyc_stage) === "END PAGE");
 
             let finalStatus = "PENDING";
 
             if (hasEndPage && applicationStatus) {
                 finalStatus = applicationStatus.toUpperCase();
             } else if (accountApiData) {
-                const accountName = accountApiData.kyc_stage;
+                const accountName = accountApiData.stage_name || accountApiData.kyc_stage;
                 if (["IN PROGRESS", "PENDING FOR APPROVAL", "REJECTED", "APPROVED", "ACCOUNT OPENED"].includes(accountName?.toUpperCase())) {
                     finalStatus = accountName.toUpperCase();
                 } else {

@@ -1,15 +1,18 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode, useMemo } from 'react';
+import { useFrappeGetDocList } from 'frappe-react-sdk';
 import { useAuth } from './AuthContext';
 
 export interface OrgTreeNode {
     name: string;
-    parent_gopocket_tree: string;
+    parent_crm_heirarchy?: string | null;
     is_group: number;
     category: string | null;
-    client_name: string | null;
-    mail_id: string | null;
-    Department: string | null;
-    role: string | null;
+    org_type?: string | null;
+    org_name?: string | null;
+    code?: string | null;
+    org_code?: string | null;
+    parent_org_name?: string | null;
+    name1?: string | null;
 }
 
 interface OrgTreeContextType {
@@ -32,108 +35,100 @@ export const useOrgTree = () => {
 };
 
 export const OrgTreeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const { token, isAuthenticated, logout } = useAuth();
-    const [orgTreeData, setOrgTreeData] = useState<OrgTreeNode[] | null>(() => {
-        const stored = sessionStorage.getItem('orgTreeData');
-        return stored ? JSON.parse(stored) : null;
-    });
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [count, setCount] = useState(() => {
-        const stored = sessionStorage.getItem('orgTreeCount');
-        return stored ? parseInt(stored, 10) : 0;
-    });
+    const { isAuthenticated } = useAuth();
 
-    const isFetching = React.useRef(false);
-    const hasInitialFetched = React.useRef(false);
+    const {
+        data: rawTreeData,
+        error: sdkError,
+        isLoading: sdkLoading,
+        mutate,
+    } = useFrappeGetDocList<any>(
+        'CRM Heirarchy',
+        {
+            fields: [
+                'name',
+                'parent_crm_heirarchy',
+                'is_group',
+                'code',
+                'org_code',
+                'org_type',
+                'org_name',
+                'parent_org_name',
+                'name1'
+            ],
+            limit: 100000,
+            orderBy: { field: 'org_name', order: 'asc' }
+        },
+        isAuthenticated ? undefined : null
+    );
 
-    const fetchOrgTree = useCallback(async (silent: boolean = false) => {
-        if (!token || isFetching.current) return;
-        isFetching.current = true;
-        if (!silent) setIsLoading(true);
-        setError(null);
+    // Parse and map CRM Hierarchy nodes to the OrgTreeNode structure for compatibility
+    const orgTreeData = useMemo(() => {
+        if (!rawTreeData) {
+            // Fallback to session storage if loading or undefined
+            try {
+                const stored = sessionStorage.getItem('orgTreeData');
+                return stored ? JSON.parse(stored) : null;
+            } catch (e) {
+                console.error('Failed to read orgTreeData from sessionStorage:', e);
+                return null;
+            }
+        }
+
+        const mappedData = rawTreeData.map((node: any) => ({
+            name: node.name || node.org_code,
+            parent_crm_heirarchy: node.parent_crm_heirarchy || null,
+            is_group: node.is_group ?? 0,
+            category: node.org_type || null,
+            org_type: node.org_type || null,
+            org_name: node.org_name || null,
+            code: node.code || null,
+            org_code: node.org_code || null,
+            parent_org_name: node.parent_org_name || null,
+            name1: node.name1 || null,
+        }));
 
         try {
-            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-            const apiUrl = `${API_BASE_URL}/api/method/rms.branch.org_heirarchy`;
-
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'token': token
-                },
-                body: JSON.stringify({}),
-                mode: 'cors',
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-
-                if (errorData.message && errorData.message.status === 'error' && errorData.message.message === 'Token has been revoked or does not match') {
-                    logout();
-                    return;
-                }
-
-                throw new Error(`Failed to fetch org tree: ${response.statusText}`);
-            }
-
-            const result = await response.json();
-
-            if (result.message && result.message.status === 'error' && result.message.message === 'Token has been revoked or does not match') {
-                logout();
-                return;
-            }
-
-            if (result.message && result.message.data) {
-                setOrgTreeData(result.message.data);
-                sessionStorage.setItem('orgTreeData', JSON.stringify(result.message.data));
-
-                const totalCount = result.message.count || result.message.data.length;
-                setCount(totalCount);
-                sessionStorage.setItem('orgTreeCount', totalCount.toString());
-            } else {
-                setOrgTreeData([]);
-                sessionStorage.setItem('orgTreeData', JSON.stringify([]));
-                setCount(0);
-                sessionStorage.setItem('orgTreeCount', '0');
-            }
-        } catch (err: any) {
-            console.error('Error fetching org tree:', err);
-            setError(err.message || 'An error occurred while fetching the org tree.');
-        } finally {
-            setIsLoading(false);
-            isFetching.current = false;
+            sessionStorage.setItem('orgTreeData', JSON.stringify(mappedData));
+            sessionStorage.setItem('orgTreeCount', mappedData.length.toString());
+        } catch (e) {
+            console.warn('Failed to save orgTreeData to sessionStorage (quota exceeded):', e);
         }
-    }, [token, logout]);
+        return mappedData;
+    }, [rawTreeData]);
+
+    const count = useMemo(() => {
+        if (orgTreeData) return orgTreeData.length;
+        try {
+            const storedCount = sessionStorage.getItem('orgTreeCount');
+            return storedCount ? parseInt(storedCount, 10) : 0;
+        } catch (e) {
+            return 0;
+        }
+    }, [orgTreeData]);
+
+    const error = sdkError ? (sdkError.message || 'An error occurred while fetching the org tree.') : null;
+    const isLoading = sdkLoading && !orgTreeData;
+
+    const fetchOrgTree = useCallback(async (silent?: boolean) => {
+        await mutate();
+    }, [mutate]);
 
     const refreshOrgTree = useCallback(async () => {
-        await fetchOrgTree(true);
-    }, [fetchOrgTree]);
+        await mutate();
+    }, [mutate]);
 
     // Clear data on logout
     useEffect(() => {
         if (!isAuthenticated) {
-            setOrgTreeData(null);
-            setError(null);
-            setCount(0);
-            sessionStorage.removeItem('orgTreeData');
-            sessionStorage.removeItem('orgTreeCount');
-            hasInitialFetched.current = false;
-        }
-    }, [isAuthenticated]);
-
-    // Automatically fetch after login — only if no cached data exists
-    useEffect(() => {
-        if (isAuthenticated && token && !hasInitialFetched.current) {
-            hasInitialFetched.current = true;
-            // Skip API call if sessionStorage already has the data (e.g. page refresh)
-            const cached = sessionStorage.getItem('orgTreeData');
-            if (!cached) {
-                fetchOrgTree(true);
+            try {
+                sessionStorage.removeItem('orgTreeData');
+                sessionStorage.removeItem('orgTreeCount');
+            } catch (e) {
+                // Ignore
             }
         }
-    }, [isAuthenticated, token, fetchOrgTree]);
+    }, [isAuthenticated]);
 
     return (
         <OrgTreeContext.Provider value={{
@@ -148,3 +143,4 @@ export const OrgTreeProvider: React.FC<{ children: ReactNode }> = ({ children })
         </OrgTreeContext.Provider>
     );
 };
+

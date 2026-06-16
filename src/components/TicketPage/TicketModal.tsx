@@ -213,7 +213,7 @@ export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose, onSub
                                         >
                                             <span className={cn(toDepartment ? "text-slate-900" : "text-slate-400")}>
                                                 {toDepartment ?
-                                                    orgTreeData?.find(b => b.name === toDepartment)?.client_name || toDepartment :
+                                                    orgTreeData?.find(b => b.name === toDepartment)?.name1 || toDepartment :
                                                     "Select recipient..."}
                                             </span>
                                             <Building2 className="w-4 h-4 shrink-0 opacity-50" />
@@ -230,59 +230,27 @@ export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose, onSub
                                                 <CommandEmpty>No recipient found.</CommandEmpty>
                                                 {branchOptions.ticketing.length > 0 && (
                                                     <CommandGroup heading="Ticketing Departments">
-                                                        {branchOptions.ticketing.map((branch) => {
-                                                            const isUserDepartment = user?.department?.toUpperCase() === branch.name.toUpperCase();
-                                                            const departmentUsers = isUserDepartment ? orgTreeData?.filter(node => node.parent_gopocket_tree === branch.name) : [];
-                                                            
-                                                            return (
-                                                                <React.Fragment key={branch.name}>
-                                                                    <CommandItem
-                                                                        value={branch.name}
-                                                                        onSelect={(currentValue) => {
-                                                                            setToDepartment(currentValue);
-                                                                            setOpenTo(false);
-                                                                        }}
-                                                                        className="cursor-pointer py-2.5 rounded-lg mx-1"
-                                                                    >
-                                                                        <div className="flex items-center justify-between w-full">
-                                                                            <div className="flex flex-col">
-                                                                                <span className="font-bold text-slate-700">{branch.name}</span>
-                                                                                <span className="text-[10px] text-slate-400 font-mono">{branch.client_name}</span>
-                                                                            </div>
-                                                                            {toDepartment === branch.name && (
-                                                                                <Check className="h-4 w-4 text-purple-600" />
-                                                                            )}
-                                                                        </div>
-                                                                    </CommandItem>
-                                                                    
-                                                                    {isUserDepartment && departmentUsers && departmentUsers.length > 0 && (
-                                                                        <div className="ml-4 border-l-2 border-purple-100 pl-2 my-1 space-y-1">
-                                                                            {departmentUsers.map((u) => (
-                                                                                <CommandItem
-                                                                                    key={u.name}
-                                                                                    value={`${branch.name}-${u.name}-${u.client_name}`}
-                                                                                    onSelect={() => {
-                                                                                        setToDepartment(u.name);
-                                                                                        setOpenTo(false);
-                                                                                    }}
-                                                                                    className="cursor-pointer py-2 rounded-md hover:bg-purple-50"
-                                                                                >
-                                                                                    <div className="flex items-center justify-between w-full">
-                                                                                        <div className="flex flex-col">
-                                                                                            <span className="text-sm font-medium text-slate-600">{u.client_name}</span>
-                                                                                            <span className="text-[10px] text-slate-400 font-mono">{u.name}</span>
-                                                                                        </div>
-                                                                                        {toDepartment === u.name && (
-                                                                                            <Check className="h-3 w-3 text-purple-600" />
-                                                                                        )}
-                                                                                    </div>
-                                                                                </CommandItem>
-                                                                            ))}
-                                                                        </div>
+                                                        {branchOptions.ticketing.map((branch) => (
+                                                            <CommandItem
+                                                                key={branch.name}
+                                                                value={branch.name}
+                                                                onSelect={(currentValue) => {
+                                                                    setToDepartment(currentValue);
+                                                                    setOpenTo(false);
+                                                                }}
+                                                                className="cursor-pointer py-2.5 rounded-lg mx-1"
+                                                            >
+                                                                <div className="flex items-center justify-between w-full">
+                                                                    <div className="flex flex-col">
+                                                                        <span className="font-bold text-slate-700">{branch.name}</span>
+                                                                        <span className="text-[10px] text-slate-400 font-mono">{branch.name1}</span>
+                                                                    </div>
+                                                                    {toDepartment === branch.name && (
+                                                                        <Check className="h-4 w-4 text-purple-600" />
                                                                     )}
-                                                                </React.Fragment>
-                                                            );
-                                                        })}
+                                                                </div>
+                                                            </CommandItem>
+                                                        ))}
                                                     </CommandGroup>
                                                 )}
                                                 {branchOptions.others.length > 0 && (
@@ -300,7 +268,7 @@ export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose, onSub
                                                                 <div className="flex items-center justify-between w-full">
                                                                     <div className="flex flex-col">
                                                                         <span className="font-semibold text-slate-600">{branch.name}</span>
-                                                                        <span className="text-[10px] text-slate-400 font-mono">{branch.client_name}</span>
+                                                                        <span className="text-[10px] text-slate-400 font-mono">{branch.name1}</span>
                                                                     </div>
                                                                     {toDepartment === branch.name && (
                                                                         <Check className="h-4 w-4 text-purple-600" />

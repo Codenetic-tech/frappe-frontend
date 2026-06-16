@@ -130,7 +130,7 @@ function useDebounce<T>(value: T, delay: number): T {
 const ITEMS_PER_PAGE = 50;
 
 const Tickets: React.FC = () => {
-    const { token, user } = useAuth();
+    const { user } = useAuth();
     const navigate = useNavigate();
     const {
         ticketsData,
@@ -201,7 +201,7 @@ const Tickets: React.FC = () => {
     });
 
     const loadTicketsData = useCallback(async (page: number, currentSearch: string, currentIdSearch: string, currentStatus: string, currentPriority: string, currentDates: [Date, Date] | null, currentSort: { key: string, direction: 'asc' | 'desc' }) => {
-        if (!token) return;
+        if (!user) return;
 
         const params: FetchTicketParams = {
             limit_start: (page - 1) * ITEMS_PER_PAGE,
@@ -249,7 +249,7 @@ const Tickets: React.FC = () => {
         params.order = currentSort.direction;
 
         await refreshTicketsData(params);
-    }, [refreshTicketsData, token]);
+    }, [refreshTicketsData, user]);
 
     const handleSort = (key: string) => {
         let direction: 'asc' | 'desc' = 'asc';
@@ -276,10 +276,10 @@ const Tickets: React.FC = () => {
     }, [debouncedSearchQuery, debouncedIdSearchQuery, statusFilter, priorityFilter, dateRange, sortConfig]);
 
     useEffect(() => {
-        if (token) {
+        if (user) {
             loadTicketsData(currentPage, debouncedSearchQuery, debouncedIdSearchQuery, statusFilter, priorityFilter, dateRange, sortConfig);
         }
-    }, [currentPage, debouncedSearchQuery, debouncedIdSearchQuery, statusFilter, priorityFilter, dateRange, sortConfig, token, loadTicketsData]);
+    }, [currentPage, debouncedSearchQuery, debouncedIdSearchQuery, statusFilter, priorityFilter, dateRange, sortConfig, user, loadTicketsData]);
 
     // Synchronize TanStack sorting with backend sortConfig
     useEffect(() => {
@@ -558,10 +558,7 @@ const Tickets: React.FC = () => {
                             className="bg-slate-900 text-white border-slate-800 rounded-xl px-4 py-3 shadow-2xl max-w-xs"
                         >
                             <div className="space-y-1.5">
-                                <p className="text-xs font-bold text-white">{orgNode?.client_name || requester}</p>
-                                {orgNode?.mail_id && (
-                                    <p className="text-[11px] text-slate-300">{orgNode.mail_id}</p>
-                                )}
+                                <p className="text-xs font-bold text-white">{orgNode?.name1 || requester}</p>
                                 {!orgNode && (
                                     <p className="text-[11px] text-slate-400 italic">Details not available</p>
                                 )}
@@ -589,10 +586,7 @@ const Tickets: React.FC = () => {
                             className="bg-slate-900 text-white border-slate-800 rounded-xl px-4 py-3 shadow-2xl max-w-xs"
                         >
                             <div className="space-y-1.5">
-                                <p className="text-xs font-bold text-white">{orgNode?.client_name || assignedTo}</p>
-                                {orgNode?.mail_id && (
-                                    <p className="text-[11px] text-slate-300">{orgNode.mail_id}</p>
-                                )}
+                                <p className="text-xs font-bold text-white">{orgNode?.name1 || assignedTo}</p>
                                 {!orgNode && (
                                     <p className="text-[11px] text-slate-400 italic">Details not available</p>
                                 )}
@@ -621,10 +615,7 @@ const Tickets: React.FC = () => {
                             className="bg-slate-900 text-white border-slate-800 rounded-xl px-4 py-3 shadow-2xl max-w-xs"
                         >
                             <div className="space-y-1.5">
-                                <p className="text-xs font-bold text-white">{orgNode?.client_name || resolvedBy}</p>
-                                {orgNode?.mail_id && (
-                                    <p className="text-[11px] text-slate-300">{orgNode.mail_id}</p>
-                                )}
+                                <p className="text-xs font-bold text-white">{orgNode?.name1 || resolvedBy}</p>
                                 {!orgNode && (
                                     <p className="text-[11px] text-slate-400 italic">Details not available</p>
                                 )}
@@ -687,9 +678,7 @@ const Tickets: React.FC = () => {
             id: 'actions',
             cell: ({ row }) => {
                 const isCreatedByMe = user?.user_code === row.original.requester_name;
-                const isAssignedToMe = user?.user_code === row.original.to_department ||
-                    (user?.department && row.original.to_department &&
-                        user.department.toUpperCase() === row.original.to_department.toUpperCase());
+                const isAssignedToMe = user?.user_code === row.original.to_department;
 
                 return (
                     <DropdownMenu>
@@ -954,51 +943,23 @@ const Tickets: React.FC = () => {
                                             <CommandEmpty>No recipient found.</CommandEmpty>
                                             {branchOptions.ticketing.length > 0 && (
                                                 <CommandGroup heading="Ticketing Departments">
-                                                    {branchOptions.ticketing.map((branch) => {
-                                                        const isUserDepartment = user?.department?.toUpperCase() === branch.name.toUpperCase();
-                                                        const departmentUsers = isUserDepartment ? orgTreeData?.filter(node => node.parent_gopocket_tree === branch.name) : [];
-
-                                                        return (
-                                                            <React.Fragment key={branch.name}>
-                                                                <CommandItem
-                                                                    value={branch.name}
-                                                                    onSelect={(currentValue) => {
-                                                                        handleBulkAssign(currentValue);
-                                                                    }}
-                                                                    className="cursor-pointer py-2.5 rounded-lg mx-1"
-                                                                >
-                                                                    <div className="flex items-center justify-between w-full">
-                                                                        <div className="flex flex-col">
-                                                                            <span className="font-bold text-slate-700">{branch.name}</span>
-                                                                            <span className="text-[10px] text-slate-400 font-mono">{branch.client_name}</span>
-                                                                        </div>
-                                                                    </div>
-                                                                </CommandItem>
-
-                                                                {isUserDepartment && departmentUsers && departmentUsers.length > 0 && (
-                                                                    <div className="ml-4 border-l-2 border-purple-100 pl-2 my-1 space-y-1">
-                                                                        {departmentUsers.map((u) => (
-                                                                            <CommandItem
-                                                                                key={u.name}
-                                                                                value={`${branch.name}-${u.name}-${u.client_name}`}
-                                                                                onSelect={() => {
-                                                                                    handleBulkAssign(u.name);
-                                                                                }}
-                                                                                className="cursor-pointer py-2 rounded-md hover:bg-purple-50"
-                                                                            >
-                                                                                <div className="flex items-center justify-between w-full">
-                                                                                    <div className="flex flex-col">
-                                                                                        <span className="text-sm font-medium text-slate-600">{u.client_name}</span>
-                                                                                        <span className="text-[10px] text-slate-400 font-mono">{u.name}</span>
-                                                                                    </div>
-                                                                                </div>
-                                                                            </CommandItem>
-                                                                        ))}
-                                                                    </div>
-                                                                )}
-                                                            </React.Fragment>
-                                                        );
-                                                    })}
+                                                    {branchOptions.ticketing.map((branch) => (
+                                                        <CommandItem
+                                                            key={branch.name}
+                                                            value={branch.name}
+                                                            onSelect={(currentValue) => {
+                                                                handleBulkAssign(currentValue);
+                                                            }}
+                                                            className="cursor-pointer py-2.5 rounded-lg mx-1"
+                                                        >
+                                                            <div className="flex items-center justify-between w-full">
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-bold text-slate-700">{branch.name}</span>
+                                                                    <span className="text-[10px] text-slate-400 font-mono">{branch.name1}</span>
+                                                                </div>
+                                                            </div>
+                                                        </CommandItem>
+                                                    ))}
                                                 </CommandGroup>
                                             )}
                                             {branchOptions.others.length > 0 && (
@@ -1015,7 +976,7 @@ const Tickets: React.FC = () => {
                                                             <div className="flex items-center justify-between w-full">
                                                                 <div className="flex flex-col">
                                                                     <span className="font-semibold text-slate-600">{branch.name}</span>
-                                                                    <span className="text-[10px] text-slate-400 font-mono">{branch.client_name}</span>
+                                                                    <span className="text-[10px] text-slate-400 font-mono">{branch.name1}</span>
                                                                 </div>
                                                             </div>
                                                         </CommandItem>

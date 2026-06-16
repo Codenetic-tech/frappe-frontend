@@ -117,7 +117,7 @@ export const useTickets = () => {
 // Removed generateMockTickets as we are now using real API data
 
 export const TicketProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const { token, isAuthenticated, user } = useAuth();
+    const { isAuthenticated, user } = useAuth();
     const lastParamsRef = React.useRef<FetchTicketParams>({});
     const [ticketsData, setTicketsData] = useState<TicketItem[] | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -132,7 +132,7 @@ export const TicketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     });
 
     const fetchTicketsData = useCallback(async (params: FetchTicketParams = {}, silent: boolean = false) => {
-        if (!isAuthenticated || !token) return;
+        if (!isAuthenticated) return;
 
         // Store params for polling
         lastParamsRef.current = params;
@@ -170,7 +170,6 @@ export const TicketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'token': token
                 },
                 body: JSON.stringify(payload)
             });
@@ -237,7 +236,7 @@ export const TicketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         } finally {
             setIsLoading(false);
         }
-    }, [isAuthenticated, token]);
+    }, [isAuthenticated]);
 
     const refreshTicketsData = useCallback(async (params?: FetchTicketParams) => {
         await fetchTicketsData(params || {}, false);
@@ -250,9 +249,7 @@ export const TicketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             const apiUrl = `${API_BASE_URL}/api/method/rms.tickets.create_ticket`;
 
             let body;
-            const headers: Record<string, string> = {
-                'token': token || ''
-            };
+            const headers: Record<string, string> = {};
 
             if (ticketData.attachment) {
                 const formData = new FormData();
@@ -309,7 +306,6 @@ export const TicketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     };
 
     const updateTicketStatus = useCallback(async (ticketId: string, newStatus: string): Promise<boolean> => {
-        if (!token) return false;
         try {
             const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
             const apiUrl = `${API_BASE_URL}/api/method/rms.tickets.update_ticket_status`;
@@ -318,7 +314,6 @@ export const TicketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'token': token
                 },
                 body: JSON.stringify({ name: ticketId, status: newStatus })
             });
@@ -347,10 +342,9 @@ export const TicketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             console.error('Error updating ticket status:', error);
             return false;
         }
-    }, [token, refreshTicketsData]);
+    }, [refreshTicketsData]);
 
     const addTicketReply = useCallback(async (ticketId: string, notes: string, commentedBy: string, attachment?: File | null): Promise<boolean> => {
-        if (!token) return false;
         try {
             const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
             const apiUrl = `${API_BASE_URL}/api/method/rms.tickets.add_ticket_reply`;
@@ -364,9 +358,7 @@ export const TicketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 String(now.getSeconds()).padStart(2, '0');
 
             let body;
-            const headers: Record<string, string> = {
-                'token': token
-            };
+            const headers: Record<string, string> = {};
 
             if (attachment) {
                 const formData = new FormData();
@@ -422,10 +414,9 @@ export const TicketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             console.error('Error adding ticket reply:', error);
             return false;
         }
-    }, [token]);
+    }, []);
 
     const fetchTicketHistory = useCallback(async (ticketId: string): Promise<Record<string, unknown>[] | null> => {
-        if (!token) return null;
         try {
             const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
             const apiUrl = `${API_BASE_URL}/api/method/rms.tickets.get_ticket_history`;
@@ -434,7 +425,6 @@ export const TicketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'token': token
                 },
                 body: JSON.stringify({ name: ticketId })
             });
@@ -453,24 +443,20 @@ export const TicketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             console.error('Error fetching ticket history:', error);
             return null;
         }
-    }, [token]);
+    }, []);
 
     useEffect(() => {
-        if (isAuthenticated && token) {
+        if (isAuthenticated) {
             fetchTicketsData({}, true);
         } else {
             setTicketsData(null);
             setCount(0);
         }
-    }, [isAuthenticated, token, fetchTicketsData]);
+    }, [isAuthenticated, fetchTicketsData]);
 
     // Polling Every 5 Minutes
     useEffect(() => {
-        if (!token || !user?.department) return;
-
-        // Only poll if user is from a ticketing department
-        const isTicketingUser = TICKET_DEPARTMENTS.includes(user.department.toUpperCase());
-        if (!isTicketingUser) return;
+        if (!user) return;
 
         const pollingInterval = setInterval(() => {
             console.log('Background polling for Tickets data...');
@@ -478,10 +464,9 @@ export const TicketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         }, 5 * 60 * 1000); // 5 minutes
 
         return () => clearInterval(pollingInterval);
-    }, [token, fetchTicketsData, user?.department]);
+    }, [fetchTicketsData, user]);
 
     const fetchTicketActivity = useCallback(async (ticketId: string): Promise<Record<string, unknown>[] | null> => {
-        if (!token) return null;
         try {
             const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
             const apiUrl = `${API_BASE_URL}/api/method/rms.tickets.get_ticket_activity`;
@@ -490,7 +475,6 @@ export const TicketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'token': token
                 },
                 body: JSON.stringify({ name: ticketId })
             });
@@ -509,10 +493,9 @@ export const TicketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             console.error('Error fetching ticket activity:', error);
             return null;
         }
-    }, [token]);
+    }, []);
 
     const assignTickets = useCallback(async (ticketIds: string[], department: string): Promise<boolean> => {
-        if (!token) return false;
         try {
             const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
             const apiUrl = `${API_BASE_URL}/api/method/rms.tickets.bulk_assign`;
@@ -521,7 +504,6 @@ export const TicketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'token': token
                 },
                 body: JSON.stringify({
                     ticket_ids: ticketIds,
@@ -545,7 +527,7 @@ export const TicketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             console.error('Error assigning tickets:', error);
             return false;
         }
-    }, [token, refreshTicketsData]);
+    }, [refreshTicketsData]);
 
     return (
         <TicketContext.Provider value={{

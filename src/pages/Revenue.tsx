@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { useRevenue, RevenueFetchParams } from '@/contexts/RevenueContext';
+import { useOrgTree } from '@/contexts/OrgTreeContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -86,7 +86,11 @@ const MultiSelectCombobox: React.FC<MultiSelectComboboxProps> = ({
         if (!search) return options.slice(0, 100);
         const s = search.toLowerCase();
         return options
-            .filter(o => o.value.toLowerCase().includes(s) || (o.category?.toLowerCase().includes(s) ?? false))
+            .filter(o => 
+                o.value.toLowerCase().includes(s) || 
+                o.label.toLowerCase().includes(s) || 
+                (o.category?.toLowerCase().includes(s) ?? false)
+            )
             .slice(0, 100);
     }, [options, search]);
 
@@ -148,7 +152,7 @@ const MultiSelectCombobox: React.FC<MultiSelectComboboxProps> = ({
                                             onClick={(e) => e.stopPropagation()}
                                         />
                                         <span className="text-xs font-bold text-slate-900 font-mono flex-1 truncate">
-                                            {opt.value}
+                                            {opt.label}
                                         </span>
                                         {showCategoryBadge && opt.category && (
                                             <Badge
@@ -190,7 +194,8 @@ const formatDate = (d: Date) =>
 // ── page ─────────────────────────────────────────────────────────────────────
 
 const Revenue: React.FC = () => {
-    const { hierarchyData } = useAuth();
+    const { orgTreeData } = useOrgTree();
+    const tree = orgTreeData;
     const {
         revenueData, summary, totalRecords, totalPages, currentPage,
         appliedParams, isLoading, error, pageSize,
@@ -211,23 +216,37 @@ const Revenue: React.FC = () => {
 
     // Option lists from hierarchy
     const clientOptions = useMemo((): ComboOption[] =>
-        (hierarchyData ?? [])
+        ((tree as any[]) ?? [])
             .filter(n => n.category?.toUpperCase() === 'CLIENT')
-            .map(n => ({ value: n.name, label: n.name, category: n.category ?? undefined }))
+            .map(n => {
+                const codeVal = n.code || n.org_code || n.name;
+                const isRM = n.org_type === 'RM' || n.category === 'RM';
+                const labelVal = isRM
+                    ? `${codeVal} ${n.name1 || ''}`.trim()
+                    : codeVal;
+                return { value: codeVal, label: labelVal, category: n.category ?? undefined };
+            })
             .sort((a, b) => a.value.localeCompare(b.value)),
-        [hierarchyData]
+        [tree]
     );
 
     const subCodeOptions = useMemo((): ComboOption[] =>
-        (hierarchyData ?? [])
+        ((tree as any[]) ?? [])
             .filter(n => n.category?.toUpperCase() !== 'CLIENT')
-            .map(n => ({ value: n.name, label: n.name, category: n.category ?? undefined }))
+            .map(n => {
+                const codeVal = n.code || n.org_code || n.name;
+                const isRM = n.org_type === 'RM' || n.category === 'RM';
+                const labelVal = isRM
+                    ? `${codeVal} ${n.name1 || ''}`.trim()
+                    : codeVal;
+                return { value: codeVal, label: labelVal, category: n.category ?? undefined };
+            })
             .sort((a, b) => {
                 const pa = CATEGORY_ORDER[a.category?.toUpperCase() ?? ''] ?? 99;
                 const pb = CATEGORY_ORDER[b.category?.toUpperCase() ?? ''] ?? 99;
                 return pa !== pb ? pa - pb : a.value.localeCompare(b.value);
             }),
-        [hierarchyData]
+        [tree]
     );
 
     useEffect(() => {

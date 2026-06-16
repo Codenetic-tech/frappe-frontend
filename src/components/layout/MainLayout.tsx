@@ -6,6 +6,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import BottomNav from "./BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
+import { cn } from "@/lib/utils";
 
 interface MainLayoutProps {
     children: React.ReactNode;
@@ -30,6 +31,10 @@ const MainLayout = ({ children }: MainLayoutProps) => {
         return stored === "true"; // Defaults to false if not "true"
     });
 
+    const [scrollWholePage, setScrollWholePage] = useState<boolean>(() => {
+        return localStorage.getItem("scroll-whole-page") === "true";
+    });
+
     // Listen for changes in localStorage (from Settings page)
     useEffect(() => {
         const handleStorageChange = () => {
@@ -44,6 +49,9 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 
             const sidebarExpanded = localStorage.getItem("sidebar-expanded") === "true";
             setIsSidebarExpanded(sidebarExpanded);
+
+            const scrollPreference = localStorage.getItem("scroll-whole-page") === "true";
+            setScrollWholePage(scrollPreference);
         };
 
         window.addEventListener("storage", handleStorageChange);
@@ -86,8 +94,14 @@ const MainLayout = ({ children }: MainLayoutProps) => {
                             </aside> */}
 
                             {/* Dashboard Content (70% - expands to fill) */}
-                            <main className="flex-1 h-full bg-white rounded-xl shadow-sm overflow-hidden">
-                                {children}
+                            <main className="flex-1 h-full bg-white rounded-xl shadow-sm overflow-hidden flex flex-col">
+                                {scrollWholePage ? (
+                                    <ScrollArea className="flex-1 h-full w-full">
+                                        {children}
+                                    </ScrollArea>
+                                ) : (
+                                    children
+                                )}
                             </main>
                         </div>
                     </div>

@@ -1,5 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import { useKyc, KycItem } from '@/contexts/KycContext';
+import React, { useMemo, useState, useEffect, useCallback, useContext } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFilter } from '@/contexts/FilterContext';
 import { Card } from '@/components/ui/card';
@@ -53,15 +52,20 @@ import {
     Users,
     Check,
     ChevronsUpDown,
-    FileDown
+    FileDown,
+    Plus,
+    X,
+    Layers
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DateRangePicker } from 'rsuite';
 import 'rsuite/DateRangePicker/styles/index.css';
 import KycTimeline from '@/components/KycTimeline';
 import { exportToExcel } from '@/utils/excelExport';
+import { useOrgTree } from '@/contexts/OrgTreeContext';
 import { toast } from 'sonner';
 import { Skeleton } from "@/components/ui/skeleton";
+import { useFrappeGetDocList, useFrappeGetDocCount, useFrappeGetDoc, useFrappeDocTypeEventListener, FrappeContext } from 'frappe-react-sdk';
 
 // Custom debounce hook
 function useDebounce<T>(value: T, delay: number): T {
@@ -105,10 +109,67 @@ const getCategoryStyles = (category?: string) => {
     }
 };
 
+const KYC_FILTER_FIELDS = [
+    { value: 'application_id', label: 'Application ID', type: 'string' },
+    { value: 'user_name', label: 'User Name', type: 'string' },
+    { value: 'mobile_number', label: 'Mobile Number', type: 'string' },
+    { value: 'ucc', label: 'UCC', type: 'string' },
+    { value: 'refer', label: 'Refer', type: 'string' },
+    { value: 'kyc_stage', label: 'KYC Stage', type: 'select', options: ['MOBILE OTP', 'EMAIL OTP', 'PASSWORD SETUP', 'KRA DOB', 'PAN NAME', 'PAN CONFIRM', 'AADHAR', 'PROFILE', 'BANK ENTRY', 'SEGMENT SELECTION', 'PAYMENT', 'NOMINEE', 'INCOME PROOF', 'SIGNATURE', 'IPV', 'PDF DOWNLOAD', 'ESIGN GENERATED', 'END PAGE'] },
+    { value: 'application_status', label: 'Application Status', type: 'select', options: ['IN PROGRESS', 'PENDING FOR APPROVAL', 'REJECTED', 'APPROVED', 'ACCOUNT OPENED'] },
+    { value: 'src', label: 'Source (src)', type: 'string' },
+    { value: 'tag', label: 'Tag', type: 'string' },
+    { value: 'application_created_date', label: 'Created Date', type: 'date' },
+    { value: 'application_modified_date_time', label: 'Modified Datetime', type: 'date' },
+    { value: 'client_mapping', label: 'Client Mapping', type: 'select', options: ['1', '0'] },
+] as const;
+
+const STRING_OPERATORS = ['like', '=', '!=', 'not like'] as const;
+const DATE_OPERATORS = ['>', '<', '>=', '<=', 'Between', 'Timespan'] as const;
+const NUMBER_OPERATORS = ['=', '!=', '>', '<', '>=', '<='] as const;
+const SELECT_OPERATORS = ['=', '!='] as const;
+
+const OPERATOR_LABELS: Record<string, string> = {
+    '>': 'After',
+    '<': 'Before',
+    '>=': 'On or After',
+    '<=': 'On or Before',
+    'like': 'Contains',
+    'not like': 'Does not contain',
+    '=': 'Equals',
+    '!=': 'Does not equal',
+};
+
+const getOperatorsForType = (type: string) => {
+    switch (type) {
+        case 'date': return [...DATE_OPERATORS];
+        case 'number': return [...NUMBER_OPERATORS];
+        case 'select': return [...SELECT_OPERATORS];
+        default: return [...STRING_OPERATORS];
+    }
+};
+
+const getFieldType = (fieldValue: string) =>
+    KYC_FILTER_FIELDS.find(f => f.value === fieldValue)?.type ?? 'string';
+
+const getFieldOptions = (fieldValue: string): readonly string[] => {
+    const field = KYC_FILTER_FIELDS.find(f => f.value === fieldValue);
+    return field && 'options' in field ? (field as any).options : [];
+};
+
+interface AdvancedFilter {
+    id: string;
+    field: string;
+    operator: string;
+    value: string | [string, string];
+}
+
 const Kyc: React.FC = () => {
-    const { token, user, hierarchyData } = useAuth();
+    const { user } = useAuth();
+    const { orgTreeData } = useOrgTree();
     const { selectedHierarchy } = useFilter();
-    const { kycData, isLoading, error, count, statusCount, refreshKycData, exportKycData } = useKyc();
+    const frappe = useContext(FrappeContext);
+
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const [exportProgress, setExportProgress] = useState({ current: 0, total: 0 });
@@ -126,24 +187,125 @@ const Kyc: React.FC = () => {
         return null;
     });
     const [statusFilter, setStatusFilter] = useState<string>(() => sessionStorage.getItem('kycStatusFilter') || 'ALL');
+    const [stageFilter, setStageFilter] = useState<string>(() => sessionStorage.getItem('kycStageFilter') || 'ALL');
     const [referFilter, setReferFilter] = useState<string>(() => sessionStorage.getItem('kycReferFilter') || 'ALL');
     const [openReferBox, setOpenReferBox] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
-    const [sortConfig, setSortConfig] = useState<{ key: keyof KycItem; direction: 'asc' | 'desc' } | null>(null);
+    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({
+        key: 'application_modified_date_time',
+        direction: 'desc'
+    });
     const [referSearch, setReferSearch] = useState('');
+    const [permissionError, setPermissionError] = useState<string | null>(null);
+
+    const [kycData, setKycData] = useState<any[]>(() => {
+        const stored = sessionStorage.getItem('kycData');
+        return stored ? JSON.parse(stored) : [];
+    });
+    const [isLoading, setIsLoading] = useState(() => {
+        const stored = sessionStorage.getItem('kycData');
+        return stored ? JSON.parse(stored).length === 0 : true;
+    });
+    const [listError, setListError] = useState<any>(null);
+
+    const [totalCount, setTotalCount] = useState<number>(() => {
+        const stored = sessionStorage.getItem('kycTotalCount');
+        return stored ? Number(stored) : 0;
+    });
+    const [approvedCount, setApprovedCount] = useState<number>(() => {
+        const stored = sessionStorage.getItem('kycApprovedCount');
+        return stored ? Number(stored) : 0;
+    });
+    const [openedCount, setOpenedCount] = useState<number>(() => {
+        const stored = sessionStorage.getItem('kycOpenedCount');
+        return stored ? Number(stored) : 0;
+    });
+    const [pendingCount, setPendingCount] = useState<number>(() => {
+        const stored = sessionStorage.getItem('kycPendingCount');
+        return stored ? Number(stored) : 0;
+    });
+    const [progressCount, setProgressCount] = useState<number>(() => {
+        const stored = sessionStorage.getItem('kycProgressCount');
+        return stored ? Number(stored) : 0;
+    });
+    const [rejectedCount, setRejectedCount] = useState<number>(() => {
+        const stored = sessionStorage.getItem('kycRejectedCount');
+        return stored ? Number(stored) : 0;
+    });
+
+    // Advanced Filters State
+    const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilter[]>([]);
+    const [openFilterPanel, setOpenFilterPanel] = useState(false);
+    const [draftFilters, setDraftFilters] = useState<AdvancedFilter[]>([]);
+    const [fieldComboOpen, setFieldComboOpen] = useState<Record<string, boolean>>({});
+
+    const handleFilterPanelOpen = (open: boolean) => {
+        if (open) {
+            setDraftFilters(
+                advancedFilters.length > 0
+                    ? advancedFilters.map(f => ({ ...f }))
+                    : [{ id: crypto.randomUUID(), field: '', operator: '', value: '' }]
+            );
+        }
+        setOpenFilterPanel(open);
+    };
+
+    const addDraftFilter = () =>
+        setDraftFilters(prev => [...prev, { id: crypto.randomUUID(), field: '', operator: '', value: '' }]);
+
+    const removeDraftFilter = (id: string) =>
+        setDraftFilters(prev => prev.filter(f => f.id !== id));
+
+    const updateDraftFilter = (id: string, updates: Partial<AdvancedFilter>) =>
+        setDraftFilters(prev => prev.map(f => f.id === id ? { ...f, ...updates } : f));
+
+    const applyAdvancedFilters = () => {
+        const valid = draftFilters.filter(f => {
+            if (!f.field || !f.operator) return false;
+            if (Array.isArray(f.value)) return f.value[0] !== '' && f.value[1] !== '';
+            return f.value !== '';
+        }).map(f => {
+            if ((f.operator === 'like' || f.operator === 'not like') && typeof f.value === 'string' && !f.value.includes('%')) {
+                return { ...f, value: `%${f.value}%` };
+            }
+            return f;
+        });
+        setAdvancedFilters(valid);
+        setOpenFilterPanel(false);
+    };
+
+    const clearAdvancedFilters = () => {
+        setDraftFilters([{ id: crypto.randomUUID(), field: '', operator: '', value: '' }]);
+        setAdvancedFilters([]);
+        setOpenFilterPanel(false);
+    };
 
     // Filtered hierarchy for refer selection, sorted by category order
     const referOptions = useMemo(() => {
-        if (!hierarchyData) return [];
-        return hierarchyData
+        const tree = orgTreeData;
+        if (!tree) return [];
+        return [...tree]
             .sort((a, b) => {
                 const pa = CATEGORY_ORDER[a.category?.toUpperCase() || ''] || 99;
                 const pb = CATEGORY_ORDER[b.category?.toUpperCase() || ''] || 99;
                 if (pa !== pb) return pa - pb;
                 return a.name.localeCompare(b.name);
             });
-    }, [hierarchyData]);
+    }, [orgTreeData]);
+
+    const referCodeMap = useMemo(() => {
+        const tree = orgTreeData;
+        if (!tree) return new Map<string, string>();
+        const map = new Map<string, string>();
+        tree.forEach((node: any) => {
+            if (node.name) {
+                const code = node.code || node.org_code || node.name;
+                map.set(node.name, code);
+            }
+        });
+        return map;
+    }, [orgTreeData]);
 
     // Optimized visible options for refer selection to prevent performance issues with large data
     const visibleReferOptions = useMemo(() => {
@@ -152,10 +314,12 @@ const Kyc: React.FC = () => {
 
         const searchLower = referSearch.toLowerCase();
         return referOptions
-            .filter(opt =>
-                opt.name.toLowerCase().includes(searchLower) ||
-                (opt.category && opt.category.toLowerCase().includes(searchLower))
-            )
+            .filter(opt => {
+                const code = (opt as any).code || (opt as any).org_code || '';
+                return opt.name.toLowerCase().includes(searchLower) ||
+                    code.toLowerCase().includes(searchLower) ||
+                    (opt.category && opt.category.toLowerCase().includes(searchLower));
+            })
             .slice(0, 100);
     }, [referOptions, referSearch]);
 
@@ -173,6 +337,10 @@ const Kyc: React.FC = () => {
     }, [statusFilter]);
 
     useEffect(() => {
+        sessionStorage.setItem('kycStageFilter', stageFilter);
+    }, [stageFilter]);
+
+    useEffect(() => {
         sessionStorage.setItem('kycReferFilter', referFilter);
     }, [referFilter]);
 
@@ -187,54 +355,277 @@ const Kyc: React.FC = () => {
         }
     }, [openReferBox]);
 
-    const loadKycData = useCallback(async (page: number, currentSearch: string, currentStatus: string, currentDates: [Date, Date] | null, currentHierarchy: string[], currentRefer: string) => {
-        if (!token) return;
+    const expandBranches = useCallback((selectedNodes: string[]) => {
+        const tree = orgTreeData;
+        if (!tree || !Array.isArray(tree)) return selectedNodes;
 
-        const params: any = {
-            limit_start: (page - 1) * ITEMS_PER_PAGE,
-            limit_page_length: ITEMS_PER_PAGE
+        const childrenMap = new Map<string, string[]>();
+        tree.forEach(node => {
+            const parent = node.parent_crm_heirarchy;
+            if (parent) {
+                if (!childrenMap.has(parent)) {
+                    childrenMap.set(parent, []);
+                }
+                childrenMap.get(parent)!.push(node.name);
+            }
+        });
+
+        const allCodes = new Set<string>();
+        const collectDescendants = (nodeId: string) => {
+            allCodes.add(nodeId);
+            const children = childrenMap.get(nodeId);
+            if (children) {
+                children.forEach(collectDescendants);
+            }
         };
 
-        // Combobox refer filter takes priority — sends only that code (no expansion)
-        if (currentRefer !== 'ALL') {
-            params.refer_list = [currentRefer];
-            params.skip_expand = true;
-        } else if (currentHierarchy && currentHierarchy.length > 0) {
-            params.refer_list = currentHierarchy;
-        }
+        selectedNodes.forEach(name => collectDescendants(name));
+        return Array.from(allCodes);
+    }, [orgTreeData]);
 
-        if (currentSearch) {
-            if (/^[a-zA-Z]/.test(currentSearch)) {
-                params.ucc_field = currentSearch;
-            } else if (/^\d{10}$/.test(currentSearch)) {
-                params.mobile_no = currentSearch;
+    const getHierarchyCodes = useCallback((names: string[]) => {
+        const tree = orgTreeData;
+        if (!tree) return names;
+        const codeMap = new Map<string, string>();
+        tree.forEach((node: any) => {
+            if (node.name) {
+                const code = node.code || node.org_code || node.name;
+                codeMap.set(node.name, code);
+            }
+        });
+        return names.map(name => codeMap.get(name) || name);
+    }, [orgTreeData]);
+
+    const hierarchyFilters = useMemo(() => {
+        const activeFilters: any[] = [];
+        if (referFilter !== 'ALL') {
+            const tree = orgTreeData;
+            const node = tree?.find((opt: any) => opt.name === referFilter);
+            const code = (node as any)?.code || (node as any)?.org_code || referFilter;
+            activeFilters.push(['refer', '=', code]);
+        } else if (selectedHierarchy && selectedHierarchy.length > 0) {
+            const expandedNames = expandBranches(selectedHierarchy);
+            const expandedCodes = getHierarchyCodes(expandedNames);
+            activeFilters.push(['refer', 'in', expandedCodes]);
+        }
+        return activeFilters;
+    }, [selectedHierarchy, referFilter, expandBranches, getHierarchyCodes, orgTreeData]);
+
+    const debouncedSearchQuery = useDebounce(searchQuery, 400);
+
+    const totalFilters = useMemo(() => {
+        const activeFilters = [...hierarchyFilters];
+
+        if (debouncedSearchQuery) {
+            if (/^[a-zA-Z]/.test(debouncedSearchQuery)) {
+                activeFilters.push(['ucc', 'like', `%${debouncedSearchQuery}%`]);
+            } else if (/^\d{10}$/.test(debouncedSearchQuery)) {
+                activeFilters.push(['mobile_number', 'like', `%${debouncedSearchQuery}%`]);
             } else {
-                params.application_id = currentSearch;
+                activeFilters.push(['application_id', 'like', `%${debouncedSearchQuery}%`]);
             }
         }
 
-        if (currentDates?.[0] && currentDates?.[1]) {
+        if (dateRange?.[0] && dateRange?.[1]) {
             const formatLocal = (d: Date) => {
                 const year = d.getFullYear();
                 const month = String(d.getMonth() + 1).padStart(2, '0');
                 const day = String(d.getDate()).padStart(2, '0');
                 return `${year}-${month}-${day}`;
             };
-            params.from_application_modified_date_time = formatLocal(currentDates[0]) + " 00:00:00";
-            params.to_application_modified_date_time = formatLocal(currentDates[1]) + " 23:59:59";
+            activeFilters.push(['application_modified_date_time', '>=', formatLocal(dateRange[0]) + " 00:00:00"]);
+            activeFilters.push(['application_modified_date_time', '<=', formatLocal(dateRange[1]) + " 23:59:59"]);
         }
 
-        if (currentStatus !== 'ALL') {
-            params.application_status = currentStatus;
+        // Add advanced filters
+        for (const f of advancedFilters) {
+            if (!f.field || !f.operator) continue;
+            if (Array.isArray(f.value)) {
+                if (f.value[0] && f.value[1]) {
+                    activeFilters.push([f.field, f.operator, f.value]);
+                }
+            } else if (f.value) {
+                activeFilters.push([f.field, f.operator, f.value]);
+            }
         }
 
-        await refreshKycData(params);
-    }, [refreshKycData, token]);
+        return activeFilters;
+    }, [hierarchyFilters, debouncedSearchQuery, dateRange, advancedFilters]);
 
-    const handleSort = (key: keyof KycItem) => {
-        let direction: 'asc' | 'desc' = 'asc';
-        if (sortConfig?.key === key && sortConfig.direction === 'asc') {
-            direction = 'desc';
+    const filters = useMemo(() => {
+        const activeFilters = [...totalFilters];
+        if (statusFilter !== 'ALL') {
+            activeFilters.push(['application_status', '=', statusFilter]);
+        }
+        if (stageFilter !== 'ALL') {
+            activeFilters.push(['kyc_stage', '=', stageFilter]);
+        }
+        return activeFilters;
+    }, [totalFilters, statusFilter, stageFilter]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [debouncedSearchQuery, dateRange, statusFilter, stageFilter, referFilter, advancedFilters]);
+
+    const hasPermissionError = !!permissionError;
+
+    // Counts Queries resolved via fetchData
+
+    const statusCount = useMemo(() => ({
+        'APPROVED': approvedCount,
+        'ACCOUNT OPENED': openedCount,
+        'PENDING FOR APPROVAL': pendingCount,
+        'IN PROGRESS': progressCount,
+        'REJECTED': rejectedCount
+    }), [approvedCount, openedCount, pendingCount, progressCount, rejectedCount]);
+
+    // Rows Query
+    const limit_start = (currentPage - 1) * ITEMS_PER_PAGE;
+    const limit = ITEMS_PER_PAGE;
+
+    const orderByObj = useMemo(() => {
+        if (!sortConfig) {
+            return { field: 'application_modified_date_time', order: 'desc' as const };
+        }
+        return {
+            field: sortConfig.key,
+            order: sortConfig.direction
+        };
+    }, [sortConfig]);
+
+    const {
+        data: kycListData,
+        isLoading: isDocListLoading,
+        error: swrListError,
+        mutate: mutateList,
+    } = useFrappeGetDocList<any>(
+        'KYC',
+        {
+            fields: [
+                'name',
+                'application_id',
+                'user_name',
+                'kyc_stage',
+                'refer',
+                'application_created_date',
+                'application_modified_date_time',
+                'application_status',
+                'src',
+                'tag',
+                'ucc',
+                'mobile_number'
+            ],
+            filters,
+            orderBy: orderByObj,
+            limit_start,
+            limit,
+        },
+        hasPermissionError ? null : undefined
+    );
+
+    // Sync loading state
+    useEffect(() => {
+        setIsLoading(!!isDocListLoading);
+    }, [isDocListLoading]);
+
+    // Save kycList to state
+    useEffect(() => {
+        if (kycListData) {
+            setKycData(kycListData);
+        }
+    }, [kycListData]);
+
+    // Sync list error state
+    useEffect(() => {
+        if (swrListError !== undefined) {
+            setListError(swrListError);
+        }
+    }, [swrListError]);
+
+    // Counts queries
+    const { data: sTotalCount = 0, error: totalCountErr, mutate: mutateTotalCount } = useFrappeGetDocCount('KYC', totalFilters, false, hasPermissionError ? null : undefined);
+    const { data: sApprovedCount = 0, error: approvedCountErr, mutate: mutateApprovedCount } = useFrappeGetDocCount('KYC', [...totalFilters, ['application_status', '=', 'APPROVED']], false, hasPermissionError ? null : undefined);
+    const { data: sOpenedCount = 0, error: openedCountErr, mutate: mutateOpenedCount } = useFrappeGetDocCount('KYC', [...totalFilters, ['application_status', '=', 'ACCOUNT OPENED']], false, hasPermissionError ? null : undefined);
+    const { data: sPendingCount = 0, error: pendingCountErr, mutate: mutatePendingCount } = useFrappeGetDocCount('KYC', [...totalFilters, ['application_status', '=', 'PENDING FOR APPROVAL']], false, hasPermissionError ? null : undefined);
+    const { data: sProgressCount = 0, error: progressCountErr, mutate: mutateProgressCount } = useFrappeGetDocCount('KYC', [...totalFilters, ['application_status', '=', 'IN PROGRESS']], false, hasPermissionError ? null : undefined);
+    const { data: sRejectedCount = 0, error: rejectedCountErr, mutate: mutateRejectedCount } = useFrappeGetDocCount('KYC', [...totalFilters, ['application_status', '=', 'REJECTED']], false, hasPermissionError ? null : undefined);
+
+    // Sync counts to state
+    useEffect(() => {
+        if (sTotalCount !== undefined) setTotalCount(sTotalCount);
+        if (sApprovedCount !== undefined) setApprovedCount(sApprovedCount);
+        if (sOpenedCount !== undefined) setOpenedCount(sOpenedCount);
+        if (sPendingCount !== undefined) setPendingCount(sPendingCount);
+        if (sProgressCount !== undefined) setProgressCount(sProgressCount);
+        if (sRejectedCount !== undefined) setRejectedCount(sRejectedCount);
+    }, [sTotalCount, sApprovedCount, sOpenedCount, sPendingCount, sProgressCount, sRejectedCount]);
+
+    // Fetch full timeline document details when a row is clicked
+    const { data: selectedKycDoc, isLoading: isDocLoading, error: docError } = useFrappeGetDoc<any>(
+        'KYC',
+        selectedAppId || '',
+        selectedAppId ? undefined : null
+    );
+
+    // Watch for permission errors
+    useEffect(() => {
+        const errors = [swrListError, totalCountErr, approvedCountErr, openedCountErr, pendingCountErr, progressCountErr, rejectedCountErr, docError];
+        for (const err of errors) {
+            if (err) {
+                const errAny = err as any;
+                const is403 = errAny.httpStatus === 403 || errAny.status === 403 || errAny.message?.includes('403');
+                const isPermissionError =
+                    errAny.exception?.includes('PermissionError') ||
+                    errAny.exc_type === 'PermissionError' ||
+                    errAny._server_messages?.includes('PermissionError') ||
+                    errAny._server_messages?.includes('Insufficient Permission') ||
+                    errAny.message?.includes('Insufficient Permission');
+
+                if (is403 || isPermissionError) {
+                    setPermissionError(errAny.message || "Insufficient Permission for KYC doctype");
+                    break;
+                }
+            }
+        }
+    }, [swrListError, totalCountErr, approvedCountErr, openedCountErr, pendingCountErr, progressCountErr, rejectedCountErr, docError]);
+
+    // Save logs to sessionStorage when loaded
+    useEffect(() => {
+        if (kycData && kycData.length > 0) {
+            sessionStorage.setItem('kycData', JSON.stringify(kycData));
+        }
+    }, [kycData]);
+
+    useEffect(() => {
+        sessionStorage.setItem('kycTotalCount', String(totalCount));
+    }, [totalCount]);
+
+    useEffect(() => {
+        sessionStorage.setItem('kycApprovedCount', String(approvedCount));
+    }, [approvedCount]);
+
+    useEffect(() => {
+        sessionStorage.setItem('kycOpenedCount', String(openedCount));
+    }, [openedCount]);
+
+    useEffect(() => {
+        sessionStorage.setItem('kycPendingCount', String(pendingCount));
+    }, [pendingCount]);
+
+    useEffect(() => {
+        sessionStorage.setItem('kycProgressCount', String(progressCount));
+    }, [progressCount]);
+
+    useEffect(() => {
+        sessionStorage.setItem('kycRejectedCount', String(rejectedCount));
+    }, [rejectedCount]);
+
+    const error = listError ? (listError.message || 'An error occurred') : permissionError;
+
+    const handleSort = (key: string) => {
+        let direction: 'asc' | 'desc' = 'desc';
+        if (sortConfig?.key === key && sortConfig.direction === 'desc') {
+            direction = 'asc';
         }
         setSortConfig({ key, direction });
     };
@@ -242,56 +633,105 @@ const Kyc: React.FC = () => {
     const handleRefresh = async () => {
         setIsRefreshing(true);
         try {
-            await loadKycData(currentPage, searchQuery, statusFilter, dateRange, selectedHierarchy, referFilter);
+            await Promise.all([
+                mutateList(),
+                mutateTotalCount(),
+                mutateApprovedCount(),
+                mutateOpenedCount(),
+                mutatePendingCount(),
+                mutateProgressCount(),
+                mutateRejectedCount(),
+            ]);
+            toast.success('KYC data refreshed successfully');
         } finally {
             setIsRefreshing(false);
         }
     };
 
+    // Real-time listener for KYC list updates
+    const handleListUpdate = useCallback((eventData: any) => {
+        console.log('Realtime KYC event:', eventData);
+        mutateList();
+        mutateTotalCount();
+        mutateApprovedCount();
+        mutateOpenedCount();
+        mutatePendingCount();
+        mutateProgressCount();
+        mutateRejectedCount();
+
+        toast.success(`KYC record "${eventData.name}" was modified. List updated automatically.`);
+    }, [mutateList, mutateTotalCount, mutateApprovedCount, mutateOpenedCount, mutatePendingCount, mutateProgressCount, mutateRejectedCount]);
+
+    useFrappeDocTypeEventListener('KYC', handleListUpdate);
+
     const handleExport = async () => {
+        if (!frappe) return;
         setIsExporting(true);
-        setExportProgress({ current: 0, total: 0 });
+        setExportProgress({ current: 0, total: totalCount });
         try {
-            const params: any = {};
+            let allData: any[] = [];
+            let current_limit_start = 0;
+            const limit_page_length = 5000;
+            let hasMore = true;
 
-            if (referFilter !== 'ALL') {
-                params.refer_list = [referFilter];
-                params.skip_expand = true;
-            } else if (selectedHierarchy && selectedHierarchy.length > 0) {
-                params.refer_list = selectedHierarchy;
-            }
+            while (hasMore) {
+                const headers: Record<string, string> = {
+                    'Content-Type': 'application/json',
+                };
 
-            if (searchQuery) {
-                if (/^[a-zA-Z]/.test(searchQuery)) {
-                    params.ucc_field = searchQuery;
-                } else if (/^\d{10}$/.test(searchQuery)) {
-                    params.mobile_no = searchQuery;
+                const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/method/frappe.client.get_list`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({
+                        doctype: 'KYC',
+                        fields: [
+                            'name',
+                            'application_id',
+                            'user_name',
+                            'kyc_stage',
+                            'refer',
+                            'application_created_date',
+                            'application_modified_date_time',
+                            'application_status',
+                            'src',
+                            'tag',
+                            'ucc',
+                            'nse',
+                            'bse',
+                            'nfo',
+                            'bfo',
+                            'mcx',
+                            'client_mapping',
+                            'mobile_number'
+                        ],
+                        filters: totalFilters,
+                        limit_start: current_limit_start,
+                        limit_page_length: limit_page_length
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Export fetch failed: HTTP ${response.status}`);
+                }
+
+                const result = await response.json();
+                const data = result.message || [];
+
+                if (data && data.length > 0) {
+                    allData = [...allData, ...data];
+                    setExportProgress({ current: allData.length, total: totalCount });
+                    if (data.length < limit_page_length) {
+                        hasMore = false;
+                    } else {
+                        current_limit_start += limit_page_length;
+                    }
                 } else {
-                    params.application_id = searchQuery;
+                    hasMore = false;
                 }
             }
 
-            if (dateRange?.[0] && dateRange?.[1]) {
-                const formatLocal = (d: Date) => {
-                    const year = d.getFullYear();
-                    const month = String(d.getMonth() + 1).padStart(2, '0');
-                    const day = String(d.getDate()).padStart(2, '0');
-                    return `${year}-${month}-${day}`;
-                };
-                params.from_application_modified_date_time = formatLocal(dateRange[0]) + " 00:00:00";
-                params.to_application_modified_date_time = formatLocal(dateRange[1]) + " 23:59:59";
-            }
-
-            if (statusFilter !== 'ALL') {
-                params.application_status = statusFilter;
-            }
-
-            const data = await exportKycData(params, (current, total) => {
-                setExportProgress({ current, total });
-            });
-
-            if (data.length > 0) {
-                const exportData = data.map(item => ({
+            if (allData.length > 0) {
+                const exportData = allData.map(item => ({
                     'Application ID': item.application_id,
                     'Mobile': item.mobile_number,
                     'UCC': item.ucc,
@@ -324,74 +764,15 @@ const Kyc: React.FC = () => {
         }
     };
 
-    const debouncedSearchQuery = useDebounce(searchQuery, 400);
-
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [debouncedSearchQuery, dateRange, statusFilter, referFilter]);
-
-    useEffect(() => {
-        if (token) {
-            loadKycData(currentPage, debouncedSearchQuery, statusFilter, dateRange, selectedHierarchy, referFilter);
-        }
-    }, [currentPage, debouncedSearchQuery, dateRange, statusFilter, selectedHierarchy, referFilter, token, loadKycData]);
-
-    const filteredData = useMemo(() => {
-        if (!kycData) return [];
-        const result = [...kycData];
-        if (sortConfig) {
-            result.sort((a, b) => {
-                const aValue = (a[sortConfig.key] || '').toString();
-                const bValue = (b[sortConfig.key] || '').toString();
-                if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-                if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-                return 0;
-            });
-        }
-        return result;
-    }, [kycData, sortConfig]);
-
+    const count = totalCount;
     const totalPages = Math.ceil(count / ITEMS_PER_PAGE);
 
     const formatValue = (value: string | null) => value || '-';
-
-    const renderSegmentBadge = (status: string | null | undefined) => {
-        const isActive = status === 'Active';
-        return (
-            <Badge
-                variant="outline"
-                className={cn(
-                    "py-0 text-[10px] px-2 h-5 rounded-full font-bold uppercase tracking-tight transition-colors w-16 justify-center border",
-                    isActive
-                        ? "bg-green-100/50 text-green-700 border-green-200"
-                        : "bg-slate-50 text-slate-400 border-slate-200"
-                )}
-            >
-                {isActive ? 'Active' : '-'}
-            </Badge>
-        );
-    };
 
     return (
         <div className="p-4 h-full flex flex-col overflow-hidden space-y-6">
             {/* Header & Summary Section */}
             <div className="shrink-0 space-y-4">
-                {/* <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-slate-900">KYC Applications</h1>
-                        <p className="text-slate-500 text-sm">Manage and track customer onboarding status</p>
-                    </div>
-                    <Button
-                        onClick={handleRefresh}
-                        disabled={isRefreshing || isLoading}
-                        variant="outline"
-                        className="rounded-xl px-4 font-semibold gap-2 h-10 border-slate-200 bg-white hover:bg-slate-50 transition-all"
-                    >
-                        <RefreshCcw className={cn("w-4 h-4", (isRefreshing || isLoading) && "animate-spin")} />
-                        {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
-                    </Button>
-                </div> */}
-
                 {/* Status Summary Grid */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                     <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
@@ -493,6 +874,216 @@ const Kyc: React.FC = () => {
 
                 {/* Filters Row */}
                 <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50/50 border border-slate-200 rounded-2xl backdrop-blur-sm relative z-20">
+                    {/* Advanced Filters */}
+                    <Popover open={openFilterPanel} onOpenChange={handleFilterPanelOpen}>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" className="rounded-xl h-10 border-slate-200 bg-white hover:bg-slate-50 gap-2">
+                                <Filter className="w-4 h-4 text-slate-500" />
+                                {advancedFilters.length > 0 && (
+                                    <span className="bg-purple-600 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center shrink-0">
+                                        {advancedFilters.length}
+                                    </span>
+                                )}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent align="start" side="bottom" className="w-[480px] p-3 rounded-2xl border-slate-200 shadow-xl z-50">
+                            <div className="flex items-center justify-between mb-2">
+                                <p className="text-xs font-bold text-slate-800">Advanced Filters</p>
+                                <span className="text-[9px] text-slate-400 font-medium">Use % as wildcard for "like"</span>
+                            </div>
+
+                            <div className="space-y-1.5 max-h-[300px] overflow-y-auto no-scrollbar">
+                                {draftFilters.map((filter) => (
+                                    <div key={filter.id} className="flex items-center gap-2">
+                                        {/* Field combobox */}
+                                        <Popover
+                                            open={fieldComboOpen[filter.id] ?? false}
+                                            onOpenChange={(open) => setFieldComboOpen(prev => ({ ...prev, [filter.id]: open }))}
+                                        >
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    role="combobox"
+                                                    className="w-[150px] justify-between h-8 text-xs font-normal border-slate-200 shrink-0"
+                                                >
+                                                    <span className="truncate">
+                                                        {filter.field
+                                                            ? KYC_FILTER_FIELDS.find(f => f.value === filter.field)?.label
+                                                            : 'Select field...'}
+                                                    </span>
+                                                    <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-[170px] p-0 rounded-xl border-slate-200 shadow-xl z-[60]" side="bottom" align="start">
+                                                <Command>
+                                                    <CommandInput placeholder="Search field..." className="h-8 text-xs" />
+                                                    <CommandList>
+                                                        <CommandEmpty className="py-2 text-center text-xs text-slate-500">No field found.</CommandEmpty>
+                                                        <CommandGroup>
+                                                            {KYC_FILTER_FIELDS.map((field) => (
+                                                                <CommandItem
+                                                                    key={field.value}
+                                                                    value={field.label}
+                                                                    onSelect={() => {
+                                                                        const defaultOp = getOperatorsForType(field.type)[0];
+                                                                        const defaultVal = field.type === 'date' && defaultOp === 'Between' ? ['', ''] as [string, string] : '';
+                                                                        updateDraftFilter(filter.id, { field: field.value, operator: defaultOp, value: defaultVal });
+                                                                        setFieldComboOpen(prev => ({ ...prev, [filter.id]: false }));
+                                                                    }}
+                                                                    className="text-xs"
+                                                                >
+                                                                    <Check className={cn('mr-2 h-3 w-3', filter.field === field.value ? 'opacity-100' : 'opacity-0')} />
+                                                                    {field.label}
+                                                                </CommandItem>
+                                                            ))}
+                                                        </CommandGroup>
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
+
+                                        {/* Operator */}
+                                        {filter.field && (
+                                            <Select
+                                                value={filter.operator}
+                                                onValueChange={(val) => {
+                                                    const newVal = val === 'Between' ? ['', ''] as [string, string] : '';
+                                                    updateDraftFilter(filter.id, { operator: val, value: newVal });
+                                                }}
+                                            >
+                                                <SelectTrigger className="h-8 text-xs w-[95px] border-slate-200 shrink-0">
+                                                    <SelectValue placeholder="Operator" />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                                                    {getOperatorsForType(getFieldType(filter.field)).map((op: string) => (
+                                                        <SelectItem key={op} value={op} className="text-xs">
+                                                            {OPERATOR_LABELS[op] ?? op}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+
+                                        {/* Value */}
+                                        {filter.field && filter.operator && (
+                                            filter.operator === 'Between' ? (
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <Button
+                                                            variant="outline"
+                                                            className={cn(
+                                                                'flex-1 h-8 text-xs font-normal border-slate-200 justify-start gap-1.5 min-w-0 truncate',
+                                                                !(Array.isArray(filter.value) && filter.value[0]) && 'text-slate-400'
+                                                            )}
+                                                        >
+                                                            <CalendarIcon className="h-3 w-3 shrink-0 text-slate-400" />
+                                                            <span className="truncate">
+                                                                {Array.isArray(filter.value) && filter.value[0]
+                                                                    ? filter.value[1]
+                                                                        ? `${filter.value[0]} → ${filter.value[1]}`
+                                                                        : filter.value[0]
+                                                                    : 'Pick date range'}
+                                                            </span>
+                                                        </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-0 rounded-xl border-slate-200 shadow-xl z-[60]" align="start">
+                                                        <CalendarIcon className="h-3 w-3 shrink-0 text-slate-400" />
+                                                    </PopoverContent>
+                                                </Popover>
+                                            ) : filter.operator === 'Timespan' ? (
+                                                <Select
+                                                    value={typeof filter.value === 'string' ? filter.value : ''}
+                                                    onValueChange={(val) => updateDraftFilter(filter.id, { value: val })}
+                                                >
+                                                    <SelectTrigger className="flex-1 h-8 text-xs border-slate-200">
+                                                        <SelectValue placeholder="Select period..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                                                        <SelectItem value="today" className="text-xs">Today</SelectItem>
+                                                        <SelectItem value="yesterday" className="text-xs">Yesterday</SelectItem>
+                                                        <SelectItem value="last week" className="text-xs">Last Week</SelectItem>
+                                                        <SelectItem value="this week" className="text-xs">This Week</SelectItem>
+                                                        <SelectItem value="last month" className="text-xs">Last Month</SelectItem>
+                                                        <SelectItem value="this month" className="text-xs">This Month</SelectItem>
+                                                        <SelectItem value="this quarter" className="text-xs">This Quarter</SelectItem>
+                                                        <SelectItem value="last quarter" className="text-xs">Last Quarter</SelectItem>
+                                                        <SelectItem value="this year" className="text-xs">This Year</SelectItem>
+                                                        <SelectItem value="last year" className="text-xs">Last Year</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            ) : filter.field === 'kyc_stage' || filter.field === 'application_status' || filter.field === 'client_mapping' ? (
+                                                <Select
+                                                    value={typeof filter.value === 'string' ? filter.value : ''}
+                                                    onValueChange={(val) => updateDraftFilter(filter.id, { value: val })}
+                                                >
+                                                    <SelectTrigger className="flex-1 h-8 text-xs border-slate-200">
+                                                        <SelectValue placeholder="Select option..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                                                        {getFieldOptions(filter.field).map((opt) => (
+                                                            <SelectItem key={opt} value={opt} className="text-xs">
+                                                                {opt}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            ) : (
+                                                <Input
+                                                    type={getFieldType(filter.field) === 'date' ? 'date' : 'text'}
+                                                    placeholder="Value"
+                                                    value={typeof filter.value === 'string' ? filter.value : ''}
+                                                    onChange={(e) => updateDraftFilter(filter.id, { value: e.target.value })}
+                                                    className="flex-1 h-8 text-xs border-slate-200 rounded-lg"
+                                                />
+                                            )
+                                        )}
+
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-slate-400 hover:text-red-500 shrink-0"
+                                            onClick={() => removeDraftFilter(filter.id)}
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="flex items-center justify-between pt-2 mt-2 border-t border-slate-100">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={addDraftFilter}
+                                    className="h-8 text-xs gap-1 hover:bg-slate-50 border-slate-200"
+                                >
+                                    <Plus className="w-3.5 h-3.5" /> Add Condition
+                                </Button>
+                                <div className="flex gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={clearAdvancedFilters}
+                                        className="h-8 text-xs text-slate-500 hover:text-slate-800"
+                                    >
+                                        Clear All
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        onClick={applyAdvancedFilters}
+                                        className="h-8 text-xs bg-purple-600 hover:bg-purple-700 text-white rounded-lg px-3"
+                                    >
+                                        Apply Filters
+                                    </Button>
+                                </div>
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+
                     <div className="w-[260px]">
                         <DateRangePicker
                             value={dateRange}
@@ -502,6 +1093,25 @@ const Kyc: React.FC = () => {
                             appearance="default"
                             block
                         />
+                    </div>
+
+                    <div className="w-[200px]">
+                        <Select value={stageFilter} onValueChange={setStageFilter}>
+                            <SelectTrigger className="bg-white border-slate-200 focus:ring-purple-500 rounded-xl h-10">
+                                <div className="flex items-center gap-2">
+                                    <Layers className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                    <SelectValue placeholder="KYC Stage" />
+                                </div>
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-slate-200 shadow-xl max-h-[300px] overflow-y-auto">
+                                <SelectItem value="ALL">All Stages</SelectItem>
+                                {['MOBILE OTP', 'EMAIL OTP', 'PASSWORD SETUP', 'KRA DOB', 'PAN NAME', 'PAN CONFIRM', 'AADHAR', 'PROFILE', 'BANK ENTRY', 'SEGMENT SELECTION', 'PAYMENT', 'NOMINEE', 'INCOME PROOF', 'SIGNATURE', 'IPV', 'PDF DOWNLOAD', 'ESIGN GENERATED', 'END PAGE'].map((stage) => (
+                                    <SelectItem key={stage} value={stage}>
+                                        {stage}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                     <div className="w-[180px]">
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -537,7 +1147,10 @@ const Kyc: React.FC = () => {
                                         <span className="truncate">
                                             {referFilter === "ALL"
                                                 ? "Select Refer"
-                                                : referOptions.find((opt) => opt.name === referFilter)?.name || referFilter}
+                                                : (referOptions.find((opt) => opt.name === referFilter) as any)?.code ||
+                                                  (referOptions.find((opt) => opt.name === referFilter) as any)?.org_code ||
+                                                  (referOptions.find((opt) => opt.name === referFilter) as any)?.name ||
+                                                  referFilter}
                                         </span>
                                     </div>
                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -571,14 +1184,15 @@ const Kyc: React.FC = () => {
                                                 <CommandItem
                                                     key={opt.name}
                                                     value={opt.name}
-                                                    onSelect={(currentValue) => {
-                                                        // Use opt.name directly as currentValue from cmdk might be different if filtered
+                                                    onSelect={() => {
                                                         setReferFilter(opt.name === referFilter ? "ALL" : opt.name);
                                                         setOpenReferBox(false);
                                                     }}
                                                     className="flex items-center justify-between gap-2"
                                                 >
-                                                    <span className="truncate text-sm">{opt.name}</span>
+                                                    <span className="truncate text-sm">
+                                                         {(opt as any).code || (opt as any).org_code || opt.name}
+                                                     </span>
                                                     <div className="flex items-center gap-1 shrink-0">
                                                         {opt.category && (
                                                             <Badge
@@ -620,7 +1234,7 @@ const Kyc: React.FC = () => {
                         <RefreshCcw className={cn("w-4 h-4", (isRefreshing || isLoading) && "animate-spin")} />
                     </Button>
 
-                    {(user?.user_code === 'HO' || user?.user_code === 'DRCT' || user?.user_code === 'Business' || user?.user_code === 'RMRL') && (
+                    {(user?.user_code === 'HO' || user?.user_code === 'DRCT' || user?.user_code === 'Business' || user?.user_code === 'RMRL' || user?.category === 'admin') && (
                         <Button
                             onClick={handleExport}
                             disabled={isExporting || isLoading || isRefreshing}
@@ -712,9 +1326,6 @@ const Kyc: React.FC = () => {
                                 <th className="text-left py-3 px-4 font-semibold text-slate-600">Refer</th>
                                 <th className="text-left py-3 px-4 font-semibold text-slate-600">Stage</th>
                                 <th className="text-left py-3 px-4 font-semibold text-slate-600">Status</th>
-                                {/* <th className="text-center py-3 px-4 font-semibold text-slate-600">NSE</th>
-                                <th className="text-center py-3 px-4 font-semibold text-slate-600">BSE</th>
-                                <th className="text-center py-3 px-4 font-semibold text-slate-600">NFO</th> */}
                                 <th className="text-center py-3 px-4 font-semibold text-slate-600">Ready</th>
                             </tr>
                         </thead>
@@ -732,12 +1343,12 @@ const Kyc: React.FC = () => {
                                         <td className="py-3 px-4 text-center"><Skeleton className="w-2 h-2 rounded-full mx-auto" /></td>
                                     </tr>
                                 ))
-                            ) : filteredData.length > 0 ? (
-                                filteredData.map((row: KycItem, index: number) => (
+                            ) : kycData && kycData.length > 0 ? (
+                                kycData.map((row: any, index: number) => (
                                     <tr
                                         key={index}
                                         className="hover:bg-slate-50/50 transition-colors cursor-pointer group"
-                                        onClick={() => setSelectedAppId(row.application_id)}
+                                        onClick={() => setSelectedAppId(row.name || row.application_id)}
                                     >
                                         <td className="py-3 px-4 font-medium text-slate-900">{formatValue(row.application_id)}</td>
                                         <td className="py-3 px-4 font-medium text-slate-900">
@@ -745,7 +1356,7 @@ const Kyc: React.FC = () => {
                                         </td>
                                         <td className="py-3 px-4 font-mono text-xs text-slate-600">{row.ucc || '-'}</td>
                                         <td className="py-3 px-4 text-slate-700">{formatValue(row.user_name)}</td>
-                                        <td className="py-3 px-4 text-slate-700">{formatValue(row.refer)}</td>
+                                        <td className="py-3 px-4 text-slate-700">{row.refer ? (referCodeMap.get(row.refer) || row.refer) : '-'}</td>
                                         <td className="py-3 px-4">
                                             <Badge variant="outline" className="text-purple-600 bg-purple-50 border-purple-100 py-0.5 text-[10px]">
                                                 {row.kyc_stage === 'END PAGE' ? 'ESIGN COMPLETED' : formatValue(row.kyc_stage)}
@@ -756,7 +1367,7 @@ const Kyc: React.FC = () => {
                                                 className={cn(
                                                     "capitalize font-bold px-2.5 py-0.5 rounded-full border-none text-[10px]",
                                                     row.application_status === 'ACCOUNT OPENED' || row.application_status === 'APPROVED' ? "bg-green-100 text-green-700 hover:bg-green-100 hover:text-green-700" :
-                                                        row.application_status === 'REJECTED' || row.application_status === 'REJECTED' ? "bg-red-100 text-red-700 hover:bg-red-100 hover:text-red-700" :
+                                                        row.application_status === 'REJECTED' ? "bg-red-100 text-red-700 hover:bg-red-100 hover:text-red-700" :
                                                             row.application_status === 'PENDING FOR APPROVAL' ? "bg-purple-100 text-purple-700 hover:bg-purple-100 hover:text-purple-700" :
                                                                 "bg-amber-100 text-amber-700 hover:bg-amber-100 hover:text-amber-700"
                                                 )}
@@ -764,9 +1375,6 @@ const Kyc: React.FC = () => {
                                                 {row.application_status || 'IN PROGRESS'}
                                             </Badge>
                                         </td>
-                                        {/* <td className="py-3 px-4 text-center">{renderSegmentBadge(row.nse)}</td>
-                                        <td className="py-3 px-4 text-center">{renderSegmentBadge(row.bse)}</td>
-                                        <td className="py-3 px-4 text-center">{renderSegmentBadge(row.nfo)}</td> */}
                                         <td className="py-3 px-4 text-center">
                                             <div className={cn(
                                                 "w-2 h-2 rounded-full mx-auto",
@@ -793,7 +1401,9 @@ const Kyc: React.FC = () => {
                                                     setSearchQuery('');
                                                     setReferFilter('ALL');
                                                     setStatusFilter('ALL');
+                                                    setStageFilter('ALL');
                                                     setDateRange(null);
+                                                    setAdvancedFilters([]);
                                                 }}
                                                 className="rounded-xl px-6 border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold h-10 transition-all hover:scale-105 active:scale-95"
                                             >
@@ -832,13 +1442,25 @@ const Kyc: React.FC = () => {
                         </div>
                     </SheetHeader>
                     <div className="flex-1 overflow-hidden px-6 pb-6 pt-4">
-                        {selectedAppId && (
+                        {isDocLoading ? (
+                            <div className="space-y-4">
+                                <Skeleton className="h-8 w-full" />
+                                <Skeleton className="h-8 w-full" />
+                                <Skeleton className="h-8 w-full" />
+                            </div>
+                        ) : docError ? (
+                            <div className="flex flex-col items-center justify-center h-[60vh] text-red-500 gap-2 p-4 text-center">
+                                <AlertCircle className="w-12 h-12 text-red-500 mb-2" />
+                                <p className="font-bold text-sm">Error Loading Timeline</p>
+                                <p className="text-xs text-slate-500">{(docError as any).message || 'There was an error while fetching the documents.'}</p>
+                            </div>
+                        ) : selectedAppId ? (
                             <KycTimeline
                                 applicationId={selectedAppId}
-                                applicationStatus={kycData?.find(k => k.application_id === selectedAppId)?.application_status || ''}
-                                historyData={kycData?.find(k => k.application_id === selectedAppId)?.kyc_stage_history || []}
+                                applicationStatus={kycData?.find(k => (k.name || k.application_id) === selectedAppId)?.application_status || ''}
+                                historyData={selectedKycDoc?.kyc_stage_history || []}
                             />
-                        )}
+                        ) : null}
                     </div>
                 </SheetContent>
             </Sheet>

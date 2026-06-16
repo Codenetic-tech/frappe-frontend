@@ -70,7 +70,7 @@ const enrichOrderIcon = (ticker: string) => {
 };
 
 const ClientOrdersTab: React.FC<ClientOrdersTabProps> = ({ clientCode, refreshKey }) => {
-  const { token, logout } = useAuth();
+  const { logout, user } = useAuth();
   const [orders, setOrders] = useState<ParsedOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +79,7 @@ const ClientOrdersTab: React.FC<ClientOrdersTabProps> = ({ clientCode, refreshKe
     let isMounted = true;
 
     const fetchOrders = async () => {
-      if (!token) return;
+      if (!user) return;
       setIsLoading(true);
       setError(null);
 
@@ -88,19 +88,13 @@ const ClientOrdersTab: React.FC<ClientOrdersTabProps> = ({ clientCode, refreshKe
         const response = await fetch(`${API_BASE_URL}/api/method/rms.clientdetails.orders`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'token': token
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({ client_code: clientCode }),
           mode: 'cors',
         });
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          if (errorData.message?.status === 'error' && errorData.message?.message === 'Token has been revoked or does not match') {
-            logout();
-            return;
-          }
           throw new Error('Failed to fetch Orders');
         }
 
@@ -164,7 +158,7 @@ const ClientOrdersTab: React.FC<ClientOrdersTabProps> = ({ clientCode, refreshKe
     fetchOrders();
 
     return () => { isMounted = false; };
-  }, [clientCode, token, logout, refreshKey]);
+  }, [clientCode, logout, user, refreshKey]);
 
   if (isLoading) {
     return (

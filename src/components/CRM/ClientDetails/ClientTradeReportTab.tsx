@@ -52,7 +52,7 @@ const enrichTradeIcon = (ticker: string) => {
 };
 
 const ClientTradeReportTab: React.FC<ClientTradeReportTabProps> = ({ clientCode, refreshKey }) => {
-  const { token, logout } = useAuth();
+  const { logout, user } = useAuth();
   const [trades, setTrades] = useState<ParsedTrade[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -67,7 +67,7 @@ const ClientTradeReportTab: React.FC<ClientTradeReportTabProps> = ({ clientCode,
     let isMounted = true;
 
     const fetchTrades = async () => {
-      if (!token || !dateRange) return;
+      if (!user || !dateRange) return;
       setIsLoading(true);
       setError(null);
 
@@ -79,8 +79,7 @@ const ClientTradeReportTab: React.FC<ClientTradeReportTabProps> = ({ clientCode,
         const response = await fetch(`${API_BASE_URL}/api/method/rms.clientdetails.trade_report`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'token': token
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({
             client_code: clientCode,
@@ -91,11 +90,6 @@ const ClientTradeReportTab: React.FC<ClientTradeReportTabProps> = ({ clientCode,
         });
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          if (errorData.message?.status === 'error' && errorData.message?.message === 'Token has been revoked or does not match') {
-            logout();
-            return;
-          }
           throw new Error('Failed to fetch Trade Report');
         }
 
@@ -139,7 +133,7 @@ const ClientTradeReportTab: React.FC<ClientTradeReportTabProps> = ({ clientCode,
     fetchTrades();
 
     return () => { isMounted = false; };
-  }, [clientCode, token, logout, dateRange, refreshKey]);
+  }, [clientCode, logout, user, dateRange, refreshKey]);
 
   const handleDateChange = (value: [Date, Date] | null) => {
     if (value) {

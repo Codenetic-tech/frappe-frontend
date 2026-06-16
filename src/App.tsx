@@ -5,17 +5,15 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { KycProvider } from "@/contexts/KycContext";
-import { ClientProvider } from "@/contexts/ClientContext";
 import { FilterProvider } from "@/contexts/FilterContext";
 import { LeadProvider } from "@/contexts/LeadContext";
-import { AnnouncementProvider } from "@/contexts/AnnouncementContext";
 import { OrgTreeProvider } from "@/contexts/OrgTreeContext";
-import Index from "./pages/Index";
+import ClientDashboard from "./pages/ClientDashboard";
 import OrderBook from "./pages/OrderBook";
 import PositionBook from "./pages/PositionBook";
 import Holdings from "./pages/Holdings";
 import Clients from "./pages/Clients";
+import LiveOrders from "./pages/LiveOrders";
 import MutualFunds from "./pages/MutualFunds";
 import Settings from "./pages/Settings";
 import StrategyBuilder from "./pages/StrategyBuilder";
@@ -42,6 +40,8 @@ import MainLayout from "./components/layout/MainLayout";
 import { Sparkles } from "lucide-react";
 import { TaskProvider } from "@/contexts/TaskContext";
 import { FrappeProvider } from "frappe-react-sdk";
+import Comments from "./pages/Comments";
+import CommentDetails from "./pages/CommentDetails";
 
 const queryClient = new QueryClient();
 
@@ -84,12 +84,6 @@ const TICKETING_DEPARTMENTS = [
 ];
 
 const HomeRedirect = () => {
-  const { user } = useAuth();
-
-  if (user?.department && TICKETING_DEPARTMENTS.includes(user.department.toUpperCase())) {
-    return <Navigate to="/ticketing" replace />;
-  }
-
   return <Navigate to="/leads" replace />;
 };
 
@@ -124,7 +118,7 @@ const AppContent = () => {
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <Index />
+            <ClientDashboard />
           </ProtectedRoute>
         }
       />
@@ -201,6 +195,14 @@ const AppContent = () => {
         }
       />
       <Route
+        path="/live-orders"
+        element={
+          <ProtectedRoute>
+            <LiveOrders />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/clients/:clientId"
         element={
           <ProtectedRoute>
@@ -245,6 +247,22 @@ const AppContent = () => {
         element={
           <ProtectedRoute>
             <LeadDetails />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/comments"
+        element={
+          <ProtectedRoute>
+            <Comments />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/comments/:commentId"
+        element={
+          <ProtectedRoute>
+            <CommentDetails />
           </ProtectedRoute>
         }
       />
@@ -308,31 +326,25 @@ const AppContent = () => {
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <FrappeProvider url='' socketPort='8081' swrConfig={{ revalidateOnFocus: false, }}>
+      <FrappeProvider url='' socketPort='8081' siteName='pulse.gopocket.in' swrConfig={{ revalidateOnFocus: false, }}>
         <AuthProvider>
           <OrgTreeProvider>
             <FilterProvider>
               <TooltipProvider>
                 <LeadProvider>
-                  <KycProvider>
-                    <ClientProvider>
-                      <RevenueProvider>
-                        <CrmDashboardProvider>
-                          <AnnouncementProvider>
-                            <TicketProvider>
-                              <TaskProvider>
-                                <Toaster />
-                                <Sonner />
-                                <BrowserRouter>
-                                  <AppContent />
-                                </BrowserRouter>
-                              </TaskProvider>
-                            </TicketProvider>
-                          </AnnouncementProvider>
-                        </CrmDashboardProvider>
-                      </RevenueProvider>
-                    </ClientProvider>
-                  </KycProvider>
+                  <RevenueProvider>
+                    <CrmDashboardProvider>
+                      <TicketProvider>
+                        <TaskProvider>
+                          <Toaster />
+                          <Sonner />
+                          <BrowserRouter>
+                            <AppContent />
+                          </BrowserRouter>
+                        </TaskProvider>
+                      </TicketProvider>
+                    </CrmDashboardProvider>
+                  </RevenueProvider>
                 </LeadProvider>
               </TooltipProvider>
             </FilterProvider>

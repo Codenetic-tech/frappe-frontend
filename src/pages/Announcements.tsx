@@ -1,13 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, Bell, Sparkles, BookOpen, Video, PlayCircle, Megaphone, Check, Link, Loader2, RefreshCw, ChevronRight, User, Phone, MapPin, Clock, ExternalLink, Download } from "lucide-react";
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from "@/hooks/use-toast";
-import { useAnnouncement, TradingClass } from '@/contexts/AnnouncementContext';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { useFrappeGetDocList } from 'frappe-react-sdk';
+
+export interface TradingClass {
+    id: string;
+    title: string;
+    description: string;
+    instructor: string;
+    date: string;
+    time: string;
+    image: string;
+    type: 'Online' | 'Live';
+    cost: 'Free' | 'Paid';
+    language: string;
+}
 
 // Interfaces
 interface ManagementAnnouncement {
@@ -91,7 +104,37 @@ const upcomingContents: UpcomingContent[] = [
 
 const AnnouncementPage = () => {
     const { user } = useAuth();
-    const { classes, isLoadingClasses, refreshClasses } = useAnnouncement();
+
+    const { data: seminarsData, isLoading: isLoadingClasses, mutate: refreshClasses } = useFrappeGetDocList<any>(
+        'Seminar',
+        {
+            fields: ['name', 'tittle', 'description', 'date_and_time', 'type', 'cost', 'language', 'image', 'creation'],
+            orderBy: { field: 'creation', order: 'desc' },
+            limit: 100
+        }
+    );
+
+    const classes = useMemo<TradingClass[]>(() => {
+        if (!seminarsData) return [];
+        return seminarsData.map((item: any) => {
+            const dateAndTime = item.date_and_time || '';
+            const [datePart = '', timePart = ''] = dateAndTime.split(' ');
+
+            return {
+                id: item.name,
+                title: item.tittle,
+                description: item.description || '',
+                instructor: 'GoPocket Team',
+                date: datePart,
+                time: timePart,
+                image: item.image ? (item.image.startsWith('http') ? item.image : (item.image.startsWith('/') ? item.image : `/${item.image}`)) : '',
+                type: item.type || 'Online',
+                cost: item.cost || 'Free',
+                language: item.language || ''
+            };
+        });
+    }, [seminarsData]);
+
     const [activeTab, setActiveTab] = useState<'classes' | 'announcements' | 'content'>('classes');
     const [copiedClassId, setCopiedClassId] = useState<string | null>(null);
     const [selectedClass, setSelectedClass] = useState<TradingClass | null>(null);
@@ -397,7 +440,7 @@ const AnnouncementPage = () => {
                         <img
                             src={item.image}
                             alt={item.title}
-                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                            className="w-full h-full object-cover"
                         />
                     </div>
 
@@ -718,7 +761,7 @@ const AnnouncementPage = () => {
                         <img
                             src={content.image}
                             alt={content.title}
-                            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                            className="absolute inset-0 w-full h-full object-cover"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent opacity-90 group-hover:opacity-80 transition-opacity" />
 

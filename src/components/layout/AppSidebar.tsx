@@ -43,6 +43,10 @@ import {
   Book,
   BookOpen,
   CheckSquare,
+  MessageSquare,
+  UserCheck,
+  Activity,
+  ChartNetwork
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
@@ -62,7 +66,7 @@ const allMenuItems = [
   {
     title: 'Leads',
     url: '/leads',
-    icon: LayoutDashboard,
+    icon: UserCheck,
     color: 'text-slate-600',
     bgColor: 'bg-slate-50',
     roles: ['manager', 'employee', 'admin']
@@ -70,7 +74,15 @@ const allMenuItems = [
   {
     title: 'Activity Log',
     url: '/activity-log',
-    icon: Clock,
+    icon: Activity,
+    color: 'text-slate-600',
+    bgColor: 'bg-slate-50',
+    roles: ['manager', 'employee', 'admin']
+  },
+  {
+    title: 'Comments',
+    url: '/comments',
+    icon: MessageSquare,
     color: 'text-slate-600',
     bgColor: 'bg-slate-50',
     roles: ['manager', 'employee', 'admin']
@@ -92,6 +104,14 @@ const allMenuItems = [
     roles: ['manager', 'employee', 'admin']
   },
   {
+    title: 'Live Orders',
+    url: '/live-orders',
+    icon: ClipboardList,
+    color: 'text-slate-600',
+    bgColor: 'bg-slate-50',
+    roles: ['manager', 'employee', 'admin']
+  },
+  {
     title: 'Revenue',
     url: '/revenue',
     icon: IndianRupee,
@@ -102,7 +122,7 @@ const allMenuItems = [
   {
     title: 'Subscription',
     url: '/subscription',
-    icon: CreditCard,
+    icon: ChartNetwork,
     color: 'text-slate-600',
     bgColor: 'bg-slate-50',
     roles: ['manager', 'employee', 'admin']
@@ -221,8 +241,8 @@ export function AppSidebar() {
         color: 'text-emerald-600',
         gradient: 'from-emerald-600 to-teal-700',
         items: isBranchUser
-          ? ['CRM Dashboard', 'Leads', 'Activity Log', 'KYC Status', 'Clients', 'Revenue', 'Subscription', 'Tasks', 'Announcement', "What's New"]
-          : ['Leads', 'Activity Log', 'KYC Status', 'Clients', 'Revenue', 'Subscription', 'Tasks', 'Announcement', "What's New"],
+          ? ['Dashboard', 'CRM Dashboard', 'Leads', 'KYC Status', 'Clients', 'Live Orders', 'Revenue', 'Subscription', 'Announcement', "What's New", 'Activity Log', 'Comments']
+          : ['Dashboard', 'Leads', 'KYC Status', 'Clients', 'Live Orders', 'Revenue', 'Subscription', 'Announcement', "What's New", 'Activity Log', 'Comments'],
         url: isBranchUser ? '/crm-dashboard' : '/leads'
       },
       {
@@ -248,23 +268,10 @@ export function AppSidebar() {
 
   const [activeAppId, setActiveAppId] = useState(() => {
     if (currentPath.includes('settings')) return 'settings';
-    if (currentPath.includes('kyc') || currentPath.includes('leads') || currentPath.includes('clients') || currentPath.includes('crm-dashboard') || currentPath.includes('revenue') || currentPath.includes('activity-log')) return 'crm';
+    if (currentPath.includes('kyc') || currentPath.includes('leads') || currentPath.includes('clients') || currentPath.includes('live-orders') || currentPath.includes('crm-dashboard') || currentPath.includes('revenue') || currentPath.includes('activity-log')) return 'crm';
     if (currentPath.includes('ticketing')) return 'Ticketing';
     if (currentPath.includes('hrms')) return 'HRMS';
     if (currentPath.includes('orderbook') || currentPath.includes('positions') || currentPath.includes('holdings') || currentPath.includes('mutualfunds') || currentPath.includes('strategy-builder') || currentPath.includes('dashboard')) return 'Trading';
-
-    // Default based on department if we have it in session storage
-    try {
-      const savedUser = sessionStorage.getItem('user_data');
-      if (savedUser) {
-        const userData = JSON.parse(savedUser);
-        if (userData.department && TICKETING_DEPARTMENTS.includes(userData.department.toUpperCase())) {
-          return 'Ticketing';
-        }
-      }
-    } catch (e) {
-      console.error("Error parsing user data for default app", e);
-    }
 
     return 'crm';
   });
@@ -272,7 +279,7 @@ export function AppSidebar() {
   // Sync activeAppId with URL
   React.useEffect(() => {
     if (currentPath.includes('settings')) setActiveAppId('settings');
-    else if (currentPath.includes('kyc') || currentPath.includes('leads') || currentPath.includes('clients') || currentPath.includes('crm-dashboard') || currentPath.includes('revenue') || currentPath.includes('activity-log')) setActiveAppId('crm');
+    else if (currentPath.includes('kyc') || currentPath.includes('leads') || currentPath.includes('clients') || currentPath.includes('live-orders') || currentPath.includes('crm-dashboard') || currentPath.includes('revenue') || currentPath.includes('activity-log')) setActiveAppId('crm');
     else if (currentPath.includes('ticketing')) setActiveAppId('Ticketing');
     else if (currentPath.includes('hrms')) setActiveAppId('HRMS');
     else if (currentPath.includes('orderbook') || currentPath.includes('positions') || currentPath.includes('holdings') || currentPath.includes('mutualfunds') || currentPath.includes('strategy-builder') || currentPath.includes('dashboard')) setActiveAppId('Trading');

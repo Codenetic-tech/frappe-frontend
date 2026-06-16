@@ -58,7 +58,7 @@ const TasksKanbanPage: React.FC = () => {
 
   // Get actual user credentials from auth context
   const employeeId = user?.user_code || '';
-  const email = user?.mail_id || '';
+  const email = user?.email || '';
 
   // Initialize columns
   const initializeColumns = (taskList: Task[]) => {

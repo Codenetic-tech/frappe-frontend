@@ -1,5 +1,8 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode, useMemo } from 'react';
+import { useFrappePostCall } from 'frappe-react-sdk';
+import useSWR from 'swr';
 import { useAuth } from './AuthContext';
+import { useOrgTree } from './OrgTreeContext';
 
 export interface RevenueItem {
     ucc: string;
@@ -84,147 +87,152 @@ const readSession = <T,>(key: string, fallback: T): T => {
 };
 
 export const RevenueProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const { token, isAuthenticated, logout } = useAuth();
+    const { user, isAuthenticated, logout, frappeUser } = useAuth();
+    const { call: postRevenue } = useFrappePostCall('gopocket.revenue.get_revenue');
 
-    const [revenueData, setRevenueData] = useState<RevenueItem[] | null>(
-        () => readSession('revenueData', null)
-    );
-    const [summary, setSummary] = useState<RevenueSummary | null>(
-        () => readSession('revenueSummary', null)
-    );
-    const [totalRecords, setTotalRecords] = useState<number>(
-        () => readSession('revenueTotalRecords', 0)
-    );
-    const [totalPages, setTotalPages] = useState<number>(
-        () => readSession('revenueTotalPages', 0)
-    );
+    const [localFrappeUser, setLocalFrappeUser] = useState<any>(() => {
+        try {
+            const saved = sessionStorage.getItem('frappe_user');
+            return saved ? JSON.parse(saved) : null;
+        } catch {
+            return null;
+        }
+    });
+
+    useEffect(() => {
+        const syncUser = () => {
+            try {
+                const saved = sessionStorage.getItem('frappe_user');
+                if (saved) {
+                    setLocalFrappeUser(JSON.parse(saved));
+                }
+            } catch (e) {
+                console.error("Error syncing user in RevenueContext:", e);
+            }
+        };
+
+        window.addEventListener("frappe-user-updated", syncUser);
+        window.addEventListener("layout-changed", syncUser);
+        return () => {
+            window.removeEventListener("frappe-user-updated", syncUser);
+            window.removeEventListener("layout-changed", syncUser);
+        };
+    }, []);
+
+    const { orgTreeData } = useOrgTree();
+    const currentFrappeUser = localFrappeUser || frappeUser;
+    const userCode = currentFrappeUser?.username || user?.user_code || '';
+
+    const rootCode = useMemo(() => {
+        const isAdmin = userCode.toLowerCase() === 'administrator' || user?.category === 'admin';
+        if (isAdmin && orgTreeData && orgTreeData.length > 0) {
+            const names = new Set(orgTreeData.map(n => n.name));
+            const roots = orgTreeData.filter(n => !n.parent_crm_heirarchy || !names.has(n.parent_crm_heirarchy));
+            if (roots.length > 0) {
+                const businessRoot = roots.find(r => (r.code || r.org_code || r.name || '').toLowerCase() === 'business');
+                const selectedRoot = businessRoot || roots[0];
+                return selectedRoot.code || selectedRoot.org_code || selectedRoot.name || '';
+            }
+        }
+        return userCode;
+    }, [userCode, user?.category, orgTreeData]);
+
+    // Active filters and page state
     const [currentPage, setCurrentPage] = useState<number>(
         () => readSession('revenueCurrentPage', 1)
     );
     const [appliedParams, setAppliedParams] = useState<RevenueFetchParams>(
         () => readSession('revenueAppliedParams', DEFAULT_REVENUE_PARAMS)
     );
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
 
-    const isFetching = React.useRef(false);
-    const hasInitialFetched = React.useRef(false);
+    // Sync state changes to session storage so they persist across routes
+    useEffect(() => {
+        sessionStorage.setItem('revenueCurrentPage', JSON.stringify(currentPage));
+    }, [currentPage]);
 
-    const fetchRevenue = useCallback(async (params: RevenueFetchParams, page: number, silent = false) => {
-        if (!token || isFetching.current) return;
-        isFetching.current = true;
-        if (!silent) setIsLoading(true);
-        setError(null);
+    useEffect(() => {
+        sessionStorage.setItem('revenueAppliedParams', JSON.stringify(appliedParams));
+    }, [appliedParams]);
 
-        try {
-            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-            const response = await fetch(`${API_BASE_URL}/api/method/rms.clientdetails.get_revenue`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'token': token },
-                body: JSON.stringify({
-                    from: params.from,
-                    to: params.to,
-                    limit_start: page - 1,
-                    limit_page_length: PAGE_SIZE,
-                    client_codes: params.client_codes,
-                    sub_codes: params.sub_codes,
-                }),
-            });
+    // Setup SWR key and fetcher
+    const swrKey = isAuthenticated && rootCode
+        ? ['revenue', appliedParams, currentPage, rootCode]
+        : null;
 
-            if (!response.ok) {
-                const errData = await response.json().catch(() => ({}));
-                const errMsg = errData?.message;
-                if (errMsg?.message === 'Token has been revoked or does not match') {
-                    logout();
-                    return;
-                }
-                let reason = 'Failed to fetch revenue data';
-                if (errMsg?.response) {
-                    try {
-                        const parsed = JSON.parse(errMsg.response);
-                        if (parsed.reason) reason = parsed.reason;
-                    } catch (_) { /* ignore */ }
-                } else if (errMsg?.message) {
-                    reason = errMsg.message;
-                }
-                throw new Error(reason);
+    const fetcher = useCallback(async ([_, params, page, code]: [string, RevenueFetchParams, number, string]) => {
+        const res = await postRevenue({
+            from: params.from,
+            code: code,
+            to: params.to,
+            limit_start: (page - 1) * PAGE_SIZE,
+            limit_page_length: PAGE_SIZE,
+            client_codes: params.client_codes,
+            sub_codes: params.sub_codes,
+        });
+
+        const msg = res?.message || res;
+
+        if (msg?.status === 'success' && msg?.data?.status === 1) {
+            return msg.data;
+        } else {
+            let reason = 'Failed to fetch revenue data';
+            if (msg?.response) {
+                try {
+                    const parsed = JSON.parse(msg.response);
+                    if (parsed.reason) reason = parsed.reason;
+                } catch (_) {}
+            } else if (msg?.message) {
+                reason = msg.message;
             }
-
-            const json = await response.json();
-            const msg = json.message;
-
-            if (msg?.status === 'success' && msg?.data?.status === 1) {
-                const data: RevenueItem[] = msg.data.data || [];
-                const sum: RevenueSummary = msg.data.summary || null;
-                const total: number = msg.data.total_records || 0;
-                const pages: number = msg.data.total_pages || 0;
-
-                setRevenueData(data);
-                setSummary(sum);
-                setTotalRecords(total);
-                setTotalPages(pages);
-                setCurrentPage(page);
-                setAppliedParams(params);
-
-                sessionStorage.setItem('revenueData', JSON.stringify(data));
-                sessionStorage.setItem('revenueSummary', JSON.stringify(sum));
-                sessionStorage.setItem('revenueTotalRecords', JSON.stringify(total));
-                sessionStorage.setItem('revenueTotalPages', JSON.stringify(pages));
-                sessionStorage.setItem('revenueCurrentPage', JSON.stringify(page));
-                sessionStorage.setItem('revenueAppliedParams', JSON.stringify(params));
-            } else {
-                let reason = 'Failed to fetch revenue data';
-                if (msg?.response) {
-                    try {
-                        const parsed = JSON.parse(msg.response);
-                        if (parsed.reason) reason = parsed.reason;
-                    } catch (_) { /* unparseable response, use fallback */ }
-                } else if (msg?.message) {
-                    reason = msg.message;
-                }
-                throw new Error(reason);
-            }
-        } catch (err: any) {
-            setError(err.message || 'An error occurred while fetching revenue.');
-        } finally {
-            setIsLoading(false);
-            isFetching.current = false;
+            throw new Error(reason);
         }
-    }, [token, logout]);
+    }, [postRevenue]);
+
+    const { data: swrData, error: swrError, isLoading: swrLoading, mutate: swrMutate } = useSWR(swrKey, fetcher, {
+        revalidateOnFocus: false,
+        shouldRetryOnError: false,
+    });
+
+    // Derive data from SWR cache
+    const revenueData = swrData?.data || null;
+    const summary = swrData?.summary || null;
+    const totalRecords = swrData?.total_records || 0;
+    const totalPages = swrData?.total_pages || 0;
+    const isLoading = swrLoading;
+    const error = swrError ? swrError.message : null;
+
+    const fetchRevenue = useCallback(async (params: RevenueFetchParams, page: number) => {
+        setAppliedParams(params);
+        setCurrentPage(page);
+    }, []);
 
     const refreshRevenue = useCallback(async () => {
-        await fetchRevenue(appliedParams, currentPage, false);
-    }, [fetchRevenue, appliedParams, currentPage]);
+        await swrMutate();
+    }, [swrMutate]);
 
     const exportRevenue = useCallback(async (
         params: RevenueFetchParams,
         onProgress?: (current: number, total: number) => void
     ): Promise<RevenueItem[]> => {
-        if (!token) return [];
+        if (!isAuthenticated) return [];
         const EXPORT_PAGE_SIZE = 20000;
         const MAX_RECORDS = 50000;
         const all: RevenueItem[] = [];
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
         let page = 1;
         let totalPgs = 1;
 
         while (page <= totalPgs && all.length < MAX_RECORDS) {
-            const response = await fetch(`${API_BASE_URL}/api/method/rms.clientdetails.get_revenue`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'token': token },
-                body: JSON.stringify({
-                    from: params.from,
-                    to: params.to,
-                    limit_start: (page - 1) * EXPORT_PAGE_SIZE,
-                    limit_page_length: EXPORT_PAGE_SIZE,
-                    client_codes: params.client_codes,
-                    sub_codes: params.sub_codes,
-                }),
+            const res = await postRevenue({
+                from: params.from,
+                code: rootCode,
+                to: params.to,
+                limit_start: (page - 1) * EXPORT_PAGE_SIZE,
+                limit_page_length: EXPORT_PAGE_SIZE,
+                client_codes: params.client_codes,
+                sub_codes: params.sub_codes,
             });
 
-            if (!response.ok) throw new Error('Export fetch failed');
-            const json = await response.json();
-            const msg = json.message;
+            const msg = res?.message || res;
 
             if (msg?.status === 'success' && msg?.data?.status === 1) {
                 all.push(...(msg.data.data || []));
@@ -236,38 +244,20 @@ export const RevenueProvider: React.FC<{ children: ReactNode }> = ({ children })
             page++;
         }
         return all;
-    }, [token]);
+    }, [isAuthenticated, postRevenue, rootCode]);
 
     const clearRevenueData = useCallback(() => {
-        setRevenueData(null);
-        setSummary(null);
-        setTotalRecords(0);
-        setTotalPages(0);
-        setCurrentPage(1);
         setAppliedParams(DEFAULT_REVENUE_PARAMS);
-        setError(null);
-        ['revenueData', 'revenueSummary', 'revenueTotalRecords', 'revenueTotalPages',
-            'revenueCurrentPage', 'revenueAppliedParams'].forEach(k => sessionStorage.removeItem(k));
-    }, []);
+        setCurrentPage(1);
+        swrMutate(null, false);
+    }, [swrMutate]);
 
     // Clear on logout
     useEffect(() => {
         if (!isAuthenticated) {
             clearRevenueData();
-            hasInitialFetched.current = false;
         }
     }, [isAuthenticated, clearRevenueData]);
-
-    // Silent initial fetch after login (skip if sessionStorage already has data)
-    useEffect(() => {
-        if (isAuthenticated && token && !hasInitialFetched.current) {
-            hasInitialFetched.current = true;
-            const cached = sessionStorage.getItem('revenueData');
-            if (!cached) {
-                fetchRevenue(DEFAULT_REVENUE_PARAMS, 1, true);
-            }
-        }
-    }, [isAuthenticated, token, fetchRevenue]);
 
     return (
         <RevenueContext.Provider value={{

@@ -1,27 +1,17 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useFrappeAuth } from 'frappe-react-sdk';
-import { User, Company, Employee } from '../utils';
-
-export interface HierarchyNode {
-    name: string;
-    parent_gopocket_tree: string | null;
-    category?: string;
-    is_group?: number;
-}
+import { useFrappeAuth, FrappeContext } from 'frappe-react-sdk';
+import { User } from '../utils';
 
 interface AuthContextType {
   user: User | null;
-  employee: Employee | null;
-  company: Company | null;
+  frappeUser: any | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  isInitialLoading: boolean;
-  token: string | null;
-  path: string | null;
+  isInitialLoading: boolean
   login: (employeeId: string, password: string, otp?: string, tmp_id?: string) => Promise<any>;
+  loginWithoutPassword: (email: string, fullName?: string) => Promise<void>;
   logout: () => void;
   switchRole: (role: string) => void;
-  hierarchyData: HierarchyNode[] | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,6 +29,7 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const frappeCtx = useContext(FrappeContext) as any;
   const {
     currentUser,
     isLoading: authLoading,
@@ -49,57 +40,48 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   } = useFrappeAuth();
 
   const [user, setUser] = useState<User | null>(() => {
-    const savedUser = localStorage.getItem('user');
+    const savedUser = sessionStorage.getItem('user');
     return savedUser ? JSON.parse(savedUser) : null;
   });
-  const [employee, setEmployee] = useState<Employee | null>(() => {
-    const savedEmployee = localStorage.getItem('employee');
-    return savedEmployee ? JSON.parse(savedEmployee) : null;
-  });
-  const [company, setCompany] = useState<Company | null>(null);
-  const [hierarchyData, setHierarchyData] = useState<HierarchyNode[] | null>(() => {
+  const [frappeUser, setFrappeUser] = useState<any | null>(() => {
     try {
-      const savedHierarchy = localStorage.getItem('hierarchy_data');
-      return savedHierarchy ? JSON.parse(savedHierarchy) : null;
-    } catch (e) {
-      return null;
-    }
+      const saved = sessionStorage.getItem('frappe_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
   });
 
   // isAuthenticated is derived from local user state, not just SDK
   const isAuthenticated = Boolean(user);
   const isLoading = authLoading && !user; // Only show loading if we don't have a user yet
   const isInitialLoading = isLoading;
-  const token = null; // Token handled by SDK cookies
-  const path = null; // Path handled by router/SDK
 
-  const fetchHierarchyData = async () => {
-    try {
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-      const apiUrl = `${API_BASE_URL}/api/method/rms.branch.heirarchy`;
-
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.message) {
-          setHierarchyData(data.message);
-          localStorage.setItem('hierarchy_data', JSON.stringify(data.message));
-        }
-      }
-    } catch (error) {
-      console.error('Fetch hierarchy data error:', error);
-    }
-  };
-
-  // Force validation on mount
+  // Force validation or logout on mount
   useEffect(() => {
-    updateCurrentUser();
+    const savedUser = sessionStorage.getItem('user');
+    if (!savedUser) {
+      console.log('No user in sessionStorage on mount, forcing logout...');
+      logout();
+    } else {
+      updateCurrentUser();
+    }
+  }, []);
+
+  // Listen for user updates from other contexts / components
+  useEffect(() => {
+    const handleUserUpdate = () => {
+      try {
+        const saved = sessionStorage.getItem('frappe_user');
+        if (saved) {
+          setFrappeUser(JSON.parse(saved));
+        }
+      } catch (e) {
+        console.warn('AuthContext: failed to sync user update:', e);
+      }
+    };
+    window.addEventListener('frappe-user-updated', handleUserUpdate);
+    return () => {
+      window.removeEventListener('frappe-user-updated', handleUserUpdate);
+    };
   }, []);
 
   // Sync with SDK state
@@ -107,76 +89,80 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     console.log('AuthContext: currentUser changed to:', currentUser);
 
     if (currentUser) {
+      // Check if we already have this user in session storage to avoid race conditions
+      const savedUser = sessionStorage.getItem('user');
+      const savedFrappeUser = sessionStorage.getItem('frappe_user');
+      if (savedUser && savedFrappeUser) {
+        try {
+          const parsedUser = JSON.parse(savedUser);
+          const parsedFrappeUser = JSON.parse(savedFrappeUser);
+          if (
+            parsedUser.id === currentUser &&
+            (parsedFrappeUser.username === currentUser ||
+              parsedFrappeUser.email === currentUser ||
+              parsedFrappeUser.name === currentUser)
+          ) {
+            console.log('AuthContext: User is already logged in and synchronized. Skipping sync.');
+            return;
+          }
+        } catch (e) {
+          console.warn('AuthContext: Error parsing saved user on sync check:', e);
+        }
+      }
+
       // Create a basic user object from currentUser (which is likely the email/id)
-      // Ideally we should fetch the full user details here. 
-      // For now, we construct a basic valid User object to allow the app to function.
       const userData: User = {
         id: currentUser,
         email: currentUser,
         firstName: currentUser.split('@')[0] || 'User',
-        lastName: '',
-        role: 'admin', // Defaulting to admin for testing, or we need to fetch this
-        companyId: 'gopocket',
         isActive: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        employeeId: currentUser,
-        token: '',
-        path: '',
-        team: '[]',
-        hierarchy: '[]',
-        branch: '',
-        // Mappings for backward compatibility
-        user_code: currentUser,
-        mail_id: currentUser,
-        category: 'admin',
-        department: 'General'
-      };
-
-      // Mock Employee data
-      const employeeData: Employee = {
-        id: currentUser,
-        employeeId: currentUser,
-        userId: currentUser,
-        companyId: 'gopocket',
-        firstName: currentUser.split('@')[0] || 'User',
-        lastName: '',
-        email: currentUser,
-        phone: '',
-        designation: 'Employee',
-        department: 'General',
-        joiningDate: new Date().toISOString(),
-        salary: 0,
-        status: 'confirmed',
-        address: '',
-        token: '',
-        path: '',
-        emergencyContact: { name: '', phone: '', relationship: '' },
-        documents: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        role: 'employee',
+        user_code: currentUser.split('@')[0] || currentUser
       };
 
       setUser(userData);
-      setEmployee(employeeData);
+      sessionStorage.setItem('user', JSON.stringify(userData));
 
-      // Update local storage
-      localStorage.setItem('user', JSON.stringify(userData));
-      localStorage.setItem('employee', JSON.stringify(employeeData));
+      // Fetch full User document from Frappe
+      try {
+        const db = (frappeCtx as any)?.db;
+        if (db?.getDoc) {
+          db.getDoc('User', currentUser).then((doc: any) => {
+            const fullDoc = doc?.data ?? doc;
+            setFrappeUser(fullDoc);
+            sessionStorage.setItem('frappe_user', JSON.stringify(fullDoc));
 
-      // Fetch hierarchy data
-      fetchHierarchyData();
+            // Sync full profile data like user_code and category from the User document
+            setUser(prevUser => {
+              if (!prevUser) return null;
+              const updated = {
+                ...prevUser,
+                user_code: fullDoc.username || fullDoc.name || prevUser.user_code,
+                category: fullDoc.category || prevUser.category,
+                firstName: fullDoc.first_name || prevUser.firstName,
+                email: fullDoc.email || prevUser.email
+              };
+              sessionStorage.setItem('user', JSON.stringify(updated));
+              return updated;
+            });
+          }).catch((err: any) => {
+            console.warn('Could not fetch User doc:', err);
+          });
+        }
+      } catch (err) {
+        console.warn('frappeCtx.db not available:', err);
+      }
 
     } else if (currentUser === null && !user) {
       // If SDK says null and we have no local user, ensure we are clean
       // Note: We don't clear if we have a user but SDK is null (refresh race),
       // UNLESS there is an error.
       setUser(null);
-      setEmployee(null);
-      setHierarchyData(null);
-      localStorage.removeItem('user');
-      localStorage.removeItem('employee');
-      localStorage.removeItem('hierarchy_data');
+      setFrappeUser(null);
+      sessionStorage.removeItem('user');
+      sessionStorage.removeItem('frappe_user');
     }
   }, [currentUser, authError]);
 
@@ -230,73 +216,94 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // If login is successful
       if (res.message === 'Logged In' || res.message === 'Logged In!') {
-        console.log('Login success, manually updating user state...');
+        console.log('Login success, resolving logged-in user identity...');
 
-        // Manually set user state immediately to bypass SDK delay
-        const manualUser = employeeId;
-        const userData: User = {
-          id: manualUser,
-          email: manualUser,
-          firstName: res.full_name || manualUser.split('@')[0] || 'User',
-          lastName: '',
-          role: 'admin',
-          companyId: 'gopocket',
+        // Reconnect socket first so that session is established
+        try {
+          const socket = frappeCtx?.socket;
+          if (socket) {
+            console.log('Reconnecting socket after login...');
+            socket.disconnect();
+            socket.connect();
+          }
+        } catch (socketErr) {
+          console.warn('Socket reconnect failed:', socketErr);
+        }
+
+        // Try to resolve logged in user identity (email/name)
+        let loggedInUserName = employeeId;
+        try {
+          await updateCurrentUser();
+          const fetchRes = await fetch('/api/method/frappe.auth.get_logged_user');
+          const data = await fetchRes.json();
+          if (data?.message) {
+            loggedInUserName = data.message;
+          }
+        } catch (sdkErr) {
+          console.warn('Could not resolve logged-in user name via SDK, using fallback:', sdkErr);
+          try {
+            const fetchRes = await fetch('/api/method/frappe.auth.get_logged_user');
+            const data = await fetchRes.json();
+            if (data?.message) {
+              loggedInUserName = data.message;
+            }
+          } catch (innerErr) {
+            console.warn('get_logged_user direct fetch failed:', innerErr);
+          }
+        }
+
+        console.log('Resolved user identity name:', loggedInUserName);
+
+        let userData: User = {
+          id: loggedInUserName,
+          email: loggedInUserName,
+          firstName: res.full_name || loggedInUserName.split('@')[0] || 'User',
           isActive: true,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          employeeId: manualUser,
-          token: '',
-          path: '',
-          team: '[]',
-          hierarchy: '[]',
-          branch: '',
-          // Mappings for backward compatibility
-          user_code: manualUser,
-          mail_id: manualUser,
-          category: 'admin',
-          department: 'General'
+          role: 'employee',
+          user_code: loggedInUserName
         };
 
-        const employeeData: Employee = {
-          id: manualUser,
-          employeeId: manualUser,
-          userId: manualUser,
-          companyId: 'gopocket',
-          firstName: res.full_name || manualUser.split('@')[0] || 'User',
-          lastName: '',
-          email: manualUser,
-          phone: '',
-          designation: 'Employee',
-          department: 'General',
-          joiningDate: new Date().toISOString(),
-          salary: 0,
-          status: 'confirmed',
-          address: '',
-          token: '',
-          path: '',
-          emergencyContact: { name: '', phone: '', relationship: '' },
-          documents: [],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
+        // Fetch full User document from Frappe FIRST before marking login as complete
+        try {
+          const db = (frappeCtx as any)?.db;
+          if (db?.getDoc && loggedInUserName) {
+            console.log('Fetching User document for:', loggedInUserName);
+            const doc = await db.getDoc('User', loggedInUserName);
+            const fullDoc = doc?.data ?? doc;
+            if (fullDoc) {
+              setFrappeUser(fullDoc);
+              sessionStorage.setItem('frappe_user', JSON.stringify(fullDoc));
+
+              // Sync full profile data like user_code and category from the User document
+              userData = {
+                ...userData,
+                id: loggedInUserName,
+                email: fullDoc.email || loggedInUserName,
+                user_code: fullDoc.username || fullDoc.name || userData.user_code,
+                category: fullDoc.category || userData.category,
+                firstName: fullDoc.first_name || userData.firstName
+              };
+            }
+          }
+        } catch (err) {
+          console.warn('Could not fetch User doc after login:', err);
+        }
 
         setUser(userData);
-        setEmployee(employeeData);
-        localStorage.setItem('user', JSON.stringify(userData));
-        localStorage.setItem('employee', JSON.stringify(employeeData));
+        sessionStorage.setItem('user', JSON.stringify(userData));
 
-        // Fetch hierarchy data
-        await fetchHierarchyData();
-
-        // Also try to update SDK state for consistency
-        await updateCurrentUser();
-        console.log('updateCurrentUser called (background).');
         return { success: true };
       } else {
         console.warn('Login message mismatch but no error thrown. Message:', res?.message);
         // Attempt to update user anyway since auth might have succeeded
-        await updateCurrentUser();
-        console.log('updateCurrentUser completed (fallback).');
+        try {
+          await updateCurrentUser();
+        } catch (e) {
+          console.warn('Fallback updateCurrentUser failed:', e);
+        }
+
         return { success: true };
       }
     } catch (error) {
@@ -305,39 +312,115 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const loginWithoutPassword = async (email: string, fullName?: string): Promise<void> => {
+    try {
+      console.log('Manually updating user state for login without password:', email);
+
+      // Reconnect socket first so that session is established
+      try {
+        const socket = frappeCtx?.socket;
+        if (socket) {
+          socket.disconnect();
+          socket.connect();
+        }
+      } catch (socketErr) {
+        console.warn('Socket reconnect failed:', socketErr);
+      }
+
+      // Try to resolve logged in user identity for consistency
+      let loggedInUserName = email;
+      try {
+        await updateCurrentUser();
+        const fetchRes = await fetch('/api/method/frappe.auth.get_logged_user');
+        const data = await fetchRes.json();
+        if (data?.message) {
+          loggedInUserName = data.message;
+        }
+      } catch (sdkErr) {
+        console.warn('Could not resolve user name via SDK in loginWithoutPassword:', sdkErr);
+        try {
+          const fetchRes = await fetch('/api/method/frappe.auth.get_logged_user');
+          const data = await fetchRes.json();
+          if (data?.message) {
+            loggedInUserName = data.message;
+          }
+        } catch (innerErr) {
+          console.warn('get_logged_user fetch fallback failed:', innerErr);
+        }
+      }
+
+      let userData: User = {
+        id: loggedInUserName,
+        email: loggedInUserName,
+        firstName: fullName || loggedInUserName.split('@')[0] || 'User',
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        role: 'employee',
+        user_code: loggedInUserName.split('@')[0] || loggedInUserName
+      };
+
+      // Fetch full User document from Frappe FIRST before marking login as complete
+      try {
+        const db = (frappeCtx as any)?.db;
+        if (db?.getDoc && loggedInUserName) {
+          console.log('Fetching User document for loginWithoutPassword:', loggedInUserName);
+          const doc = await db.getDoc('User', loggedInUserName);
+          const fullDoc = doc?.data ?? doc;
+          if (fullDoc) {
+            setFrappeUser(fullDoc);
+            sessionStorage.setItem('frappe_user', JSON.stringify(fullDoc));
+
+            userData = {
+              ...userData,
+              id: loggedInUserName,
+              email: fullDoc.email || loggedInUserName,
+              user_code: fullDoc.username || fullDoc.name || userData.user_code,
+              category: fullDoc.category || userData.category,
+              firstName: fullDoc.first_name || userData.firstName
+            };
+          }
+        }
+      } catch (err) {
+        console.warn('Could not fetch User doc in loginWithoutPassword:', err);
+      }
+
+      setUser(userData);
+      sessionStorage.setItem('user', JSON.stringify(userData));
+    } catch (error) {
+      console.error('Login without password error:', error);
+      throw error;
+    }
+  };
+
   const logout = () => {
     frappeLogout();
     setUser(null);
-    setEmployee(null);
-    setCompany(null);
-    setHierarchyData(null);
-    localStorage.removeItem('user');
-    localStorage.removeItem('employee');
-    localStorage.removeItem('hierarchy_data');
+    setFrappeUser(null);
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('frappe_user');
+    sessionStorage.clear();
   };
 
   const switchRole = (role: string) => {
     if (user) {
       const updatedUser = { ...user, role: role as User['role'] };
       setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser)); // Persist role switch
+      sessionStorage.setItem('user', JSON.stringify(updatedUser)); // Persist role switch
     }
   };
 
   return (
     <AuthContext.Provider value={{
       user,
-      employee,
-      company,
+      frappeUser,
       isAuthenticated,
       isLoading,
       isInitialLoading,
-      token,
-      path,
       login,
+      loginWithoutPassword,
       logout,
-      switchRole,
-      hierarchyData,
+      switchRole
     }}>
       {children}
     </AuthContext.Provider>

@@ -44,7 +44,7 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-const ATTACHMENT_BASE_URL = "https://live.gopocket.in";
+const ATTACHMENT_BASE_URL = "";
 
 interface TicketChatTabProps {
     ticket: TicketItem;
@@ -308,19 +308,14 @@ const TicketChatTab: React.FC<TicketChatTabProps> = ({ ticket, onReplyAdded }) =
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>
                                                         <p className="text-[10px] font-bold text-slate-400 ml-1 cursor-help">
-                                                            {orgTreeData?.find(n => n.name === item.commented_by)?.client_name || item.commented_by}
+                                                            {orgTreeData?.find(n => n.name === item.commented_by)?.name1 || item.commented_by}
                                                         </p>
                                                     </TooltipTrigger>
                                                     <TooltipContent side="top" className="bg-slate-900 border-slate-800 text-white rounded-xl">
                                                         <div className="space-y-0.5">
                                                             <p className="text-[11px] font-bold">
-                                                                {orgTreeData?.find(n => n.name === item.commented_by)?.client_name || item.commented_by}
+                                                                {orgTreeData?.find(n => n.name === item.commented_by)?.name1 || item.commented_by}
                                                             </p>
-                                                            {orgTreeData?.find(n => n.name === item.commented_by)?.mail_id && (
-                                                                <p className="text-[10px] text-slate-300">
-                                                                    {orgTreeData.find(n => n.name === item.commented_by)?.mail_id}
-                                                                </p>
-                                                            )}
                                                         </div>
                                                     </TooltipContent>
                                                 </Tooltip>
@@ -441,9 +436,9 @@ const TicketChatTab: React.FC<TicketChatTabProps> = ({ ticket, onReplyAdded }) =
                             className="hidden"
                             id="chat-reply-attachment"
                         />
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
+                        <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => chatFileInputRef.current?.click()}
                             className={cn(
                                 "h-10 w-10 rounded-xl transition-colors mb-0.5",

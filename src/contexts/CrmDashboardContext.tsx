@@ -43,7 +43,7 @@ const readSession = <T,>(key: string, fallback: T): T => {
 };
 
 export const CrmDashboardProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const { token, isAuthenticated } = useAuth();
+    const { isAuthenticated, user } = useAuth();
 
     const [data, setData] = useState<CrmSummaryData | null>(() => readSession('crmDashboardData', null));
     const [lastUpdated, setLastUpdated] = useState<string>(() => readSession('crmDashboardLastUpdated', ''));
@@ -55,7 +55,7 @@ export const CrmDashboardProvider: React.FC<{ children: ReactNode }> = ({ childr
     const hasInitialFetched = useRef(false);
 
     const fetchData = useCallback(async (isRefresh = false) => {
-        if (!token || isFetching.current) return;
+        if (!user || isFetching.current) return;
         isFetching.current = true;
         setError(null);
 
@@ -66,7 +66,7 @@ export const CrmDashboardProvider: React.FC<{ children: ReactNode }> = ({ childr
             const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
             const response = await fetch(`${API_BASE_URL}/api/method/rms.branch.get_clients_summary`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'token': token },
+                headers: { 'Content-Type': 'application/json' },
             });
 
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -90,7 +90,7 @@ export const CrmDashboardProvider: React.FC<{ children: ReactNode }> = ({ childr
             setIsRefreshing(false);
             isFetching.current = false;
         }
-    }, [token]);
+    }, [user]);
 
     // Clear on logout
     useEffect(() => {
@@ -106,12 +106,12 @@ export const CrmDashboardProvider: React.FC<{ children: ReactNode }> = ({ childr
 
     // Initial fetch after login — skip if sessionStorage already has data
     useEffect(() => {
-        if (isAuthenticated && token && !hasInitialFetched.current) {
+        if (isAuthenticated && user && !hasInitialFetched.current) {
             hasInitialFetched.current = true;
             const cached = sessionStorage.getItem('crmDashboardData');
             if (!cached) fetchData();
         }
-    }, [isAuthenticated, token, fetchData]);
+    }, [isAuthenticated, user, fetchData]);
 
     return (
         <CrmDashboardContext.Provider value={{ data, isLoading, isRefreshing, error, lastUpdated, fetchData }}>

@@ -74,7 +74,7 @@ const LeadFormTab: React.FC<LeadFormTabProps> = ({ lead, leadId, onLeadUpdate })
         body: JSON.stringify({
           source: 'Update Lead',
           employeeId: user?.user_code,
-          email: user?.mail_id,
+          email: user?.email,
           leadid: leadId,
           ...editedLead
         })

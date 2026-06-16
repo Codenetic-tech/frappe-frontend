@@ -40,9 +40,7 @@ const TicketDetails: React.FC = () => {
 
     const isAssignedToMe = useMemo(() => {
         if (!ticket || !user) return false;
-        return user.user_code === ticket.to_department || 
-               (user.department && ticket.to_department && 
-                user.department.toUpperCase() === ticket.to_department.toUpperCase());
+        return user.user_code === ticket.to_department;
     }, [ticket, user]);
 
     const tabs: Tab[] = [

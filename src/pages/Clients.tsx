@@ -1,6 +1,5 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useClients, ClientItem } from '@/contexts/ClientContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFilter } from '@/contexts/FilterContext';
 import { useOrgTree } from '@/contexts/OrgTreeContext';
@@ -8,7 +7,8 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Calendar } from '@/components/ui/calendar';
 import {
     Select,
     SelectContent,
@@ -55,7 +55,9 @@ import {
     Check,
     ChevronsUpDown,
     Columns3,
-    ExternalLink
+    ExternalLink,
+    Plus,
+    X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DateRangePicker } from 'rsuite';
@@ -64,6 +66,27 @@ import { exportToExcel } from '@/utils/excelExport';
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from 'sonner';
 import { FileDown } from 'lucide-react';
+import { useFrappeGetDocList, useFrappeGetDocCount, FrappeContext } from 'frappe-react-sdk';
+
+export interface ClientItem {
+    name: string;
+    creation: string;
+    modified: string;
+    client_code: string;
+    client_name: string;
+    branch: string;
+    account_opened_date: string;
+    mobile_number: string;
+    parent1: string;
+    activation_status: string;
+    nse: string;
+    bse: string;
+    mcx: string;
+    nfo: string;
+    bfo: string;
+    last_traded_day: string;
+    trade_done: string;
+}
 
 // Custom debounce hook
 function useDebounce<T>(value: T, delay: number): T {
@@ -107,22 +130,85 @@ const getCategoryStyles = (category?: string) => {
     }
 };
 
+const GOPOCKET_CLIENT_FILTER_FIELDS = [
+    { value: 'client_code', label: 'Client Code', type: 'string' },
+    { value: 'client_name', label: 'Client Name', type: 'string' },
+    { value: 'pan_number', label: 'PAN Number', type: 'string' },
+    { value: 'branch', label: 'Branch', type: 'string' },
+    { value: 'mobile_number', label: 'Mobile Number', type: 'string' },
+    { value: 'email_id', label: 'Email ID', type: 'string' },
+    { value: 'parent1', label: 'Parent Code', type: 'string' },
+    { value: 'state', label: 'State', type: 'string' },
+    { value: 'pin', label: 'PIN Code', type: 'string' },
+    { value: 'annual_income', label: 'Annual Income', type: 'string' },
+    { value: 'customer_type', label: 'Customer Type', type: 'select', options: ['Company', 'HUF', 'Individual', 'NRI (NRO A/C)', 'On Behalf Of Minor'] },
+    { value: 'gender', label: 'Gender', type: 'select', options: ['M', 'F', 'N'] },
+    { value: 'marital_status', label: 'Marital Status', type: 'select', options: ['Married', 'Un-Married', 'Others'] },
+    { value: 'account_opened_date', label: 'Account Opened Date', type: 'date' },
+    { value: 'dob', label: 'DOB', type: 'date' },
+    { value: 'first_trade_day', label: 'First Trade Day', type: 'date' },
+    { value: 'last_traded_day', label: 'Last Traded Day', type: 'date' },
+    { value: 'traded_days', label: 'Traded Days', type: 'number' },
+] as const;
+
+const STRING_OPERATORS = ['like', '=', '!=', 'not like'] as const;
+const DATE_OPERATORS = ['>', '<', '>=', '<=', 'Between', 'Timespan'] as const;
+const NUMBER_OPERATORS = ['=', '!=', '>', '<', '>=', '<='] as const;
+const SELECT_OPERATORS = ['=', '!='] as const;
+
+const OPERATOR_LABELS: Record<string, string> = {
+    '>': 'After',
+    '<': 'Before',
+    '>=': 'On or After',
+    '<=': 'On or Before',
+    'like': 'Contains',
+    'not like': 'Does not contain',
+    '=': 'Equals',
+    '!=': 'Does not equal',
+};
+
+const getOperatorsForType = (type: string) => {
+    switch (type) {
+        case 'date': return [...DATE_OPERATORS];
+        case 'number': return [...NUMBER_OPERATORS];
+        case 'select': return [...SELECT_OPERATORS];
+        default: return [...STRING_OPERATORS];
+    }
+};
+
+const getFieldType = (fieldValue: string) =>
+    GOPOCKET_CLIENT_FILTER_FIELDS.find(f => f.value === fieldValue)?.type ?? 'string';
+
+const getFieldOptions = (fieldValue: string): readonly string[] => {
+    const field = GOPOCKET_CLIENT_FILTER_FIELDS.find(f => f.value === fieldValue);
+    return field && 'options' in field ? (field as any).options : [];
+};
+
+interface AdvancedFilter {
+    id: string;
+    field: string;
+    operator: string;
+    value: string | [string, string];
+}
+
+const TableWrapper = ({ scrollWholePage, children }: { scrollWholePage: boolean; children: React.ReactNode }) => {
+    if (scrollWholePage) {
+        return (
+            <ScrollArea className="w-full">
+                {children}
+                <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+        );
+    }
+    return <ScrollArea className="flex-1">{children}</ScrollArea>;
+};
+
 const Clients: React.FC = () => {
     const navigate = useNavigate();
-    const { token, user, hierarchyData } = useAuth();
+    const { user } = useAuth();
     const { selectedHierarchy } = useFilter();
-    const {
-        clientsData,
-        isLoading,
-        error,
-        totalCount,
-        directCount,
-        indirectCount,
-        statusCount,
-        refreshClientsData,
-        exportClientsData
-    } = useClients();
     const { orgTreeData } = useOrgTree();
+    const frappe = useContext(FrappeContext);
 
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
@@ -144,8 +230,80 @@ const Clients: React.FC = () => {
     const [tradeDoneFilter, setTradeDoneFilter] = useState<string>(() => sessionStorage.getItem('clientsTradeDoneFilter') || 'ALL');
     const [parentFilter, setParentFilter] = useState<string>(() => sessionStorage.getItem('clientsParentFilter') || 'ALL');
     const [openParentBox, setOpenParentBox] = useState(false);
+    const [parentSearch, setParentSearch] = useState('');
+
+    useEffect(() => {
+        if (!openParentBox) {
+            setParentSearch('');
+        }
+    }, [openParentBox]);
+
     const [currentPage, setCurrentPage] = useState(1);
-    const [sortConfig, setSortConfig] = useState<{ key: keyof ClientItem; direction: 'asc' | 'desc' } | null>(null);
+    const [sortConfig, setSortConfig] = useState<{ key: keyof ClientItem; direction: 'asc' | 'desc' } | null>({
+        key: 'account_opened_date',
+        direction: 'desc'
+    });
+    const [permissionError, setPermissionError] = useState<string | null>(null);
+    const [scrollWholePage, setScrollWholePage] = useState<boolean>(() => {
+        return localStorage.getItem("scroll-whole-page") === "true";
+    });
+
+    useEffect(() => {
+        const handleLayoutChange = () => {
+            setScrollWholePage(localStorage.getItem("scroll-whole-page") === "true");
+        };
+        window.addEventListener("layout-changed", handleLayoutChange);
+        return () => {
+            window.removeEventListener("layout-changed", handleLayoutChange);
+        };
+    }, []);
+
+    // Advanced Filters State
+    const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilter[]>([]);
+    const [openFilterPanel, setOpenFilterPanel] = useState(false);
+    const [draftFilters, setDraftFilters] = useState<AdvancedFilter[]>([]);
+    const [fieldComboOpen, setFieldComboOpen] = useState<Record<string, boolean>>({});
+
+    const handleFilterPanelOpen = (open: boolean) => {
+        if (open) {
+            setDraftFilters(
+                advancedFilters.length > 0
+                    ? advancedFilters.map(f => ({ ...f }))
+                    : [{ id: crypto.randomUUID(), field: '', operator: '', value: '' }]
+            );
+        }
+        setOpenFilterPanel(open);
+    };
+
+    const addDraftFilter = () =>
+        setDraftFilters(prev => [...prev, { id: crypto.randomUUID(), field: '', operator: '', value: '' }]);
+
+    const removeDraftFilter = (id: string) =>
+        setDraftFilters(prev => prev.filter(f => f.id !== id));
+
+    const updateDraftFilter = (id: string, updates: Partial<AdvancedFilter>) =>
+        setDraftFilters(prev => prev.map(f => f.id === id ? { ...f, ...updates } : f));
+
+    const applyAdvancedFilters = () => {
+        const valid = draftFilters.filter(f => {
+            if (!f.field || !f.operator) return false;
+            if (Array.isArray(f.value)) return f.value[0] !== '' && f.value[1] !== '';
+            return f.value !== '';
+        }).map(f => {
+            if ((f.operator === 'like' || f.operator === 'not like') && typeof f.value === 'string' && !f.value.includes('%')) {
+                return { ...f, value: `%${f.value}%` };
+            }
+            return f;
+        });
+        setAdvancedFilters(valid);
+        setOpenFilterPanel(false);
+    };
+
+    const clearAdvancedFilters = () => {
+        setDraftFilters([{ id: crypto.randomUUID(), field: '', operator: '', value: '' }]);
+        setAdvancedFilters([]);
+        setOpenFilterPanel(false);
+    };
 
     const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
         const stored = localStorage.getItem('clientsColumnVisibility');
@@ -201,8 +359,9 @@ const Clients: React.FC = () => {
 
     // Filtered hierarchy for parent selection, sorted by category order
     const parentOptions = useMemo(() => {
-        if (!hierarchyData) return [];
-        return hierarchyData
+        const tree = orgTreeData;
+        if (!tree) return [];
+        return (tree as Array<any>)
             .filter(item => item.is_group === 1)
             .sort((a, b) => {
                 const pa = CATEGORY_ORDER[a.category?.toUpperCase() || ''] || 99;
@@ -210,79 +369,291 @@ const Clients: React.FC = () => {
                 if (pa !== pb) return pa - pb;
                 return a.name.localeCompare(b.name);
             });
-    }, [hierarchyData]);
+    }, [orgTreeData]);
 
     const userNameMap = useMemo(() => {
         if (!orgTreeData) return new Map<string, string>();
-        return new Map(orgTreeData.map(node => [node.name, node.client_name || '']));
+        return new Map(orgTreeData.map(node => [node.name, node.name1 || '']));
     }, [orgTreeData]);
+
+    const userCodeMap = useMemo(() => {
+        const tree = orgTreeData;
+        if (!tree) return new Map<string, string>();
+        return new Map(
+            (tree as any[]).map(node => {
+                const code = node.code || node.org_code || node.name;
+                const isRM = node.org_type === 'RM' || node.category === 'RM';
+                const displayName = isRM ? `${code} ${node.name1 || ''}`.trim() : code;
+                return [node.name, displayName];
+            })
+        );
+    }, [orgTreeData]);
+
+    const visibleParentOptions = useMemo(() => {
+        if (!parentOptions) return [];
+        if (!parentSearch) return parentOptions.slice(0, 100);
+
+        const searchLower = parentSearch.toLowerCase();
+        return parentOptions
+            .filter(opt => {
+                const code = opt.code || opt.org_code || '';
+                const clientName = userNameMap.get(opt.name) || '';
+                const name1 = opt.name1 || '';
+                return opt.name.toLowerCase().includes(searchLower) ||
+                    code.toLowerCase().includes(searchLower) ||
+                    clientName.toLowerCase().includes(searchLower) ||
+                    name1.toLowerCase().includes(searchLower) ||
+                    (opt.category && opt.category.toLowerCase().includes(searchLower));
+            })
+            .slice(0, 100);
+    }, [parentOptions, parentSearch, userNameMap]);
 
     const formatUserName = useCallback((userCode: string) => {
         if (!userCode || userCode === 'ALL') return userCode;
         const name = userNameMap.get(userCode);
         if (name) {
-            // Check if it's an RM type in hierarchyData
-            const node = hierarchyData?.find(n => n.name === userCode);
+            // Check if it's an RM type in orgTreeData
+            const node = orgTreeData?.find(n => n.name === userCode);
             if (node?.category?.toUpperCase() === 'RM') {
                 return `${name} ${userCode}`;
             }
             return userCode;
         }
         return userCode;
-    }, [userNameMap, hierarchyData]);
+    }, [userNameMap, orgTreeData]);
 
-    const loadClientsData = useCallback(async (page: number, currentSearch: string, currentStatus: string, currentTradeDone: string, currentParent: string, currentDates: [Date, Date] | null, currentHierarchy: string[]) => {
-        if (!token) return;
+    // Define hierarchy tree expansion logic
+    const expandBranches = useCallback((selectedNodes: string[]) => {
+        if (!orgTreeData || !Array.isArray(orgTreeData)) return selectedNodes;
 
-        const params: any = {
-            limit_start: (page - 1) * ITEMS_PER_PAGE,
-            limit_page_length: ITEMS_PER_PAGE
+        const childrenMap = new Map<string, string[]>();
+        orgTreeData.forEach(node => {
+            const parent = node.parent_crm_heirarchy;
+            if (parent) {
+                if (!childrenMap.has(parent)) {
+                    childrenMap.set(parent, []);
+                }
+                childrenMap.get(parent)!.push(node.name);
+            }
+        });
+
+        const allCodes = new Set<string>();
+        const collectDescendants = (nodeId: string) => {
+            allCodes.add(nodeId);
+            const children = childrenMap.get(nodeId);
+            if (children) {
+                children.forEach(collectDescendants);
+            }
         };
 
-        // VirtualizedTree selection → expanded in ClientContext
-        if (currentHierarchy && currentHierarchy.length > 0) {
-            params.refer_list = currentHierarchy;
-        }
+        selectedNodes.forEach(name => collectDescendants(name));
+        return Array.from(allCodes);
+    }, [orgTreeData]);
 
-        // Combobox parent → sent raw (no expansion) via parent_code
-        if (currentParent !== 'ALL') {
-            params.parent_code = currentParent;
-        }
+    const hierarchyFilters = useMemo(() => {
+        const activeFilters: any[] = [];
+        const parentFilterList = selectedHierarchy && selectedHierarchy.length > 0
+            ? expandBranches(selectedHierarchy)
+            : [];
+        const combinedParents = parentFilter !== 'ALL'
+            ? [...new Set([parentFilter, ...parentFilterList])]
+            : parentFilterList;
 
-        if (currentSearch) {
-            if (/^\d/.test(currentSearch)) {
-                params.mobile_no = currentSearch;
+        if (combinedParents.length > 0) {
+            activeFilters.push(['parent1', 'in', combinedParents]);
+        }
+        return activeFilters;
+    }, [selectedHierarchy, parentFilter, expandBranches]);
+
+    const debouncedSearchQuery = useDebounce(searchQuery, 400);
+
+    const totalFilters = useMemo(() => {
+        const activeFilters = [...hierarchyFilters];
+
+        if (debouncedSearchQuery) {
+            if (/^\d/.test(debouncedSearchQuery)) {
+                activeFilters.push(['mobile_number', 'like', `%${debouncedSearchQuery}%`]);
             } else {
-                params.name = currentSearch;
+                activeFilters.push(['client_code', 'like', `%${debouncedSearchQuery}%`]);
             }
         }
 
-        if (currentDates?.[0] && currentDates?.[1]) {
+        if (dateRange?.[0] && dateRange?.[1]) {
             const formatLocal = (d: Date) => {
                 const year = d.getFullYear();
                 const month = String(d.getMonth() + 1).padStart(2, '0');
                 const day = String(d.getDate()).padStart(2, '0');
                 return `${year}-${month}-${day}`;
             };
-            params.from_date = formatLocal(currentDates[0]);
-            params.to_date = formatLocal(currentDates[1]);
+            activeFilters.push(['account_opened_date', '>=', formatLocal(dateRange[0])]);
+            activeFilters.push(['account_opened_date', '<=', formatLocal(dateRange[1])]);
         }
 
-        if (currentStatus !== 'ALL') {
-            params.activation_status = currentStatus;
+        if (tradeDoneFilter !== 'ALL') {
+            activeFilters.push(['trade_done', '=', tradeDoneFilter]);
         }
 
-        if (currentTradeDone !== 'ALL') {
-            params.trade_done = currentTradeDone;
+        // Add advanced filters
+        for (const f of advancedFilters) {
+            if (!f.field || !f.operator) continue;
+            if (Array.isArray(f.value)) {
+                if (f.value[0] && f.value[1]) {
+                    activeFilters.push([f.field, f.operator, f.value]);
+                }
+            } else if (f.value) {
+                activeFilters.push([f.field, f.operator, f.value]);
+            }
         }
 
-        await refreshClientsData(params);
-    }, [refreshClientsData, token]);
+        return activeFilters;
+    }, [hierarchyFilters, debouncedSearchQuery, dateRange, tradeDoneFilter, advancedFilters]);
+
+    const filters = useMemo(() => {
+        const activeFilters = [...totalFilters];
+        if (statusFilter !== 'ALL') {
+            activeFilters.push(['activation_status', '=', statusFilter]);
+        }
+        return activeFilters;
+    }, [totalFilters, statusFilter]);
+
+    const rootParentNode = useMemo(() => {
+        if (parentFilter !== 'ALL') {
+            return parentFilter;
+        }
+        if (selectedHierarchy && selectedHierarchy.length > 0) {
+            return selectedHierarchy[0];
+        }
+        return user?.user_code || '';
+    }, [parentFilter, selectedHierarchy, user]);
+
+    const directFilters = useMemo(() => {
+        const base = totalFilters.filter(f => f[0] !== 'parent1');
+        if (rootParentNode) {
+            base.push(['parent1', '=', rootParentNode]);
+        }
+        return base;
+    }, [totalFilters, rootParentNode]);
+
+    const indirectFilters = useMemo(() => {
+        const base = totalFilters.filter(f => f[0] !== 'parent1');
+        if (rootParentNode) {
+            const descendants = expandBranches([rootParentNode]).filter(code => code !== rootParentNode);
+            if (descendants.length > 0) {
+                base.push(['parent1', 'in', descendants]);
+            } else {
+                base.push(['parent1', '=', '']);
+            }
+        }
+        return base;
+    }, [totalFilters, rootParentNode, expandBranches]);
+
+    const hasPermissionError = !!permissionError;
+
+    // Counts queries
+    const { data: totalCount = 0, error: countErr, mutate: mutateTotalCount } = useFrappeGetDocCount('Gopocket Client', totalFilters, false, hasPermissionError ? null : undefined);
+    const { data: activeCount = 0, error: activeErr, mutate: mutateActiveCount } = useFrappeGetDocCount('Gopocket Client', [...totalFilters, ['activation_status', '=', 'ACTIVE']], false, hasPermissionError ? null : undefined);
+    const { data: closedCount = 0, error: closedErr, mutate: mutateClosedCount } = useFrappeGetDocCount('Gopocket Client', [...totalFilters, ['activation_status', '=', 'CLOSED']], false, hasPermissionError ? null : undefined);
+    const { data: dormantCount = 0, error: dormantErr, mutate: mutateDormantCount } = useFrappeGetDocCount('Gopocket Client', [...totalFilters, ['activation_status', '=', 'DORMANT']], false, hasPermissionError ? null : undefined);
+    const { data: directCount = 0, error: directErr, mutate: mutateDirectCount } = useFrappeGetDocCount('Gopocket Client', directFilters, false, hasPermissionError ? null : undefined);
+    const { data: indirectCount = 0, error: indirectErr, mutate: mutateIndirectCount } = useFrappeGetDocCount('Gopocket Client', indirectFilters, false, hasPermissionError ? null : undefined);
+
+    const statusCount = useMemo(() => ({
+        ACTIVE: activeCount,
+        CLOSED: closedCount,
+        DORMANT: dormantCount
+    }), [activeCount, closedCount, dormantCount]);
+
+    // List Query setup
+    const limit_start = (currentPage - 1) * ITEMS_PER_PAGE;
+    const limit = ITEMS_PER_PAGE;
+
+    const orderByObj = useMemo(() => {
+        if (!sortConfig) {
+            return { field: 'account_opened_date', order: 'desc' as const };
+        }
+        return {
+            field: sortConfig.key,
+            order: sortConfig.direction
+        };
+    }, [sortConfig]);
+
+    const {
+        data: clientsData,
+        isLoading,
+        error: listError,
+        mutate: mutateList,
+    } = useFrappeGetDocList<any>(
+        'Gopocket Client',
+        {
+            fields: [
+                'client_code',
+                'client_name',
+                'mobile_number',
+                'parent1',
+                'account_opened_date',
+                'trade_done',
+                'last_traded_day',
+                'nse',
+                'bse',
+                'mcx',
+                'nfo',
+                'bfo',
+                'activation_status'
+            ],
+            filters,
+            orderBy: orderByObj,
+            limit_start,
+            limit,
+        },
+        hasPermissionError ? null : undefined
+    );
+
+    // Watch for permission errors
+    useEffect(() => {
+        const errors = [listError, countErr, activeErr, closedErr, dormantErr, directErr, indirectErr];
+        for (const err of errors) {
+            if (err) {
+                const is403 = err.httpStatus === 403;
+                const isPermissionError =
+                    err.exception?.includes('PermissionError') ||
+                    err.exc_type === 'PermissionError' ||
+                    err._server_messages?.includes('PermissionError') ||
+                    err._server_messages?.includes('Insufficient Permission');
+
+                if (is403 || isPermissionError) {
+                    let msg = "Insufficient Permission for Gopocket Client";
+                    try {
+                        if (err._server_messages) {
+                            const parsed = JSON.parse(err._server_messages);
+                            if (Array.isArray(parsed) && parsed[0]?.message) {
+                                msg = parsed[0].message.replace(/<[^>]*>/g, '');
+                            }
+                        } else if (err.message) {
+                            msg = err.message;
+                        }
+                    } catch (e) {
+                        if (err.message) msg = err.message;
+                    }
+                    setPermissionError(msg);
+                    break;
+                }
+            }
+        }
+    }, [listError, countErr, activeErr, closedErr, dormantErr, directErr, indirectErr]);
+
+    // Save clients to sessionStorage when loaded
+    useEffect(() => {
+        if (clientsData) {
+            sessionStorage.setItem('clientsData', JSON.stringify(clientsData));
+        }
+    }, [clientsData]);
+
+    const error = listError ? (listError.message || 'An error occurred') : permissionError;
 
     const handleSort = (key: keyof ClientItem) => {
-        let direction: 'asc' | 'desc' = 'asc';
-        if (sortConfig?.key === key && sortConfig.direction === 'asc') {
-            direction = 'desc';
+        let direction: 'asc' | 'desc' = 'desc';
+        if (sortConfig?.key === key && sortConfig.direction === 'desc') {
+            direction = 'asc';
         }
         setSortConfig({ key, direction });
     };
@@ -290,66 +661,86 @@ const Clients: React.FC = () => {
     const handleRefresh = async () => {
         setIsRefreshing(true);
         try {
-            await loadClientsData(currentPage, searchQuery, statusFilter, tradeDoneFilter, parentFilter, dateRange, selectedHierarchy);
+            await Promise.all([
+                mutateList(),
+                mutateTotalCount(),
+                mutateActiveCount(),
+                mutateClosedCount(),
+                mutateDormantCount(),
+                mutateDirectCount(),
+                mutateIndirectCount(),
+            ]);
+            toast.success('Clients data refreshed successfully');
         } finally {
             setIsRefreshing(false);
         }
     };
+
+    const handleResetFilters = () => {
+        setSearchQuery('');
+        setStatusFilter('ALL');
+        setTradeDoneFilter('ALL');
+        setParentFilter('ALL');
+        setDateRange(null);
+        setAdvancedFilters([]);
+        setCurrentPage(1);
+        toast.success('All search criteria and filters have been cleared.');
+    };
+
     const handleExport = async () => {
+        if (!frappe) return;
         setIsExporting(true);
-        setExportProgress({ current: 0, total: 0 });
+        setExportProgress({ current: 0, total: totalCount });
         try {
-            const params: any = {};
+            let allData: any[] = [];
+            let current_limit_start = 0;
+            const limit_page_length = 5000;
+            let hasMore = true;
 
-            if (selectedHierarchy && selectedHierarchy.length > 0) {
-                params.refer_list = selectedHierarchy;
-            }
+            while (hasMore) {
+                const data = await frappe.db.getDocList('Gopocket Client', {
+                    fields: [
+                        'client_code',
+                        'client_name',
+                        'mobile_number',
+                        'parent1',
+                        'account_opened_date',
+                        'trade_done',
+                        'last_traded_day',
+                        'nse',
+                        'bse',
+                        'mcx',
+                        'nfo',
+                        'bfo',
+                        'activation_status'
+                    ],
+                    filters: totalFilters,
+                    limit_start: current_limit_start,
+                    limit: limit_page_length
+                });
 
-            if (parentFilter !== 'ALL') {
-                params.parent_code = parentFilter;
-            }
-
-            if (searchQuery) {
-                if (/^\d/.test(searchQuery)) {
-                    params.mobile_no = searchQuery;
+                if (data && data.length > 0) {
+                    allData = [...allData, ...data];
+                    setExportProgress({ current: allData.length, total: totalCount });
+                    if (data.length < limit_page_length) {
+                        hasMore = false;
+                    } else {
+                        current_limit_start += limit_page_length;
+                    }
                 } else {
-                    params.name = searchQuery;
+                    hasMore = false;
                 }
             }
 
-            if (dateRange?.[0] && dateRange?.[1]) {
-                const formatLocal = (d: Date) => {
-                    const year = d.getFullYear();
-                    const month = String(d.getMonth() + 1).padStart(2, '0');
-                    const day = String(d.getDate()).padStart(2, '0');
-                    return `${year}-${month}-${day}`;
-                };
-                params.from_date = formatLocal(dateRange[0]);
-                params.to_date = formatLocal(dateRange[1]);
-            }
-
-            if (statusFilter !== 'ALL') {
-                params.activation_status = statusFilter;
-            }
-
-            if (tradeDoneFilter !== 'ALL') {
-                params.trade_done = tradeDoneFilter;
-            }
-
-            const data = await exportClientsData(params, (current, total) => {
-                setExportProgress({ current, total });
-            });
-
-            if (data.length > 0) {
-                // Rename keys for better Excel headers
-                const exportData = data.map(item => ({
+            if (allData.length > 0) {
+                const exportData = allData.map(item => ({
                     'Client Code': item.client_code,
                     'Name': item.client_name,
                     'Mobile': item.mobile_number,
                     'Parent': item.parent1,
                     'Opened Date': item.account_opened_date,
                     'Trade Done': item.trade_done,
-                    'Last Trade': item.last_trade_date,
+                    'Last Trade': item.last_traded_day,
                     'NSE': item.nse,
                     'BSE': item.bse,
                     'MCX': item.mcx,
@@ -373,17 +764,9 @@ const Clients: React.FC = () => {
         }
     };
 
-    const debouncedSearchQuery = useDebounce(searchQuery, 400);
-
     useEffect(() => {
         setCurrentPage(1);
     }, [debouncedSearchQuery, statusFilter, tradeDoneFilter, parentFilter, dateRange]);
-
-    useEffect(() => {
-        if (token) {
-            loadClientsData(currentPage, debouncedSearchQuery, statusFilter, tradeDoneFilter, parentFilter, dateRange, selectedHierarchy);
-        }
-    }, [currentPage, debouncedSearchQuery, statusFilter, tradeDoneFilter, parentFilter, dateRange, selectedHierarchy, token, loadClientsData]);
 
     const sortedData = useMemo(() => {
         if (!clientsData) return [];
@@ -436,7 +819,10 @@ const Clients: React.FC = () => {
     };
 
     return (
-        <div className="p-4 h-full flex flex-col overflow-hidden space-y-6">
+        <div className={cn(
+            "p-4 flex flex-col space-y-6",
+            scrollWholePage ? "min-h-full" : "h-full overflow-hidden"
+        )}>
             <div className="shrink-0 space-y-4">
                 {/* Status Summary Grid */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -539,6 +925,233 @@ const Clients: React.FC = () => {
 
                 {/* Filters Row */}
                 <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50/50 border border-slate-200 rounded-2xl backdrop-blur-sm relative z-20">
+                    {/* Advanced Filters */}
+                    <Popover open={openFilterPanel} onOpenChange={handleFilterPanelOpen}>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" className="rounded-xl h-10 border-slate-200 bg-white hover:bg-slate-50 gap-2">
+                                <Filter className="w-4 h-4 text-slate-500" />
+                                {advancedFilters.length > 0 && (
+                                    <span className="bg-purple-600 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center shrink-0">
+                                        {advancedFilters.length}
+                                    </span>
+                                )}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent align="start" side="bottom" className="w-[480px] p-3 rounded-2xl border-slate-200 shadow-xl z-50">
+                            <div className="flex items-center justify-between mb-2">
+                                <p className="text-xs font-bold text-slate-800">Advanced Filters</p>
+                                <span className="text-[9px] text-slate-400 font-medium">Use % as wildcard for "like"</span>
+                            </div>
+
+                            <div className="space-y-1.5 max-h-[300px] overflow-y-auto no-scrollbar">
+                                {draftFilters.map((filter) => (
+                                    <div key={filter.id} className="flex items-center gap-2">
+                                        {/* Field combobox */}
+                                        <Popover
+                                            open={fieldComboOpen[filter.id] ?? false}
+                                            onOpenChange={(open) => setFieldComboOpen(prev => ({ ...prev, [filter.id]: open }))}
+                                        >
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    role="combobox"
+                                                    className="w-[150px] justify-between h-8 text-xs font-normal border-slate-200 shrink-0"
+                                                >
+                                                    <span className="truncate">
+                                                        {filter.field
+                                                            ? GOPOCKET_CLIENT_FILTER_FIELDS.find(f => f.value === filter.field)?.label
+                                                            : 'Select field...'}
+                                                    </span>
+                                                    <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-[170px] p-0 rounded-xl border-slate-200 shadow-xl z-[60]" side="bottom" align="start">
+                                                <Command>
+                                                    <CommandInput placeholder="Search field..." className="h-8 text-xs" />
+                                                    <CommandList>
+                                                        <CommandEmpty className="py-2 text-center text-xs text-slate-500">No field found.</CommandEmpty>
+                                                        <CommandGroup>
+                                                            {GOPOCKET_CLIENT_FILTER_FIELDS.map((field) => (
+                                                                <CommandItem
+                                                                    key={field.value}
+                                                                    value={field.label}
+                                                                    onSelect={() => {
+                                                                        const defaultOp = getOperatorsForType(field.type)[0];
+                                                                        const defaultVal = field.type === 'date' && defaultOp === 'Between' ? ['', ''] as [string, string] : '';
+                                                                        updateDraftFilter(filter.id, { field: field.value, operator: defaultOp, value: defaultVal });
+                                                                        setFieldComboOpen(prev => ({ ...prev, [filter.id]: false }));
+                                                                    }}
+                                                                    className="text-xs"
+                                                                >
+                                                                    <Check className={cn('mr-2 h-3 w-3', filter.field === field.value ? 'opacity-100' : 'opacity-0')} />
+                                                                    {field.label}
+                                                                </CommandItem>
+                                                            ))}
+                                                        </CommandGroup>
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
+
+                                        {/* Operator */}
+                                        {filter.field && (
+                                            <Select
+                                                value={filter.operator}
+                                                onValueChange={(val) => {
+                                                    const newVal = val === 'Between' ? ['', ''] as [string, string] : '';
+                                                    updateDraftFilter(filter.id, { operator: val, value: newVal });
+                                                }}
+                                            >
+                                                <SelectTrigger className="h-8 text-xs w-[95px] border-slate-200 shrink-0">
+                                                    <SelectValue placeholder="Operator" />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                                                    {getOperatorsForType(getFieldType(filter.field)).map((op: string) => (
+                                                        <SelectItem key={op} value={op} className="text-xs">
+                                                            {OPERATOR_LABELS[op] ?? op}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+
+                                        {/* Value */}
+                                        {filter.field && filter.operator && (
+                                            getFieldType(filter.field) === 'select' ? (
+                                                <Select
+                                                    value={typeof filter.value === 'string' ? filter.value : ''}
+                                                    onValueChange={(val) => updateDraftFilter(filter.id, { value: val })}
+                                                >
+                                                    <SelectTrigger className="flex-1 h-8 text-xs border-slate-200">
+                                                        <SelectValue placeholder="Select option..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                                                        {getFieldOptions(filter.field).map((opt: string) => (
+                                                            <SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            ) : filter.operator === 'Between' ? (
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <Button
+                                                            variant="outline"
+                                                            className={cn(
+                                                                'flex-1 h-8 text-xs font-normal border-slate-200 justify-start gap-1.5 min-w-0 truncate',
+                                                                !(Array.isArray(filter.value) && filter.value[0]) && 'text-slate-400'
+                                                            )}
+                                                        >
+                                                            <CalendarIcon className="h-3 w-3 shrink-0 text-slate-400" />
+                                                            <span className="truncate">
+                                                                {Array.isArray(filter.value) && filter.value[0]
+                                                                    ? filter.value[1]
+                                                                        ? `${filter.value[0]} → ${filter.value[1]}`
+                                                                        : filter.value[0]
+                                                                    : 'Pick date range'}
+                                                            </span>
+                                                        </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-0 rounded-xl border-slate-200 shadow-xl z-[60]" align="start">
+                                                        <Calendar
+                                                            mode="range"
+                                                            selected={{
+                                                                from: Array.isArray(filter.value) && filter.value[0]
+                                                                    ? (() => { const [y, m, d] = filter.value[0].split('-').map(Number); return new Date(y, m - 1, d); })()
+                                                                    : undefined,
+                                                                to: Array.isArray(filter.value) && filter.value[1]
+                                                                    ? (() => { const [y, m, d] = filter.value[1].split('-').map(Number); return new Date(y, m - 1, d); })()
+                                                                    : undefined,
+                                                            }}
+                                                            onSelect={(range) => {
+                                                                const fmt = (dt: Date | undefined) => {
+                                                                    if (!dt) return '';
+                                                                    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+                                                                };
+                                                                updateDraftFilter(filter.id, { value: [fmt(range?.from), fmt(range?.to)] });
+                                                            }}
+                                                            numberOfMonths={2}
+                                                            initialFocus
+                                                        />
+                                                    </PopoverContent>
+                                                </Popover>
+                                            ) : filter.operator === 'Timespan' ? (
+                                                <Select
+                                                    value={typeof filter.value === 'string' ? filter.value : ''}
+                                                    onValueChange={(val) => updateDraftFilter(filter.id, { value: val })}
+                                                >
+                                                    <SelectTrigger className="flex-1 h-8 text-xs border-slate-200">
+                                                        <SelectValue placeholder="Select period..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                                                        <SelectItem value="today" className="text-xs">Today</SelectItem>
+                                                        <SelectItem value="yesterday" className="text-xs">Yesterday</SelectItem>
+                                                        <SelectItem value="last week" className="text-xs">Last Week</SelectItem>
+                                                        <SelectItem value="this week" className="text-xs">This Week</SelectItem>
+                                                        <SelectItem value="last month" className="text-xs">Last Month</SelectItem>
+                                                        <SelectItem value="this month" className="text-xs">This Month</SelectItem>
+                                                        <SelectItem value="this quarter" className="text-xs">This Quarter</SelectItem>
+                                                        <SelectItem value="last quarter" className="text-xs">Last Quarter</SelectItem>
+                                                        <SelectItem value="this year" className="text-xs">This Year</SelectItem>
+                                                        <SelectItem value="last year" className="text-xs">Last Year</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            ) : (
+                                                <Input
+                                                    type={getFieldType(filter.field) === 'date' ? 'date' : (getFieldType(filter.field) === 'number' ? 'number' : 'text')}
+                                                    placeholder="Value"
+                                                    value={typeof filter.value === 'string' ? filter.value : ''}
+                                                    onChange={(e) => updateDraftFilter(filter.id, { value: e.target.value })}
+                                                    className="flex-1 h-8 text-xs border-slate-200 rounded-lg"
+                                                />
+                                            )
+                                        )}
+
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-slate-400 hover:text-red-500 shrink-0"
+                                            onClick={() => removeDraftFilter(filter.id)}
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="flex items-center justify-between pt-2 mt-2 border-t border-t-slate-100">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={addDraftFilter}
+                                    className="h-8 text-xs gap-1 hover:bg-slate-50 border-slate-200"
+                                >
+                                    <Plus className="w-3.5 h-3.5" /> Add Condition
+                                </Button>
+                                <div className="flex gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={clearAdvancedFilters}
+                                        className="h-8 text-xs text-slate-500 hover:text-slate-800"
+                                    >
+                                        Clear All
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        onClick={applyAdvancedFilters}
+                                        className="h-8 text-xs bg-purple-600 hover:bg-purple-700 text-white font-bold"
+                                    >
+                                        Apply Filters
+                                    </Button>
+                                </div>
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+
                     <div className="w-[260px]">
                         <DateRangePicker
                             value={dateRange}
@@ -596,40 +1209,51 @@ const Clients: React.FC = () => {
                                         <span className="truncate">
                                             {parentFilter === "ALL"
                                                 ? "Select Parent"
-                                                : formatUserName(parentOptions.find((opt) => opt.name === parentFilter)?.name || parentFilter)}
+                                                : userCodeMap.get(parentFilter) || parentFilter}
                                         </span>
                                     </div>
                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-[300px] p-0 rounded-xl border-slate-200 shadow-xl">
-                                <Command>
-                                    <CommandInput placeholder="Search parent..." className="h-9" />
+                                <Command shouldFilter={false}>
+                                    <CommandInput
+                                        placeholder="Search parent..."
+                                        className="h-9"
+                                        value={parentSearch}
+                                        onValueChange={setParentSearch}
+                                    />
                                     <CommandList>
                                         <CommandEmpty>No parent found.</CommandEmpty>
                                         <CommandGroup>
-                                            <CommandItem
-                                                value="ALL"
-                                                onSelect={() => {
-                                                    setParentFilter("ALL");
-                                                    setOpenParentBox(false);
-                                                }}
-                                                className="flex items-center justify-between"
-                                            >
-                                                <span>All Parents</span>
-                                                {parentFilter === "ALL" && <Check className="h-4 w-4 text-purple-600" />}
-                                            </CommandItem>
-                                            {parentOptions.map((opt) => (
+                                            {!parentSearch && (
+                                                <CommandItem
+                                                    value="ALL"
+                                                    onSelect={() => {
+                                                        setParentFilter("ALL");
+                                                        setOpenParentBox(false);
+                                                    }}
+                                                    className="flex items-center justify-between"
+                                                >
+                                                    <span>All Parents</span>
+                                                    {parentFilter === "ALL" && <Check className="h-4 w-4 text-purple-600" />}
+                                                </CommandItem>
+                                            )}
+                                            {visibleParentOptions.map((opt) => (
                                                 <CommandItem
                                                     key={opt.name}
-                                                    value={`${opt.name} ${userNameMap.get(opt.name) || ''}`}
+                                                    value={`${opt.code || ''} ${opt.org_code || ''} ${opt.name} ${opt.name1 || ''} ${userNameMap.get(opt.name) || ''}`}
                                                     onSelect={() => {
                                                         setParentFilter(opt.name === parentFilter ? "ALL" : opt.name);
                                                         setOpenParentBox(false);
                                                     }}
                                                     className="flex items-center justify-between gap-2"
                                                 >
-                                                    <span className="truncate text-sm">{formatUserName(opt.name)}</span>
+                                                    <span className="truncate text-sm">
+                                                        {opt.category === 'RM' || opt.org_type === 'RM'
+                                                            ? `${opt.code || opt.org_code || opt.name} ${opt.name1 || ''}`.trim()
+                                                            : (opt.code || opt.org_code || opt.name)}
+                                                    </span>
                                                     <div className="flex items-center gap-1 shrink-0">
                                                         {opt.category && (
                                                             <Badge
@@ -733,6 +1357,17 @@ const Clients: React.FC = () => {
                         </DropdownMenuContent>
                     </DropdownMenu>
 
+                    {(searchQuery || statusFilter !== 'ALL' || tradeDoneFilter !== 'ALL' || parentFilter !== 'ALL' || dateRange !== null || advancedFilters.length > 0) && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={handleResetFilters}
+                            className="text-slate-500 hover:text-slate-900 font-semibold px-3 py-2 rounded-xl transition-colors hover:bg-slate-50"
+                        >
+                            Reset
+                        </Button>
+                    )}
+
                     <div className="flex items-center gap-2 ml-auto border-l pl-3 border-slate-200">
                         <Button
                             variant="outline"
@@ -769,8 +1404,11 @@ const Clients: React.FC = () => {
             )}
 
             {/* Table Section */}
-            <Card className="flex-1 min-h-0 flex flex-col border-none shadow-sm overflow-hidden bg-white rounded-2xl border border-slate-100">
-                <ScrollArea className="flex-1">
+            <Card className={cn(
+                "border-none shadow-sm bg-white rounded-2xl border border-slate-100 flex flex-col",
+                scrollWholePage ? "" : "flex-1 min-h-0 overflow-hidden"
+            )}>
+                <TableWrapper scrollWholePage={scrollWholePage}>
                     <table className="w-full text-sm">
                         <thead className="sticky top-0 bg-slate-50/90 backdrop-blur-md z-10">
                             <tr className="border-b border-slate-100">
@@ -793,16 +1431,52 @@ const Clients: React.FC = () => {
                                         </div>
                                     </th>
                                 )}
-                                {columnVisibility.opened_date && <th className="text-left py-4 px-4 font-semibold text-slate-600">Opened Date</th>}
+                                {columnVisibility.opened_date && (
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 cursor-pointer select-none group/col" onClick={() => handleSort('account_opened_date')}>
+                                        <div className="flex items-center gap-2">
+                                            Opened Date
+                                            {sortConfig?.key === 'account_opened_date' ? (
+                                                sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600" /> : <ChevronDown className="w-4 h-4 text-purple-600" />
+                                            ) : <ArrowUpDown className="w-3 h-3 text-slate-300 group-hover/col:text-slate-400" />}
+                                        </div>
+                                    </th>
+                                )}
                                 {columnVisibility.trade_done && <th className="text-left py-4 px-4 font-semibold text-slate-600">First Trade</th>}
-                                {columnVisibility.last_trade && <th className="text-left py-4 px-4 font-semibold text-slate-600">Last Trade Date</th>}
-                                {columnVisibility.parent && <th className="text-left py-4 px-4 font-semibold text-slate-600">Parent</th>}
+                                {columnVisibility.last_trade && (
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 cursor-pointer select-none group/col" onClick={() => handleSort('last_traded_day')}>
+                                        <div className="flex items-center gap-2">
+                                            Last Trade Date
+                                            {sortConfig?.key === 'last_traded_day' ? (
+                                                sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600" /> : <ChevronDown className="w-4 h-4 text-purple-600" />
+                                            ) : <ArrowUpDown className="w-3 h-3 text-slate-300 group-hover/col:text-slate-400" />}
+                                        </div>
+                                    </th>
+                                )}
+                                {columnVisibility.parent && (
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 cursor-pointer select-none group/col" onClick={() => handleSort('parent1')}>
+                                        <div className="flex items-center gap-2">
+                                            Parent
+                                            {sortConfig?.key === 'parent1' ? (
+                                                sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600" /> : <ChevronDown className="w-4 h-4 text-purple-600" />
+                                            ) : <ArrowUpDown className="w-3 h-3 text-slate-300 group-hover/col:text-slate-400" />}
+                                        </div>
+                                    </th>
+                                )}
                                 {columnVisibility.nse && <th className="text-center py-4 px-4 font-semibold text-slate-600">NSE</th>}
                                 {columnVisibility.bse && <th className="text-center py-4 px-4 font-semibold text-slate-600">BSE</th>}
                                 {columnVisibility.mcx && <th className="text-center py-4 px-4 font-semibold text-slate-600">MCX</th>}
                                 {columnVisibility.nfo && <th className="text-center py-4 px-4 font-semibold text-slate-600">NFO</th>}
                                 {columnVisibility.bfo && <th className="text-center py-4 px-4 font-semibold text-slate-600">BFO</th>}
-                                {columnVisibility.status && <th className="text-left py-4 px-4 font-semibold text-slate-600">Status</th>}
+                                {columnVisibility.status && (
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 cursor-pointer select-none group/col" onClick={() => handleSort('activation_status')}>
+                                        <div className="flex items-center gap-2">
+                                            Status
+                                            {sortConfig?.key === 'activation_status' ? (
+                                                sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600" /> : <ChevronDown className="w-4 h-4 text-purple-600" />
+                                            ) : <ArrowUpDown className="w-3 h-3 text-slate-300 group-hover/col:text-slate-400" />}
+                                        </div>
+                                    </th>
+                                )}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
@@ -861,8 +1535,12 @@ const Clients: React.FC = () => {
                                                 </Badge>
                                             </td>
                                         )}
-                                        {columnVisibility.last_trade && <td className="py-4 px-4 text-slate-500 font-mono text-xs">{formatValue(row.last_trade_date)}</td>}
-                                        {columnVisibility.parent && <td className="py-4 px-4 text-slate-500">{formatValue(row.parent1)}</td>}
+                                        {columnVisibility.last_trade && <td className="py-4 px-4 text-slate-500 font-mono text-xs">{formatValue(row.last_traded_day)}</td>}
+                                        {columnVisibility.parent && (
+                                            <td className="py-4 px-4 text-slate-500">
+                                                {row.parent1 ? (userCodeMap.get(row.parent1) || row.parent1) : '-'}
+                                            </td>
+                                        )}
                                         {columnVisibility.nse && <td className="py-4 px-4 text-center">{renderExchangeBadge(row.nse)}</td>}
                                         {columnVisibility.bse && <td className="py-4 px-4 text-center">{renderExchangeBadge(row.bse)}</td>}
                                         {columnVisibility.mcx && <td className="py-4 px-4 text-center">{renderExchangeBadge(row.mcx)}</td>}
@@ -896,7 +1574,7 @@ const Clients: React.FC = () => {
                             )}
                         </tbody>
                     </table>
-                </ScrollArea>
+                </TableWrapper>
 
                 {/* Status Info Footer */}
                 <div className="shrink-0 py-2 px-4 border-t border-slate-100 bg-slate-50/50 flex justify-center">

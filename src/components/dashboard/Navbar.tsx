@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFilter } from '@/contexts/FilterContext';
+import { useOrgTree } from '@/contexts/OrgTreeContext';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -39,7 +40,8 @@ import {
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const { user, logout, hierarchyData } = useAuth();
+  const { user, logout, frappeUser } = useAuth();
+  const { orgTreeData } = useOrgTree();
   const {
     selectedHierarchy,
     setSelectedHierarchy,
@@ -47,7 +49,60 @@ const Navbar = () => {
     setDateRange
   } = useFilter();
 
-  const userInitial = user?.user_code?.[0]?.toUpperCase() || "U";
+  const [scrollWholePage, setScrollWholePage] = useState<boolean>(() => {
+    return localStorage.getItem("scroll-whole-page") === "true";
+  });
+
+  const [localFrappeUser, setLocalFrappeUser] = useState<any>(() => {
+    try {
+      const saved = sessionStorage.getItem('frappe_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    const handleLayoutChange = () => {
+      setScrollWholePage(localStorage.getItem("scroll-whole-page") === "true");
+    };
+    window.addEventListener("layout-changed", handleLayoutChange);
+    return () => {
+      window.removeEventListener("layout-changed", handleLayoutChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    const syncUser = () => {
+      try {
+        const saved = sessionStorage.getItem('frappe_user');
+        if (saved) {
+          setLocalFrappeUser(JSON.parse(saved));
+        }
+      } catch (e) {
+        console.error("Error syncing frappe user in Navbar:", e);
+      }
+    };
+
+    window.addEventListener("frappe-user-updated", syncUser);
+    window.addEventListener("layout-changed", syncUser);
+    return () => {
+      window.removeEventListener("frappe-user-updated", syncUser);
+      window.removeEventListener("layout-changed", syncUser);
+    };
+  }, []);
+
+  const toggleScrollWholePage = () => {
+    const nextVal = !scrollWholePage;
+    setScrollWholePage(nextVal);
+    localStorage.setItem("scroll-whole-page", nextVal.toString());
+    window.dispatchEvent(new Event("layout-changed"));
+  };
+
+  const currentFrappeUser = localFrappeUser || frappeUser;
+  const displayName = (currentFrappeUser?.username || "User").toUpperCase();
+  const userInitial = (currentFrappeUser?.first_name?.[0] || currentFrappeUser?.full_name?.[0] || user?.user_code?.[0] || "U").toUpperCase();
+  const userImage = currentFrappeUser?.user_image || null;
 
   const handleLogout = () => {
     logout();
@@ -104,7 +159,7 @@ const Navbar = () => {
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Branch/Team Filter</p>
                   <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
                     <VirtualizedTree
-                      data={hierarchyData || []}
+                      data={orgTreeData || []}
                       value={selectedHierarchy}
                       onChange={setSelectedHierarchy}
                       placeholder="Select Team/Branch"
@@ -154,26 +209,29 @@ const Navbar = () => {
         <div className="flex items-center gap-2 pl-2">
           <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
             <VirtualizedTree
-              data={hierarchyData || []}
+              data={orgTreeData || []}
               value={selectedHierarchy}
               onChange={setSelectedHierarchy}
               placeholder="Select Team/Branch"
-              className="w-[300px] border-none shadow-none focus:ring-0"
+              className="w-[360px] border-none shadow-none focus:ring-0"
             />
           </div>
         </div>
 
         {/* Icons Container */}
         <div className="flex items-center gap-1.5 border-l border-slate-200 pl-4 h-8">
-          <button
-            onClick={() => navigate("/settings")}
-            className="relative p-2 text-slate-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all duration-200 group"
-          >
-            <Sparkle size={18} />
-            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 text-[10px] text-white bg-slate-900 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
-              Settings
-            </div>
-          </button>
+          {/* Page Scroll Switch */}
+          <div className="flex items-center gap-2 px-2 hover:bg-purple-50/50 rounded-lg h-9 transition-colors border border-transparent hover:border-slate-100">
+            <span className="text-[10px] font-bold text-slate-500 select-none uppercase tracking-wider">Scroll</span>
+            <button
+              type="button"
+              onClick={toggleScrollWholePage}
+              className={`relative w-8 h-4 transition-colors rounded-full p-0.5 outline-none ${scrollWholePage ? "bg-purple-600" : "bg-slate-200"}`}
+              title="Toggle Page Scroll"
+            >
+              <div className={`h-3 w-3 bg-white rounded-full transition-transform ${scrollWholePage ? "translate-x-4" : "translate-x-0"}`} />
+            </button>
+          </div>
 
           <button className="relative p-2 text-slate-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all duration-200 group">
             <AlarmClockCheckIcon size={18} />
@@ -195,6 +253,17 @@ const Navbar = () => {
 
       {/* Mobile Right Group (Simplified) */}
       <div className="flex lg:hidden items-center gap-2">
+        {/* Page Scroll Switch */}
+        <div className="flex items-center gap-2 px-2 hover:bg-purple-50/50 rounded-lg h-9 transition-colors border border-transparent hover:border-slate-100">
+          <button
+            type="button"
+            onClick={toggleScrollWholePage}
+            className={`relative w-8 h-4 transition-colors rounded-full p-0.5 outline-none ${scrollWholePage ? "bg-purple-600" : "bg-slate-200"}`}
+            title="Toggle Page Scroll"
+          >
+            <div className={`h-3 w-3 bg-white rounded-full transition-transform ${scrollWholePage ? "translate-x-4" : "translate-x-0"}`} />
+          </button>
+        </div>
         <Notification />
       </div>
 
@@ -206,10 +275,11 @@ const Navbar = () => {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="flex items-center space-x-3 px-2 hover:bg-slate-50 h-10 border border-transparent hover:border-slate-100 rounded-xl transition-all">
               <Avatar className="h-8 w-8 rounded-lg border-2 border-white shadow-sm ring-1 ring-slate-200">
+                {userImage && <AvatarImage src={userImage} className="object-cover" />}
                 <AvatarFallback className="bg-slate-900 text-white text-[10px] font-bold">{userInitial}</AvatarFallback>
               </Avatar>
               <div className="hidden sm:block text-left">
-                <p className="text-l font-bold text-slate-800 leading-tight">{user?.user_code || "User"}</p>
+                <p className="text-l font-bold text-slate-800 leading-tight">{displayName}</p>
               </div>
               <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
             </Button>

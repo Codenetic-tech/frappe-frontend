@@ -46,7 +46,7 @@ export const TaskProvider: React.FC<TaskProviderProps> = ({ children }) => {
     const soundRef = React.useRef<HTMLAudioElement | null>(null);
 
     const employeeId = user?.user_code || '';
-    const email = user?.mail_id || '';
+    const email = user?.email || '';
 
     const closeAlert = () => {
         setAlertInfo(null);

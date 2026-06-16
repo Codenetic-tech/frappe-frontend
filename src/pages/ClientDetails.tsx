@@ -5,8 +5,9 @@ import {
   FileText, Briefcase, Wallet, CreditCard, LayoutDashboard,
   Calendar, Phone, MapPin, Building, Globe, CheckCircle2, RefreshCw
 } from 'lucide-react';
-import { useClients, ClientItem } from '@/contexts/ClientContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFrappeGetDoc } from 'frappe-react-sdk';
+import { ClientItem } from './Clients';
 import ClientHoldingsTab from '@/components/CRM/ClientDetails/ClientHoldingsTab';
 import ClientOrdersTab from '@/components/CRM/ClientDetails/ClientOrdersTab';
 import ClientTradeReportTab from '@/components/CRM/ClientDetails/ClientTradeReportTab';
@@ -25,16 +26,32 @@ interface Tab {
 
 const ClientDetails: React.FC = () => {
   const { user } = useAuth();
-  const { clientsData, isLoading: contextLoading } = useClients();
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [client, setClient] = useState<ClientItem | null>(null);
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'info');
   const [refreshKey, setRefreshKey] = useState(Date.now());
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const handleRefresh = () => {
-    setRefreshKey(Date.now());
+  // Retrieve client details from Gopocket Client doctype
+  const {
+    data: clientData,
+    isLoading: isClientLoading,
+    error: clientError,
+    mutate: refetchClient
+  } = useFrappeGetDoc<any>('Gopocket Client', clientId || undefined);
+
+  // Map clientData to ClientItem
+  const client = clientData as ClientItem | null;
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refetchClient();
+      setRefreshKey(Date.now());
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const tabs: Tab[] = [
@@ -46,25 +63,16 @@ const ClientDetails: React.FC = () => {
     { id: 'order_report', label: 'Order Report', icon: FileText }
   ];
 
-  // Map clientsData to a sorted list for navigation (using the same sorting as the table if possible, but default to client_code)
+  // Retrieve clients list from sessionStorage for navigation
   const allClients = useMemo(() => {
-    if (!clientsData) return [];
-    return [...clientsData];
-  }, [clientsData]);
+    const stored = sessionStorage.getItem('clientsData');
+    return stored ? JSON.parse(stored) : [];
+  }, [clientId]);
 
   // Find current client index for navigation
   const currentClientIndex = useMemo(() => {
-    return allClients.findIndex(c => c.client_code === clientId || c.name === clientId);
+    return allClients.findIndex((c: any) => c.client_code === clientId || c.name === clientId);
   }, [allClients, clientId]);
-
-  useEffect(() => {
-    if (clientId && allClients.length > 0) {
-      const currentClient = allClients.find(c => c.client_code === clientId || c.name === clientId);
-      if (currentClient) {
-        setClient(currentClient);
-      }
-    }
-  }, [clientId, allClients]);
 
   const goToPreviousClient = () => {
     if (currentClientIndex > 0) {
@@ -89,14 +97,25 @@ const ClientDetails: React.FC = () => {
     }
   };
 
-  if (!client && !contextLoading) {
+  if (isClientLoading) {
+    return (
+      <div className="flex-grow flex flex-col items-center justify-center min-h-[60vh] text-slate-400 gap-2">
+        <RefreshCw className="h-8 w-8 animate-spin text-purple-600" />
+        <span className="text-sm">Fetching client details...</span>
+      </div>
+    );
+  }
+
+  if (clientError || (!client && !isClientLoading)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
         <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
           <Users className="w-8 h-8 text-slate-300" />
         </div>
         <h2 className="text-xl font-bold text-slate-900 mb-2">Client Not Found</h2>
-        <p className="text-slate-500 mb-6">The requested client could not be located in your current list.</p>
+        <p className="text-slate-500 mb-6">
+          {clientError ? (clientError.message || 'An error occurred while loading client details.') : 'The requested client could not be located.'}
+        </p>
         <Button onClick={() => navigate('/clients')} className="rounded-xl bg-purple-600 hover:bg-purple-700">
           Back to Clients
         </Button>
@@ -282,7 +301,7 @@ const ClientDetails: React.FC = () => {
                     <div>
                       <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Trading Summary</h3>
                       <div className="bg-slate-50/50 rounded-2xl p-6 border border-slate-100 space-y-1">
-                        <InfoRow label="Last Trade Date" value={client.last_trade_date} icon={Calendar} />
+                        <InfoRow label="Last Trade Date" value={client.last_traded_day} icon={Calendar} />
                       </div>
                     </div>
                   </div>

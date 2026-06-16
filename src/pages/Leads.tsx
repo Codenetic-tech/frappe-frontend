@@ -10,9 +10,9 @@ import {
 } from '@tanstack/react-table';
 import { useNavigate } from 'react-router-dom';
 import { useLead, LeadItem, FilterCondition } from '@/contexts/LeadContext';
-import { useAuth, HierarchyNode } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useFilter } from '@/contexts/FilterContext';
-import { useOrgTree } from '@/contexts/OrgTreeContext';
+import { useOrgTree, OrgTreeNode } from '@/contexts/OrgTreeContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -212,7 +212,6 @@ interface Campaign {
 // ── Main Component ────────────────────────────────────────────────────
 const Leads: React.FC = () => {
     const navigate = useNavigate();
-    const { token, hierarchyData } = useAuth();
     const { selectedHierarchy } = useFilter();
     const { leadsData, isLoading, error, count, statusCount, groupList, refreshLeadsData, updateLeadStatus, updateLeadGroup, assignLeads } = useLead();
     const { orgTreeData } = useOrgTree();
@@ -251,9 +250,9 @@ const Leads: React.FC = () => {
 
     // Filter hierarchy to exclude AP, U-AP, CLIENT
     const filteredReferList = useMemo(() => {
-        if (!selectedHierarchy || selectedHierarchy.length === 0 || !hierarchyData) return [];
+        if (!selectedHierarchy || selectedHierarchy.length === 0 || !orgTreeData) return [];
 
-        const nodeMap = new Map<string, HierarchyNode>(hierarchyData.map(node => [node.name, node]));
+        const nodeMap = new Map<string, OrgTreeNode>(orgTreeData.map(node => [node.name, node]));
 
         return selectedHierarchy.filter(id => {
             const node = nodeMap.get(id);
@@ -261,11 +260,11 @@ const Leads: React.FC = () => {
             const category = node.category?.toUpperCase();
             return category !== 'AP' && category !== 'U-AP' && category !== 'CLIENT';
         });
-    }, [selectedHierarchy, hierarchyData]);
+    }, [selectedHierarchy, orgTreeData]);
 
     const userOptions = useMemo(() => {
-        if (!hierarchyData) return [];
-        return hierarchyData
+        if (!orgTreeData) return [];
+        return orgTreeData
             .filter(node => node.category && !['AP', 'U-AP', 'CLIENT'].includes(node.category.toUpperCase()))
             .sort((a, b) => {
                 const pa = CATEGORY_ORDER[a.category?.toUpperCase() || ''] || 99;
@@ -273,26 +272,26 @@ const Leads: React.FC = () => {
                 if (pa !== pb) return pa - pb;
                 return a.name.localeCompare(b.name);
             });
-    }, [hierarchyData]);
+    }, [orgTreeData]);
 
     const userNameMap = useMemo(() => {
         if (!orgTreeData) return new Map<string, string>();
-        return new Map(orgTreeData.map(node => [node.name, node.client_name || '']));
+        return new Map(orgTreeData.map(node => [node.name, node.name1 || '']));
     }, [orgTreeData]);
 
     const formatUserName = useCallback((userCode: string) => {
         if (!userCode || userCode === 'ALL') return userCode;
         const name = userNameMap.get(userCode);
         if (name) {
-            // Check if it's an RM type in hierarchyData
-            const node = hierarchyData?.find(n => n.name === userCode);
+            // Check if it's an RM type in orgTreeData
+            const node = orgTreeData?.find(n => n.name === userCode);
             if (node?.category?.toUpperCase() === 'RM') {
                 return `${name} ${userCode}`;
             }
             return userCode;
         }
         return userCode;
-    }, [userNameMap, hierarchyData]);
+    }, [userNameMap, orgTreeData]);
 
     // TanStack Table state
     const [sorting, setSorting] = useState<SortingState>([]);
@@ -317,13 +316,10 @@ const Leads: React.FC = () => {
 
     useEffect(() => {
         const fetchCampaigns = async () => {
-            if (!token) return;
             setIsCampaignsLoading(true);
             try {
                 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-                const response = await fetch(`${API_BASE_URL}/api/method/rms.branch.get_campaigns`, {
-                    headers: { 'token': token }
-                });
+                const response = await fetch(`${API_BASE_URL}/api/method/rms.branch.get_campaigns`);
                 const data = await response.json();
                 if (data.message?.status === 'success') {
                     setCampaigns(data.message.campaigns || []);
@@ -335,7 +331,7 @@ const Leads: React.FC = () => {
             }
         };
         fetchCampaigns();
-    }, [token]);
+    }, []);
 
     const formatLocalDate = useCallback((d: Date) => {
         const year = d.getFullYear();
@@ -358,7 +354,7 @@ const Leads: React.FC = () => {
         sortState: SortingState,
         repeatedOnly: boolean,
     ) => {
-        if (!token) return;
+
 
         const DOCTYPE = 'CRM Lead';
         const filters: FilterCondition[] = [];
@@ -401,7 +397,7 @@ const Leads: React.FC = () => {
             order_by,
             refer_list: referList,
         });
-    }, [refreshLeadsData, token, formatLocalDate]);
+    }, [refreshLeadsData, formatLocalDate]);
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
@@ -419,10 +415,8 @@ const Leads: React.FC = () => {
     }, [debouncedSearchQuery, dateRange, statusFilter, sourceFilter, filteredReferList, currentGroup, assignedToFilter, campaignFilter, advancedFilters, sorting, repeatedLeadFilter]);
 
     useEffect(() => {
-        if (token) {
-            loadLeadsData(currentPage, debouncedSearchQuery, statusFilter, sourceFilter, dateRange, filteredReferList, currentGroup, assignedToFilter, campaignFilter, advancedFilters, sorting, repeatedLeadFilter);
-        }
-    }, [currentPage, debouncedSearchQuery, dateRange, statusFilter, sourceFilter, filteredReferList, currentGroup, assignedToFilter, campaignFilter, advancedFilters, sorting, repeatedLeadFilter, token, loadLeadsData]);
+        loadLeadsData(currentPage, debouncedSearchQuery, statusFilter, sourceFilter, dateRange, filteredReferList, currentGroup, assignedToFilter, campaignFilter, advancedFilters, sorting, repeatedLeadFilter);
+    }, [currentPage, debouncedSearchQuery, dateRange, statusFilter, sourceFilter, filteredReferList, currentGroup, assignedToFilter, campaignFilter, advancedFilters, sorting, repeatedLeadFilter, loadLeadsData]);
 
     const tableData = useMemo(() => leadsData || [], [leadsData]);
 

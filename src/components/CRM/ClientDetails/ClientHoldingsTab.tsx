@@ -56,7 +56,7 @@ const enrichStockMetadata = (ticker: string) => {
 };
 
 const ClientHoldingsTab: React.FC<ClientHoldingsTabProps> = ({ clientCode, refreshKey }) => {
-  const { token, logout } = useAuth();
+  const { logout, user } = useAuth();
   const [holdings, setHoldings] = useState<ParsedHolding[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +65,7 @@ const ClientHoldingsTab: React.FC<ClientHoldingsTabProps> = ({ clientCode, refre
     let isMounted = true;
 
     const fetchHoldings = async () => {
-      if (!token) return;
+      if (!user) return;
       setIsLoading(true);
       setError(null);
 
@@ -74,19 +74,13 @@ const ClientHoldingsTab: React.FC<ClientHoldingsTabProps> = ({ clientCode, refre
         const response = await fetch(`${API_BASE_URL}/api/method/rms.clientdetails.holdings`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'token': token
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({ client_code: clientCode }),
           mode: 'cors',
         });
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          if (errorData.message?.status === 'error' && errorData.message?.message === 'Token has been revoked or does not match') {
-            logout();
-            return;
-          }
           throw new Error('Failed to fetch Holdings');
         }
 
@@ -145,7 +139,7 @@ const ClientHoldingsTab: React.FC<ClientHoldingsTabProps> = ({ clientCode, refre
     fetchHoldings();
 
     return () => { isMounted = false; };
-  }, [clientCode, token, logout, refreshKey]);
+  }, [clientCode, logout, user, refreshKey]);
 
   if (isLoading) {
     return (

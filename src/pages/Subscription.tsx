@@ -63,6 +63,7 @@ export interface SubscriptionItem {
     trading_view_id: string | null;
     client_name: string | null;
     payment_date: string | null;
+    created_user: string | null;
 }
 
 interface SummaryData {
@@ -139,25 +140,54 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
 };
 
 const Subscription: React.FC = () => {
-    const { token } = useAuth();
+    const { user } = useAuth();
 
-    const [data, setData] = useState<SubscriptionItem[]>([]);
-    const [totalCount, setTotalCount] = useState(0);
-    const [totalPages, setTotalPages] = useState(1);
-    const [summary, setSummary] = useState<SummaryData>({ Approved: 0, Rejected: 0, Pending: 0, Expired: 0 });
-    const [isLoading, setIsLoading] = useState(false);
+    const [data, setData] = useState<SubscriptionItem[]>(() => {
+        const stored = sessionStorage.getItem('subscriptionData');
+        return stored ? JSON.parse(stored) : [];
+    });
+    const [totalCount, setTotalCount] = useState<number>(() => {
+        const stored = sessionStorage.getItem('subscriptionTotalCount');
+        return stored ? Number(stored) : 0;
+    });
+    const [totalPages, setTotalPages] = useState<number>(() => {
+        const stored = sessionStorage.getItem('subscriptionTotalPages');
+        return stored ? Number(stored) : 1;
+    });
+    const [summary, setSummary] = useState<SummaryData>(() => {
+        const stored = sessionStorage.getItem('subscriptionSummary');
+        return stored ? JSON.parse(stored) : { Approved: 0, Rejected: 0, Pending: 0, Expired: 0 };
+    });
+    const [isLoading, setIsLoading] = useState(() => {
+        const stored = sessionStorage.getItem('subscriptionData');
+        return stored ? JSON.parse(stored).length === 0 : true;
+    });
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
 
-    // Filters
-    const [statusFilter, setStatusFilter] = useState('ALL');
-    const [toolFilter, setToolFilter] = useState('ALL');
-    const [clientCodeSearch, setClientCodeSearch] = useState('');
-    const [createdBySearch, setCreatedBySearch] = useState('');
-    const [dateRange, setDateRange] = useState<[Date, Date] | null>(null);
-    const [currentPage, setCurrentPage] = useState(1);
+    // Filters with sessionStorage hydration
+    const [statusFilter, setStatusFilter] = useState<string>(() => sessionStorage.getItem('subscriptionStatusFilter') || 'ALL');
+    const [toolFilter, setToolFilter] = useState<string>(() => sessionStorage.getItem('subscriptionToolFilter') || 'ALL');
+    const [clientCodeSearch, setClientCodeSearch] = useState<string>(() => sessionStorage.getItem('subscriptionClientCodeSearch') || '');
+    const [createdBySearch, setCreatedBySearch] = useState<string>(() => sessionStorage.getItem('subscriptionCreatedBySearch') || '');
+    const [dateRange, setDateRange] = useState<[Date, Date] | null>(() => {
+        const stored = sessionStorage.getItem('subscriptionDateRange');
+        if (stored) {
+            try {
+                const [start, end] = JSON.parse(stored);
+                return [new Date(start), new Date(end)];
+            } catch (e) {
+                return null;
+            }
+        }
+        return null;
+    });
+    const [currentPage, setCurrentPage] = useState<number>(() => {
+        const stored = sessionStorage.getItem('subscriptionCurrentPage');
+        return stored ? Number(stored) : 1;
+    });
 
     const [sortConfig, setSortConfig] = useState<{ key: keyof SubscriptionItem; direction: 'asc' | 'desc' } | null>(null);
 
@@ -182,6 +212,35 @@ const Subscription: React.FC = () => {
         localStorage.setItem('subscriptionColumnVisibility', JSON.stringify(columnVisibility));
     }, [columnVisibility]);
 
+    // Persist filters to sessionStorage
+    useEffect(() => {
+        sessionStorage.setItem('subscriptionStatusFilter', statusFilter);
+    }, [statusFilter]);
+
+    useEffect(() => {
+        sessionStorage.setItem('subscriptionToolFilter', toolFilter);
+    }, [toolFilter]);
+
+    useEffect(() => {
+        sessionStorage.setItem('subscriptionClientCodeSearch', clientCodeSearch);
+    }, [clientCodeSearch]);
+
+    useEffect(() => {
+        sessionStorage.setItem('subscriptionCreatedBySearch', createdBySearch);
+    }, [createdBySearch]);
+
+    useEffect(() => {
+        if (dateRange) {
+            sessionStorage.setItem('subscriptionDateRange', JSON.stringify([dateRange[0].toISOString(), dateRange[1].toISOString()]));
+        } else {
+            sessionStorage.removeItem('subscriptionDateRange');
+        }
+    }, [dateRange]);
+
+    useEffect(() => {
+        sessionStorage.setItem('subscriptionCurrentPage', String(currentPage));
+    }, [currentPage]);
+
     const debouncedClientCode = useDebounce(clientCodeSearch, 400);
     const debouncedCreatedBy = useDebounce(createdBySearch, 400);
 
@@ -189,98 +248,219 @@ const Subscription: React.FC = () => {
         setCurrentPage(1);
     }, [debouncedClientCode, debouncedCreatedBy, statusFilter, toolFilter, dateRange]);
 
-    const fetchData = useCallback(async (
-        page: number,
-        clientCode: string,
-        createdBy: string,
-        status: string,
-        tool: string,
-        dates: [Date, Date] | null,
-    ) => {
-        if (!token) return;
-        setIsLoading(true);
+    const totalFilters = useMemo(() => {
+        const activeFilters: any[] = [];
+        if (debouncedClientCode) {
+            activeFilters.push(['client_code', 'like', `%${debouncedClientCode}%`]);
+        }
+        if (debouncedCreatedBy) {
+            activeFilters.push(['created_by', 'like', `%${debouncedCreatedBy}%`]);
+        }
+        if (toolFilter !== 'ALL') {
+            activeFilters.push(['tool_name', '=', toolFilter]);
+        }
+        if (dateRange?.[0] && dateRange?.[1]) {
+            const formatLocal = (d: Date) => {
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+            activeFilters.push(['payment_date', '>=', formatLocal(dateRange[0]) + " 00:00:00"]);
+            activeFilters.push(['payment_date', '<=', formatLocal(dateRange[1]) + " 23:59:59"]);
+        }
+        return activeFilters;
+    }, [debouncedClientCode, debouncedCreatedBy, toolFilter, dateRange]);
+
+    const filters = useMemo(() => {
+        const activeFilters = [...totalFilters];
+        if (statusFilter !== 'ALL') {
+            activeFilters.push(['status', '=', statusFilter]);
+        }
+        return activeFilters;
+    }, [totalFilters, statusFilter]);
+
+    const orderByObj = useMemo(() => {
+        if (!sortConfig) {
+            return { field: 'modified', order: 'desc' as const };
+        }
+        return {
+            field: sortConfig.key,
+            order: sortConfig.direction
+        };
+    }, [sortConfig]);
+
+    const fetchData = useCallback(async () => {
+        const savedFiltersStr = sessionStorage.getItem('subscriptionCacheFilters');
+        const currentFiltersStr = JSON.stringify(filters);
+        const filtersMatch = savedFiltersStr === currentFiltersStr;
+
+        if (!filtersMatch) {
+            setIsLoading(true);
+        }
         setError(null);
         try {
             const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+            const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 
-            const body: Record<string, unknown> = {
-                page,
-                page_length: PAGE_LENGTH,
+            const limit_start = (currentPage - 1) * PAGE_LENGTH;
+            const limit_page_length = PAGE_LENGTH;
+            const order_by = orderByObj ? `${orderByObj.field} ${orderByObj.order}` : 'modified desc';
+
+            const [
+                listRes,
+                totalRes,
+                approvedRes,
+                pendingRes,
+                expiredRes,
+                rejectedRes
+            ] = await Promise.all([
+                fetch(`${API_BASE_URL}/api/method/frappe.client.get_list`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({
+                        doctype: 'Tools Subscription',
+                        fields: [
+                            'name',
+                            'tool_name',
+                            'amount',
+                            'incentive_amount',
+                            'payment_date',
+                            'start_date',
+                            'end_date',
+                            'payment_reference_number',
+                            'status',
+                            'created_by',
+                            'client_code',
+                            'trading_view_id',
+                            'client_name',
+                            'created_user'
+                        ],
+                        filters,
+                        order_by,
+                        limit_start,
+                        limit_page_length
+                    })
+                }).then(r => {
+                    if (!r.ok) throw new Error(`HTTP error ${r.status}`);
+                    return r.json();
+                }),
+                fetch(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ doctype: 'Tools Subscription', filters: totalFilters })
+                }).then(r => {
+                    if (!r.ok) throw new Error(`HTTP error ${r.status}`);
+                    return r.json();
+                }),
+                fetch(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ doctype: 'Tools Subscription', filters: [...totalFilters, ['status', '=', 'Approved']] })
+                }).then(r => {
+                    if (!r.ok) throw new Error(`HTTP error ${r.status}`);
+                    return r.json();
+                }),
+                fetch(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ doctype: 'Tools Subscription', filters: [...totalFilters, ['status', '=', 'Pending']] })
+                }).then(r => {
+                    if (!r.ok) throw new Error(`HTTP error ${r.status}`);
+                    return r.json();
+                }),
+                fetch(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ doctype: 'Tools Subscription', filters: [...totalFilters, ['status', '=', 'Expired']] })
+                }).then(r => {
+                    if (!r.ok) throw new Error(`HTTP error ${r.status}`);
+                    return r.json();
+                }),
+                fetch(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ doctype: 'Tools Subscription', filters: [...totalFilters, ['status', '=', 'Rejected']] })
+                }).then(r => {
+                    if (!r.ok) throw new Error(`HTTP error ${r.status}`);
+                    return r.json();
+                })
+            ]);
+
+            const listData = listRes.message || [];
+            setData(listData);
+            sessionStorage.setItem('subscriptionData', JSON.stringify(listData));
+            sessionStorage.setItem('subscriptionCacheFilters', currentFiltersStr);
+
+            const total = totalRes.message || 0;
+            setTotalCount(total);
+            sessionStorage.setItem('subscriptionTotalCount', String(total));
+
+            const pages = Math.ceil(total / PAGE_LENGTH) || 1;
+            setTotalPages(pages);
+            sessionStorage.setItem('subscriptionTotalPages', String(pages));
+
+            const newSummary = {
+                Approved: approvedRes.message || 0,
+                Pending: pendingRes.message || 0,
+                Expired: expiredRes.message || 0,
+                Rejected: rejectedRes.message || 0
             };
+            setSummary(newSummary);
+            sessionStorage.setItem('subscriptionSummary', JSON.stringify(newSummary));
 
-            if (clientCode) body.client_code = clientCode;
-            if (createdBy) body.created_by = createdBy;
-            if (status !== 'ALL') body.status = status;
-            if (tool !== 'ALL') body.tool_name = tool;
-
-            if (dates?.[0] && dates?.[1]) {
-                const fmt = (d: Date) => {
-                    const y = d.getFullYear();
-                    const m = String(d.getMonth() + 1).padStart(2, '0');
-                    const day = String(d.getDate()).padStart(2, '0');
-                    return `${y}-${m}-${day}`;
-                };
-                body.from_date = fmt(dates[0]);
-                body.to_date = fmt(dates[1]);
-            }
-
-            const res = await fetch(`${API_BASE_URL}/api/method/rms.subscription.get_subscription`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', token },
-                body: JSON.stringify(body),
-            });
-
-            if (!res.ok) throw new Error(`Request failed: ${res.status}`);
-            const json = await res.json();
-            const msg = json.message;
-
-            if (msg?.status === 'success') {
-                setData(msg.tools_subscription || []);
-                setTotalCount(msg.pagination?.total_count ?? 0);
-                setTotalPages(msg.pagination?.total_pages ?? 1);
-                if (msg.summary) setSummary(msg.summary);
-            } else {
-                throw new Error(msg?.message || 'Unexpected response format');
-            }
         } catch (err: any) {
+            console.error('Error fetching subscriptions:', err);
             setError(err.message || 'Failed to load subscriptions');
             toast.error('Failed to load subscriptions');
         } finally {
             setIsLoading(false);
         }
-    }, [token]);
+    }, [filters, totalFilters, currentPage, orderByObj]);
 
     useEffect(() => {
-        fetchData(currentPage, debouncedClientCode, debouncedCreatedBy, statusFilter, toolFilter, dateRange);
-    }, [currentPage, debouncedClientCode, debouncedCreatedBy, statusFilter, toolFilter, dateRange, fetchData]);
+        fetchData();
+    }, [fetchData]);
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
         try {
-            await fetchData(currentPage, debouncedClientCode, debouncedCreatedBy, statusFilter, toolFilter, dateRange);
+            await fetchData();
         } finally {
             setIsRefreshing(false);
         }
     };
 
     const handleCreate = async (formData: SubscriptionFormData) => {
-        if (!token) return;
         setIsCreating(true);
         try {
             const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-            const res = await fetch(`${API_BASE_URL}/api/method/rms.subscription.create_subscriber`, {
+            const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+            const res = await fetch(`${API_BASE_URL}/api/method/frappe.client.insert`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', token },
-                body: JSON.stringify(formData),
+                headers,
+                body: JSON.stringify({
+                    doc: {
+                        doctype: 'Tools Subscription',
+                        tool_name: formData.tool_name,
+                        amount: parseInt(formData.amount, 10),
+                        payment_reference_number: formData.payment_reference_number,
+                        client_code: formData.client_code,
+                        trading_view_id: formData.trading_view_id,
+                        payment_date: formData.payment_date,
+                        status: 'Pending',
+                        created_by: user?.email || user?.id || null
+                    }
+                }),
             });
             if (!res.ok) throw new Error(`Request failed: ${res.status}`);
             const json = await res.json();
-            if (json.message?.status === 'success' || res.ok) {
+            if (json.message) {
                 toast.success('Subscription created successfully');
                 setIsModalOpen(false);
-                await fetchData(currentPage, debouncedClientCode, debouncedCreatedBy, statusFilter, toolFilter, dateRange);
+                await fetchData();
             } else {
-                throw new Error(json.message?.message || 'Failed to create subscription');
+                throw new Error('Failed to create subscription');
             }
         } catch (err: any) {
             toast.error(err.message || 'Failed to create subscription');
@@ -666,7 +846,7 @@ const Subscription: React.FC = () => {
                                             </td>
                                         )}
                                         {columnVisibility.created_by && (
-                                            <td className="py-4 px-4 text-slate-500 text-xs">{row.created_by || '-'}</td>
+                                            <td className="py-4 px-4 font-semibold text-slate-900 leading-tight whitespace-nowrap">{row.created_user || '-'}</td>
                                         )}
                                         {columnVisibility.trading_view_id && (
                                             <td className="py-4 px-4 text-slate-500 text-xs">{row.trading_view_id || '-'}</td>
