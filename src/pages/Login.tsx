@@ -16,20 +16,20 @@ import {
 
 // ── Password Strength ──────────────────────────────────────────────────────
 const PASSWORD_RULES = [
-    { id: 'length',    label: 'At least 8 characters',         test: (p: string) => p.length >= 8 },
-    { id: 'upper',     label: 'At least one uppercase letter',  test: (p: string) => /[A-Z]/.test(p) },
-    { id: 'lower',     label: 'At least one lowercase letter',  test: (p: string) => /[a-z]/.test(p) },
-    { id: 'number',    label: 'At least one number',            test: (p: string) => /[0-9]/.test(p) },
-    { id: 'special',   label: 'At least one special character', test: (p: string) => /[^A-Za-z0-9]/.test(p) },
+    { id: 'length', label: 'At least 8 characters', test: (p: string) => p.length >= 8 },
+    { id: 'upper', label: 'At least one uppercase letter', test: (p: string) => /[A-Z]/.test(p) },
+    { id: 'lower', label: 'At least one lowercase letter', test: (p: string) => /[a-z]/.test(p) },
+    { id: 'number', label: 'At least one number', test: (p: string) => /[0-9]/.test(p) },
+    { id: 'special', label: 'At least one special character', test: (p: string) => /[^A-Za-z0-9]/.test(p) },
 ];
 
 const getPasswordStrength = (p: string) => {
     const passed = PASSWORD_RULES.filter(r => r.test(p)).length;
-    if (passed <= 1) return { score: passed, label: 'Weak',   color: 'bg-red-500' };
-    if (passed === 2) return { score: passed, label: 'Fair',   color: 'bg-orange-400' };
-    if (passed === 3) return { score: passed, label: 'Good',   color: 'bg-yellow-400' };
+    if (passed <= 1) return { score: passed, label: 'Weak', color: 'bg-red-500' };
+    if (passed === 2) return { score: passed, label: 'Fair', color: 'bg-orange-400' };
+    if (passed === 3) return { score: passed, label: 'Good', color: 'bg-yellow-400' };
     if (passed === 4) return { score: passed, label: 'Strong', color: 'bg-emerald-400' };
-    return                 { score: passed, label: 'Very Strong', color: 'bg-emerald-500' };
+    return { score: passed, label: 'Very Strong', color: 'bg-emerald-500' };
 };
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -346,7 +346,7 @@ const Login = () => {
         } catch (error: any) {
             console.error("Failed to login with TOTP:", error);
             const errorMsg = getErrorMessage(error);
-            
+
             toast({
                 variant: "destructive",
                 title: "Authentication Failed",
@@ -742,136 +742,131 @@ const Login = () => {
                         const passwordsMatch = newPassword === confirmNewPassword;
                         const canSubmit = allRulesPassed && passwordsMatch && newPassword.length > 0 && confirmNewPassword.length > 0;
                         return (
-                        <form onSubmit={handleResetPassword}>
-                            <CardContent className="space-y-5 px-8">
-                                {/* New Password Field */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="new-password" className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">New Password</Label>
-                                    <div className="relative group">
-                                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 transition-colors group-focus-within:text-purple-600" />
-                                        <Input
-                                            id="new-password"
-                                            type={showNewPassword ? "text" : "password"}
-                                            placeholder="Enter new password"
-                                            className="pl-12 pr-12 h-14 bg-white/60 border-white/20 rounded-2xl border-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] focus:ring-2 focus:ring-purple-500/20 text-slate-900 font-medium placeholder:text-slate-400 placeholder:font-normal"
-                                            value={newPassword}
-                                            onChange={(e) => setNewPassword(e.target.value)}
-                                            required
-                                            disabled={isResettingPassword}
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowNewPassword(!showNewPassword)}
-                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                                            disabled={isResettingPassword}
-                                        >
-                                            {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                        </button>
+                            <form onSubmit={handleResetPassword}>
+                                <CardContent className="space-y-5 px-8">
+                                    {/* New Password Field */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="new-password" className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">New Password</Label>
+                                        <div className="relative group">
+                                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 transition-colors group-focus-within:text-purple-600" />
+                                            <Input
+                                                id="new-password"
+                                                type={showNewPassword ? "text" : "password"}
+                                                placeholder="Enter new password"
+                                                className="pl-12 pr-12 h-14 bg-white/60 border-white/20 rounded-2xl border-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] focus:ring-2 focus:ring-purple-500/20 text-slate-900 font-medium placeholder:text-slate-400 placeholder:font-normal"
+                                                value={newPassword}
+                                                onChange={(e) => setNewPassword(e.target.value)}
+                                                required
+                                                disabled={isResettingPassword}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowNewPassword(!showNewPassword)}
+                                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                                                disabled={isResettingPassword}
+                                            >
+                                                {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                            </button>
+                                        </div>
+
+                                        {/* Strength Meter */}
+                                        {newPassword.length > 0 && (
+                                            <div className="space-y-2 pt-1">
+                                                <div className="flex items-center justify-between px-1">
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Password Strength</span>
+                                                    <span className={`text-[10px] font-extrabold uppercase tracking-widest transition-colors ${pwStrength.label === 'Weak' ? 'text-red-500' :
+                                                        pwStrength.label === 'Fair' ? 'text-orange-400' :
+                                                            pwStrength.label === 'Good' ? 'text-yellow-500' :
+                                                                'text-emerald-500'
+                                                        }`}>{pwStrength.label}</span>
+                                                </div>
+                                                {/* Segmented bar */}
+                                                <div className="flex gap-1">
+                                                    {[1, 2, 3, 4, 5].map(seg => (
+                                                        <div
+                                                            key={seg}
+                                                            className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${pwStrength.score >= seg ? pwStrength.color : 'bg-slate-200'
+                                                                }`}
+                                                        />
+                                                    ))}
+                                                </div>
+
+                                                {/* Requirements checklist */}
+                                                <div className="grid grid-cols-1 gap-1 pt-1 px-1">
+                                                    {PASSWORD_RULES.map(rule => {
+                                                        const ok = rule.test(newPassword);
+                                                        return (
+                                                            <div key={rule.id} className="flex items-center gap-1.5">
+                                                                {ok
+                                                                    ? <CheckCircle2 className="h-3 w-3 text-emerald-500 flex-shrink-0" />
+                                                                    : <XCircle className="h-3 w-3 text-red-400 flex-shrink-0" />
+                                                                }
+                                                                <span className={`text-[10px] font-semibold transition-colors ${ok ? 'text-emerald-600' : 'text-slate-400'
+                                                                    }`}>{rule.label}</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
 
-                                    {/* Strength Meter */}
-                                    {newPassword.length > 0 && (
-                                        <div className="space-y-2 pt-1">
-                                            <div className="flex items-center justify-between px-1">
-                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Password Strength</span>
-                                                <span className={`text-[10px] font-extrabold uppercase tracking-widest transition-colors ${
-                                                    pwStrength.label === 'Weak'       ? 'text-red-500'     :
-                                                    pwStrength.label === 'Fair'       ? 'text-orange-400'  :
-                                                    pwStrength.label === 'Good'       ? 'text-yellow-500'  :
-                                                    'text-emerald-500'
-                                                }`}>{pwStrength.label}</span>
-                                            </div>
-                                            {/* Segmented bar */}
-                                            <div className="flex gap-1">
-                                                {[1, 2, 3, 4, 5].map(seg => (
-                                                    <div
-                                                        key={seg}
-                                                        className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
-                                                            pwStrength.score >= seg ? pwStrength.color : 'bg-slate-200'
-                                                        }`}
-                                                    />
-                                                ))}
-                                            </div>
-
-                                            {/* Requirements checklist */}
-                                            <div className="grid grid-cols-1 gap-1 pt-1 px-1">
-                                                {PASSWORD_RULES.map(rule => {
-                                                    const ok = rule.test(newPassword);
-                                                    return (
-                                                        <div key={rule.id} className="flex items-center gap-1.5">
-                                                            {ok
-                                                                ? <CheckCircle2 className="h-3 w-3 text-emerald-500 flex-shrink-0" />
-                                                                : <XCircle      className="h-3 w-3 text-red-400 flex-shrink-0" />
-                                                            }
-                                                            <span className={`text-[10px] font-semibold transition-colors ${
-                                                                ok ? 'text-emerald-600' : 'text-slate-400'
-                                                            }`}>{rule.label}</span>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Confirm Password Field */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="confirm-new-password" className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Confirm New Password</Label>
-                                    <div className="relative group">
-                                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 transition-colors group-focus-within:text-purple-600" />
-                                        <Input
-                                            id="confirm-new-password"
-                                            type={showConfirmPassword ? "text" : "password"}
-                                            placeholder="Confirm new password"
-                                            className={`pl-12 pr-12 h-14 bg-white/60 border-white/20 rounded-2xl border-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] focus:ring-2 focus:ring-purple-500/20 text-slate-900 font-medium placeholder:text-slate-400 placeholder:font-normal ${
-                                                confirmNewPassword.length > 0 && !passwordsMatch
+                                    {/* Confirm Password Field */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="confirm-new-password" className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Confirm New Password</Label>
+                                        <div className="relative group">
+                                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 transition-colors group-focus-within:text-purple-600" />
+                                            <Input
+                                                id="confirm-new-password"
+                                                type={showConfirmPassword ? "text" : "password"}
+                                                placeholder="Confirm new password"
+                                                className={`pl-12 pr-12 h-14 bg-white/60 border-white/20 rounded-2xl border-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] focus:ring-2 focus:ring-purple-500/20 text-slate-900 font-medium placeholder:text-slate-400 placeholder:font-normal ${confirmNewPassword.length > 0 && !passwordsMatch
                                                     ? 'ring-2 ring-red-400/60'
                                                     : confirmNewPassword.length > 0 && passwordsMatch
-                                                    ? 'ring-2 ring-emerald-400/60'
-                                                    : ''
-                                            }`}
-                                            value={confirmNewPassword}
-                                            onChange={(e) => setConfirmNewPassword(e.target.value)}
-                                            required
-                                            disabled={isResettingPassword}
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                                            disabled={isResettingPassword}
-                                        >
-                                            {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                        </button>
-                                    </div>
-                                    {/* Match indicator */}
-                                    {confirmNewPassword.length > 0 && (
-                                        <p className={`text-[10px] font-bold px-1 transition-colors ${
-                                            passwordsMatch ? 'text-emerald-600' : 'text-red-500'
-                                        }`}>
-                                            {passwordsMatch ? '✓ Passwords match' : '✗ Passwords do not match'}
-                                        </p>
-                                    )}
-                                </div>
-                            </CardContent>
-
-                            <CardFooter className="flex flex-col gap-5 px-8 pt-6 pb-10">
-                                <Button
-                                    className="w-full h-14 rounded-2xl font-bold text-lg bg-slate-900 hover:bg-slate-800 text-white shadow-xl shadow-slate-900/10 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
-                                    type="submit"
-                                    disabled={isResettingPassword || !canSubmit}
-                                >
-                                    {isResettingPassword ? (
-                                        <div className="flex items-center gap-3">
-                                            <Loader2 className="h-5 w-5 animate-spin" />
-                                            <span>Resetting Password...</span>
+                                                        ? 'ring-2 ring-emerald-400/60'
+                                                        : ''
+                                                    }`}
+                                                value={confirmNewPassword}
+                                                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                                                required
+                                                disabled={isResettingPassword}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                                                disabled={isResettingPassword}
+                                            >
+                                                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                            </button>
                                         </div>
-                                    ) : (
-                                        "Reset Password"
-                                    )}
-                                </Button>
-                            </CardFooter>
-                        </form>
+                                        {/* Match indicator */}
+                                        {confirmNewPassword.length > 0 && (
+                                            <p className={`text-[10px] font-bold px-1 transition-colors ${passwordsMatch ? 'text-emerald-600' : 'text-red-500'
+                                                }`}>
+                                                {passwordsMatch ? '✓ Passwords match' : '✗ Passwords do not match'}
+                                            </p>
+                                        )}
+                                    </div>
+                                </CardContent>
+
+                                <CardFooter className="flex flex-col gap-5 px-8 pt-6 pb-10">
+                                    <Button
+                                        className="w-full h-14 rounded-2xl font-bold text-lg bg-slate-900 hover:bg-slate-800 text-white shadow-xl shadow-slate-900/10 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
+                                        type="submit"
+                                        disabled={isResettingPassword || !canSubmit}
+                                    >
+                                        {isResettingPassword ? (
+                                            <div className="flex items-center gap-3">
+                                                <Loader2 className="h-5 w-5 animate-spin" />
+                                                <span>Resetting Password...</span>
+                                            </div>
+                                        ) : (
+                                            "Reset Password"
+                                        )}
+                                    </Button>
+                                </CardFooter>
+                            </form>
                         );
                     })()}
 

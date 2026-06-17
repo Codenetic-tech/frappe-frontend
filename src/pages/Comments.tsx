@@ -399,16 +399,16 @@ const Comments: React.FC = () => {
 
     // Real-time listener for Comments list updates
     const handleListUpdate = React.useCallback((eventData: any) => {
-        console.log('Realtime Comments event:', eventData);
+        // console.log('Realtime Comments event:', eventData);
         mutateList();
         mutateTotalCount();
         mutateUnseenCount();
         mutatePublishedCount();
 
-        toast({
-            title: "Comments Updated (Realtime)",
-            description: `Comment "${eventData.name}" was modified. List updated automatically.`,
-        });
+        // toast({
+        //     title: "Comments Updated (Realtime)",
+        //     description: `Comment "${eventData.name}" was modified. List updated automatically.`,
+        // });
     }, [mutateList, mutateTotalCount, mutateUnseenCount, mutatePublishedCount]);
 
     useFrappeDocTypeEventListener('Comment', handleListUpdate);
