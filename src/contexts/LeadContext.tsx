@@ -287,17 +287,7 @@ export const LeadProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     }, [isAuthenticated, user, fetchLeadsData]);
 
-    // Polling Every 5 Minutes
-    useEffect(() => {
-        if (!user) return;
 
-        const pollingInterval = setInterval(() => {
-            console.log('Background polling for Leads data...');
-            fetchLeadsData(lastParamsRef.current, true); // Silent fetch
-        }, 5 * 60 * 1000); // 5 minutes
-
-        return () => clearInterval(pollingInterval);
-    }, [fetchLeadsData, user]);
 
     const refreshLeadsData = useCallback(async (params?: FetchLeadParams) => {
         await fetchLeadsData(params || {}, false);

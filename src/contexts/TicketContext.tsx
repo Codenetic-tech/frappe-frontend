@@ -454,17 +454,7 @@ export const TicketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         }
     }, [isAuthenticated, fetchTicketsData]);
 
-    // Polling Every 5 Minutes
-    useEffect(() => {
-        if (!user) return;
 
-        const pollingInterval = setInterval(() => {
-            console.log('Background polling for Tickets data...');
-            fetchTicketsData(lastParamsRef.current, true); // Silent fetch
-        }, 5 * 60 * 1000); // 5 minutes
-
-        return () => clearInterval(pollingInterval);
-    }, [fetchTicketsData, user]);
 
     const fetchTicketActivity = useCallback(async (ticketId: string): Promise<Record<string, unknown>[] | null> => {
         try {

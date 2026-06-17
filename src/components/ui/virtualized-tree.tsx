@@ -352,7 +352,7 @@ export const VirtualizedTree = ({
 
           {selectedIds.size > 0 && (
             <div className="border-t p-2 flex items-center justify-between bg-muted/50 rounded-b-lg">
-              <span className="text-xs font-medium">{selectedIds.size} selected</span>
+              {/* <span className="text-xs font-medium">{selectedIds.size} selected</span> */}
               <Button
                 variant="ghost"
                 size="sm"

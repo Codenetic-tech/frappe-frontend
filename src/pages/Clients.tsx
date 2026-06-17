@@ -67,6 +67,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from 'sonner';
 import { FileDown } from 'lucide-react';
 import { useFrappeGetDocList, useFrappeGetDocCount, FrappeContext } from 'frappe-react-sdk';
+import useSWR from 'swr';
 
 export interface ClientItem {
     name: string;
@@ -201,6 +202,30 @@ const TableWrapper = ({ scrollWholePage, children }: { scrollWholePage: boolean;
         );
     }
     return <ScrollArea className="flex-1">{children}</ScrollArea>;
+};
+
+const postFetcher = async (payload: { url: string; body: Record<string, any> }) => {
+    const response = await fetch(payload.url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload.body)
+    });
+    if (!response.ok) {
+        let errData;
+        try {
+            errData = await response.json();
+        } catch (e) {
+            errData = { message: response.statusText || 'Fetch failed' };
+        }
+        const error: any = new Error(errData.message || 'Fetch failed');
+        error.status = response.status;
+        error.info = errData;
+        throw error;
+    }
+    const data = await response.json();
+    return data.message;
 };
 
 const Clients: React.FC = () => {
@@ -450,6 +475,19 @@ const Clients: React.FC = () => {
         return Array.from(allCodes);
     }, [orgTreeData]);
 
+    const getHierarchyCodes = useCallback((names: string[]) => {
+        const tree = orgTreeData;
+        if (!tree) return names;
+        const codeMap = new Map<string, string>();
+        tree.forEach((node: any) => {
+            if (node.name) {
+                const code = node.code || node.org_code || node.name;
+                codeMap.set(node.name, code);
+            }
+        });
+        return names.map(name => codeMap.get(name) || name);
+    }, [orgTreeData]);
+
     const hierarchyFilters = useMemo(() => {
         const activeFilters: any[] = [];
         const parentFilterList = selectedHierarchy && selectedHierarchy.length > 0
@@ -459,11 +497,13 @@ const Clients: React.FC = () => {
             ? [...new Set([parentFilter, ...parentFilterList])]
             : parentFilterList;
 
-        if (combinedParents.length > 0) {
-            activeFilters.push(['parent1', 'in', combinedParents]);
+        const combinedCodes = getHierarchyCodes(combinedParents);
+
+        if (combinedCodes.length > 0) {
+            activeFilters.push(['parent1', 'in', combinedCodes]);
         }
         return activeFilters;
-    }, [selectedHierarchy, parentFilter, expandBranches]);
+    }, [selectedHierarchy, parentFilter, expandBranches, getHierarchyCodes]);
 
     const debouncedSearchQuery = useDebounce(searchQuery, 400);
 
@@ -527,41 +567,12 @@ const Clients: React.FC = () => {
     }, [parentFilter, selectedHierarchy, user]);
 
     const directFilters = useMemo(() => {
-        const base = totalFilters.filter(f => f[0] !== 'parent1');
-        if (rootParentNode) {
-            base.push(['parent1', '=', rootParentNode]);
-        }
-        return base;
-    }, [totalFilters, rootParentNode]);
+        return [...totalFilters, ['parent_type', 'in', ['BRANCH', 'RM', 'ZONE', 'HO', 'REGION']]];
+    }, [totalFilters]);
 
     const indirectFilters = useMemo(() => {
-        const base = totalFilters.filter(f => f[0] !== 'parent1');
-        if (rootParentNode) {
-            const descendants = expandBranches([rootParentNode]).filter(code => code !== rootParentNode);
-            if (descendants.length > 0) {
-                base.push(['parent1', 'in', descendants]);
-            } else {
-                base.push(['parent1', '=', '']);
-            }
-        }
-        return base;
-    }, [totalFilters, rootParentNode, expandBranches]);
-
-    const hasPermissionError = !!permissionError;
-
-    // Counts queries
-    const { data: totalCount = 0, error: countErr, mutate: mutateTotalCount } = useFrappeGetDocCount('Gopocket Client', totalFilters, false, hasPermissionError ? null : undefined);
-    const { data: activeCount = 0, error: activeErr, mutate: mutateActiveCount } = useFrappeGetDocCount('Gopocket Client', [...totalFilters, ['activation_status', '=', 'ACTIVE']], false, hasPermissionError ? null : undefined);
-    const { data: closedCount = 0, error: closedErr, mutate: mutateClosedCount } = useFrappeGetDocCount('Gopocket Client', [...totalFilters, ['activation_status', '=', 'CLOSED']], false, hasPermissionError ? null : undefined);
-    const { data: dormantCount = 0, error: dormantErr, mutate: mutateDormantCount } = useFrappeGetDocCount('Gopocket Client', [...totalFilters, ['activation_status', '=', 'DORMANT']], false, hasPermissionError ? null : undefined);
-    const { data: directCount = 0, error: directErr, mutate: mutateDirectCount } = useFrappeGetDocCount('Gopocket Client', directFilters, false, hasPermissionError ? null : undefined);
-    const { data: indirectCount = 0, error: indirectErr, mutate: mutateIndirectCount } = useFrappeGetDocCount('Gopocket Client', indirectFilters, false, hasPermissionError ? null : undefined);
-
-    const statusCount = useMemo(() => ({
-        ACTIVE: activeCount,
-        CLOSED: closedCount,
-        DORMANT: dormantCount
-    }), [activeCount, closedCount, dormantCount]);
+        return [...totalFilters, ['parent_type', 'in', ['U-AP', 'AUTHOPER']]];
+    }, [totalFilters]);
 
     // List Query setup
     const limit_start = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -577,78 +588,147 @@ const Clients: React.FC = () => {
         };
     }, [sortConfig]);
 
-    const {
-        data: clientsData,
-        isLoading,
-        error: listError,
-        mutate: mutateList,
-    } = useFrappeGetDocList<any>(
-        'Gopocket Client',
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
+    // Count queries via SWR
+    const { data: totalCount = 0, error: totalCountErr, mutate: mutateTotalCount } = useSWR(
         {
-            fields: [
-                'client_code',
-                'client_name',
-                'mobile_number',
-                'parent1',
-                'account_opened_date',
-                'trade_done',
-                'last_traded_day',
-                'nse',
-                'bse',
-                'mcx',
-                'nfo',
-                'bfo',
-                'activation_status'
-            ],
-            filters,
-            orderBy: orderByObj,
-            limit_start,
-            limit,
+            url: `${API_BASE_URL}/api/method/frappe.client.get_count`,
+            body: { doctype: 'Gopocket Client', filters: totalFilters }
         },
-        hasPermissionError ? null : undefined
+        postFetcher
     );
 
-    // Watch for permission errors
+    const { data: activeCount = 0, error: activeCountErr, mutate: mutateActiveCount } = useSWR(
+        {
+            url: `${API_BASE_URL}/api/method/frappe.client.get_count`,
+            body: { doctype: 'Gopocket Client', filters: [...totalFilters, ['activation_status', '=', 'ACTIVE']] }
+        },
+        postFetcher
+    );
+
+    const { data: closedCount = 0, error: closedCountErr, mutate: mutateClosedCount } = useSWR(
+        {
+            url: `${API_BASE_URL}/api/method/frappe.client.get_count`,
+            body: { doctype: 'Gopocket Client', filters: [...totalFilters, ['activation_status', '=', 'CLOSED']] }
+        },
+        postFetcher
+    );
+
+    const { data: dormantCount = 0, error: dormantCountErr, mutate: mutateDormantCount } = useSWR(
+        {
+            url: `${API_BASE_URL}/api/method/frappe.client.get_count`,
+            body: { doctype: 'Gopocket Client', filters: [...totalFilters, ['activation_status', '=', 'DORMANT']] }
+        },
+        postFetcher
+    );
+
+    const { data: directCount = 0, error: directCountErr, mutate: mutateDirectCount } = useSWR(
+        {
+            url: `${API_BASE_URL}/api/method/frappe.client.get_count`,
+            body: { doctype: 'Gopocket Client', filters: directFilters }
+        },
+        postFetcher
+    );
+
+    const { data: indirectCount = 0, error: indirectCountErr, mutate: mutateIndirectCount } = useSWR(
+        {
+            url: `${API_BASE_URL}/api/method/frappe.client.get_count`,
+            body: { doctype: 'Gopocket Client', filters: indirectFilters }
+        },
+        postFetcher
+    );
+
+    // List query via SWR
+    const {
+        data: clientsData = [],
+        error: listError,
+        isLoading,
+        mutate: mutateList
+    } = useSWR<any[]>(
+        {
+            url: `${API_BASE_URL}/api/method/frappe.client.get_list`,
+            body: {
+                doctype: 'Gopocket Client',
+                fields: [
+                    'client_code',
+                    'client_name',
+                    'mobile_number',
+                    'parent1',
+                    'account_opened_date',
+                    'trade_done',
+                    'last_traded_day',
+                    'nse',
+                    'bse',
+                    'mcx',
+                    'nfo',
+                    'bfo',
+                    'activation_status'
+                ],
+                filters,
+                order_by: `${orderByObj.field} ${orderByObj.order}`,
+                limit_start,
+                limit_page_length: limit
+            }
+        },
+        postFetcher
+    );
+
+    const statusCount = useMemo(() => ({
+        ACTIVE: activeCount,
+        CLOSED: closedCount,
+        DORMANT: dormantCount
+    }), [activeCount, closedCount, dormantCount]);
+
     useEffect(() => {
-        const errors = [listError, countErr, activeErr, closedErr, dormantErr, directErr, indirectErr];
+        const errors = [listError, totalCountErr, activeCountErr, closedCountErr, dormantCountErr, directCountErr, indirectCountErr];
         for (const err of errors) {
             if (err) {
-                const is403 = err.httpStatus === 403;
+                const status = err.status;
+                const info = err.info || {};
+                const exception = info.exception || "";
+                const exc_type = info.exc_type || "";
+                const _server_messages = info._server_messages || "";
+                const message = info.message || err.message || "";
+
+                const is403 = status === 403;
                 const isPermissionError =
-                    err.exception?.includes('PermissionError') ||
-                    err.exc_type === 'PermissionError' ||
-                    err._server_messages?.includes('PermissionError') ||
-                    err._server_messages?.includes('Insufficient Permission');
+                    exception.includes('PermissionError') ||
+                    exc_type === 'PermissionError' ||
+                    _server_messages.includes('PermissionError') ||
+                    _server_messages.includes('Insufficient Permission') ||
+                    message.includes('PermissionError') ||
+                    message.includes('Insufficient Permission');
 
                 if (is403 || isPermissionError) {
                     let msg = "Insufficient Permission for Gopocket Client";
                     try {
-                        if (err._server_messages) {
-                            const parsed = JSON.parse(err._server_messages);
-                            if (Array.isArray(parsed) && parsed[0]?.message) {
-                                msg = parsed[0].message.replace(/<[^>]*>/g, '');
+                        if (_server_messages) {
+                            const parsedMsgs = JSON.parse(_server_messages);
+                            if (Array.isArray(parsedMsgs) && parsedMsgs[0]?.message) {
+                                msg = parsedMsgs[0].message.replace(/<[^>]*>/g, '');
                             }
-                        } else if (err.message) {
-                            msg = err.message;
+                        } else if (message) {
+                            msg = message;
                         }
                     } catch (e) {
-                        if (err.message) msg = err.message;
+                        if (message) msg = message;
                     }
                     setPermissionError(msg);
                     break;
                 }
             }
         }
-    }, [listError, countErr, activeErr, closedErr, dormantErr, directErr, indirectErr]);
+    }, [listError, totalCountErr, activeCountErr, closedCountErr, dormantCountErr, directCountErr, indirectCountErr]);
 
     // Save clients to sessionStorage when loaded
     useEffect(() => {
-        if (clientsData) {
+        if (clientsData && clientsData.length > 0) {
             sessionStorage.setItem('clientsData', JSON.stringify(clientsData));
         }
     }, [clientsData]);
 
-    const error = listError ? (listError.message || 'An error occurred') : permissionError;
+    const error = listError ? (typeof listError === 'string' ? listError : (listError.message || 'An error occurred')) : permissionError;
 
     const handleSort = (key: keyof ClientItem) => {
         let direction: 'asc' | 'desc' = 'desc';
@@ -688,7 +768,6 @@ const Clients: React.FC = () => {
     };
 
     const handleExport = async () => {
-        if (!frappe) return;
         setIsExporting(true);
         setExportProgress({ current: 0, total: totalCount });
         try {
@@ -697,27 +776,40 @@ const Clients: React.FC = () => {
             const limit_page_length = 5000;
             let hasMore = true;
 
+            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+            const headers = { 'Content-Type': 'application/json' };
+
             while (hasMore) {
-                const data = await frappe.db.getDocList('Gopocket Client', {
-                    fields: [
-                        'client_code',
-                        'client_name',
-                        'mobile_number',
-                        'parent1',
-                        'account_opened_date',
-                        'trade_done',
-                        'last_traded_day',
-                        'nse',
-                        'bse',
-                        'mcx',
-                        'nfo',
-                        'bfo',
-                        'activation_status'
-                    ],
-                    filters: totalFilters,
-                    limit_start: current_limit_start,
-                    limit: limit_page_length
+                const res = await fetch(`${API_BASE_URL}/api/method/frappe.client.get_list`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({
+                        doctype: 'Gopocket Client',
+                        fields: [
+                            'client_code',
+                            'client_name',
+                            'mobile_number',
+                            'parent1',
+                            'account_opened_date',
+                            'trade_done',
+                            'last_traded_day',
+                            'nse',
+                            'bse',
+                            'mcx',
+                            'nfo',
+                            'bfo',
+                            'activation_status'
+                        ],
+                        filters: totalFilters,
+                        limit_start: current_limit_start,
+                        limit_page_length: limit_page_length
+                    })
+                }).then(r => {
+                    if (!r.ok) throw new Error(`HTTP error ${r.status}`);
+                    return r.json();
                 });
+
+                const data = res.message;
 
                 if (data && data.length > 0) {
                     allData = [...allData, ...data];
@@ -826,7 +918,8 @@ const Clients: React.FC = () => {
             <div className="shrink-0 space-y-4">
                 {/* Status Summary Grid */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
+                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group relative overflow-hidden">
+                        <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-purple-500 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         <div className="flex items-center justify-between mb-2">
                             <span className="text-[12px] font-bold text-slate-700 uppercase tracking-wider">Total</span>
                             <div className="p-2 bg-purple-50 rounded-lg">
@@ -842,7 +935,8 @@ const Clients: React.FC = () => {
                         </div>
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
+                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group relative overflow-hidden">
+                        <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-green-500 to-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         <div className="flex items-center justify-between mb-2">
                             <span className="text-[12px] font-bold text-green-600 uppercase tracking-wider">Direct</span>
                             <div className="p-2 bg-green-50 rounded-lg">
@@ -858,7 +952,8 @@ const Clients: React.FC = () => {
                         </div>
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
+                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group relative overflow-hidden">
+                        <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         <div className="flex items-center justify-between mb-2">
                             <span className="text-[12px] font-bold text-blue-600 uppercase tracking-wider">Indirect</span>
                             <div className="p-2 bg-blue-50 rounded-lg">
@@ -874,7 +969,8 @@ const Clients: React.FC = () => {
                         </div>
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
+                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group relative overflow-hidden">
+                        <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         <div className="flex items-center justify-between mb-2">
                             <span className="text-[12px] font-bold text-emerald-600 uppercase tracking-wider">Active</span>
                             <div className="p-2 bg-emerald-50 rounded-lg">
@@ -890,7 +986,8 @@ const Clients: React.FC = () => {
                         </div>
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
+                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group relative overflow-hidden">
+                        <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-red-500 to-rose-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         <div className="flex items-center justify-between mb-2">
                             <span className="text-[12px] font-bold text-red-600 uppercase tracking-wider">Closed</span>
                             <div className="p-2 bg-red-50 rounded-lg">
@@ -906,7 +1003,8 @@ const Clients: React.FC = () => {
                         </div>
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
+                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group relative overflow-hidden">
+                        <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-amber-500 to-orange-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         <div className="flex items-center justify-between mb-2">
                             <span className="text-[12px] font-bold text-amber-600 uppercase tracking-wider">Dormant</span>
                             <div className="p-2 bg-amber-50 rounded-lg">
