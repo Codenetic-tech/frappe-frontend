@@ -403,10 +403,10 @@ const Login = () => {
     return (
         <div
             className="min-h-screen flex items-center justify-center relative overflow-hidden p-4 font-sans bg-cover bg-center bg-no-repeat"
-            style={{ backgroundImage: "url('/sky image.jpg')" }}
+            style={{ backgroundImage: "url('/login-bg.jpg')" }}
         >
             {/* Subtle Overlay to ensure readability and enhance glassmorphism */}
-            <div className="absolute inset-0 z-0 bg-white/10 backdrop-blur-[2px]" />
+            <div className="absolute inset-0 z-0 bg-white/10 backdrop-blur-[4px]" />
 
             <div className="w-full max-w-md z-10 relative mb-8">
                 {/* Branding Logo (Floating) */}
