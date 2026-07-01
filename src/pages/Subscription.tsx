@@ -42,8 +42,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from 'sonner';
-import { DateRangePicker } from 'rsuite';
-import 'rsuite/DateRangePicker/styles/index.css';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 
 const PAGE_LENGTH = 20;
 
@@ -577,9 +576,6 @@ const Subscription: React.FC = () => {
                             value={dateRange}
                             onChange={setDateRange}
                             placeholder="Payment Date Range"
-                            className="w-full bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl custom-date-picker h-10"
-                            appearance="default"
-                            block
                         />
                     </div>
 

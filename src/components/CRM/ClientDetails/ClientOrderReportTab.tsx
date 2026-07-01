@@ -5,10 +5,9 @@ import {
   ChevronDown, Landmark, Hexagon, Monitor, Leaf, Zap,
   Building2, Globe, PackageOpen, AlertCircle, FileText
 } from "lucide-react";
-import { DateRangePicker } from 'rsuite';
-import 'rsuite/DateRangePicker/styles/index.css';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { cn } from "@/lib/utils";
-import { format, subDays, isAfter, addMonths, subMonths, isBefore, startOfDay, endOfDay } from 'date-fns';
+import { format, subDays, isAfter, addMonths } from 'date-fns';
 import {
   Pagination,
   PaginationContent,
@@ -196,15 +195,8 @@ const ClientOrderReportTab: React.FC<ClientOrderReportTabProps> = ({ clientCode,
               value={dateRange}
               onChange={handleDateChange}
               placeholder="Select Date Range"
-              className="w-full bg-white border-slate-200 focus:ring-purple-500 rounded-xl custom-date-picker h-10 shadow-sm"
-              appearance="default"
-              block
-              cleanable={false}
-              shouldDisableDate={date => 
-                isAfter(date, endOfDay(new Date())) || 
-                isBefore(date, subMonths(startOfDay(new Date()), 2))
-              }
-              ranges={[
+              className="w-full shadow-sm"
+              presets={[
                 { label: 'Today', value: [new Date(), new Date()] },
                 { label: 'Last 7 Days', value: [subDays(new Date(), 7), new Date()] },
                 { label: 'Last 30 Days', value: [subDays(new Date(), 30), new Date()] }

@@ -39,7 +39,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
-import { DateRangePicker } from 'rsuite';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { exportToExcel } from '@/utils/excelExport';
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from 'sonner';
@@ -1334,9 +1334,6 @@ const Leads: React.FC = () => {
                              value={dateRange}
                              onChange={setDateRange}
                              placeholder="Creation Date Range"
-                             className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-purple-500 rounded-xl custom-date-picker h-10"
-                             appearance="default"
-                             block
                         />
                     </div>
                     <div className="w-[180px]">

@@ -105,7 +105,8 @@ html {
 }
 
 /* RSuite Date Picker Overlap Fix */
-.rs-picker-menu, .rs-picker-popup {
+.rs-picker-menu,
+.rs-picker-popup {
   z-index: 1000 !important;
 }
 

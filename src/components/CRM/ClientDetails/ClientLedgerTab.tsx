@@ -7,8 +7,7 @@ import {
   ShieldX,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { DateRangePicker } from 'rsuite';
-import 'rsuite/DateRangePicker/styles/index.css';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { cn } from '@/lib/utils';
 
 interface ClientLedgerTabProps {
@@ -128,7 +127,6 @@ const ClientLedgerTab: React.FC<ClientLedgerTabProps> = ({ clientCode, refreshKe
                 onChange={(val) => val && setDateRange(val)}
                 placeholder="Select Date Range"
                 className="w-64"
-                cleanable={false}
               />
               <Button
                 variant="outline"

@@ -27,7 +27,6 @@ import Notification from './Notification';
 import { KYCTracker } from './KYCTracker';
 import { toast } from '@/hooks/use-toast';
 import { VirtualizedTree } from "@/components/ui/virtualized-tree";
-import { DateRangePicker } from 'rsuite';
 import { useNavigate } from "react-router-dom";
 import {
   Sheet,

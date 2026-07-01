@@ -36,8 +36,7 @@ import {
     Network,
     X,
 } from 'lucide-react';
-import { DateRangePicker } from 'rsuite';
-import 'rsuite/DateRangePicker/styles/index.css';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { toast } from '@/hooks/use-toast';
 import { exportToExcel } from '@/utils/excelExport';
 
@@ -537,8 +536,6 @@ const Revenue: React.FC = () => {
                     }}
                     placeholder="Date Range"
                     className="w-[230px] shrink-0 dark:bg-slate-950"
-                    cleanable={false}
-                    appearance="default"
                 />
 
                 <MultiSelectCombobox

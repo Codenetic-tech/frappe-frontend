@@ -58,8 +58,7 @@ import {
     Layers
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { DateRangePicker } from 'rsuite';
-import 'rsuite/DateRangePicker/styles/index.css';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 import KycTimeline from '@/components/KycTimeline';
 import { exportToExcel } from '@/utils/excelExport';
 import { useOrgTree } from '@/contexts/OrgTreeContext';
@@ -1089,9 +1088,6 @@ const Kyc: React.FC = () => {
                             value={dateRange}
                             onChange={setDateRange}
                             placeholder="Modified Date Range"
-                            className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-purple-500 rounded-xl custom-date-picker h-10"
-                            appearance="default"
-                            block
                         />
                     </div>
 

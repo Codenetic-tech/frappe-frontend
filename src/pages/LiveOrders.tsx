@@ -71,8 +71,7 @@ import {
     Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { DateRangePicker } from 'rsuite';
-import 'rsuite/DateRangePicker/styles/index.css';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { exportToExcel } from '@/utils/excelExport';
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from 'sonner';
@@ -1386,9 +1385,6 @@ const LiveOrders: React.FC = () => {
                             value={dateRange}
                             onChange={setDateRange}
                             placeholder="Order Date Range"
-                            className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-purple-500 rounded-xl custom-date-picker h-10"
-                            appearance="default"
-                            block
                         />
                     </div>
 
