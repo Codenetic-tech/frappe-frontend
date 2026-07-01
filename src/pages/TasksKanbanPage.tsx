@@ -97,25 +97,25 @@ const TasksKanbanPage: React.FC = () => {
         id: 'overdue',
         title: 'Overdue',
         tasks: overdueTasks,
-        color: 'bg-red-50/50 border-red-100'
+        color: 'bg-red-50/50 dark:bg-red-950/10 border-red-100 dark:border-red-900/20'
       },
       {
         id: 'today',
         title: 'Today',
         tasks: todayTasks,
-        color: 'bg-orange-50/50 border-orange-100'
+        color: 'bg-orange-50/50 dark:bg-orange-950/10 border-orange-100 dark:border-orange-900/20'
       },
       {
         id: 'tomorrow',
         title: 'Tomorrow',
         tasks: tomorrowTasks,
-        color: 'bg-blue-50/50 border-blue-100'
+        color: 'bg-blue-50/50 dark:bg-blue-950/10 border-blue-100 dark:border-blue-900/20'
       },
       {
         id: 'this-week',
         title: 'This Week',
         tasks: upcomingTasks,
-        color: 'bg-slate-50/50 border-slate-100'
+        color: 'bg-slate-50/50 dark:bg-slate-900/10 border-slate-100 dark:border-slate-800'
       }
     ];
   };
@@ -175,13 +175,13 @@ const TasksKanbanPage: React.FC = () => {
   if (error && tasks.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center p-4">
-        <div className="text-center max-w-md w-full bg-white p-8 rounded-3xl shadow-xl border border-red-50">
+        <div className="text-center max-w-md w-full bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-xl border border-red-50 dark:border-red-950/20">
           <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Unable to Load Tasks</h2>
-          <p className="text-slate-500 mb-6">{error}</p>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Unable to Load Tasks</h2>
+          <p className="text-slate-500 dark:text-slate-400 mb-6">{error}</p>
           <button
             onClick={refreshTasks}
-            className="w-full bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 active:scale-95"
+            className="w-full bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 dark:shadow-none active:scale-95"
           >
             Try Again
           </button>
@@ -191,17 +191,17 @@ const TasksKanbanPage: React.FC = () => {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-6 flex flex-col h-full bg-slate-50/30">
+    <div className="p-4 md:p-6 space-y-6 flex flex-col h-full bg-slate-50/30 dark:bg-slate-950/30">
         {/* Header Section */}
         <div className="space-y-4">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="size-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white shadow-lg shadow-blue-100">
+              <div className="size-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white shadow-lg shadow-blue-100 dark:shadow-none">
                 <CheckSquare size={24} />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">Task Manager</h1>
-                <p className="text-sm text-slate-500 font-medium">Manage and track your lead activities</p>
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Task Manager</h1>
+                <p className="text-sm text-slate-500 dark:text-slate-405 font-medium">Manage and track your lead activities</p>
               </div>
             </div>
 
@@ -213,15 +213,15 @@ const TasksKanbanPage: React.FC = () => {
                   placeholder="Search tasks or leads..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 h-10 bg-white border-slate-200 rounded-xl focus:ring-blue-500 transition-all w-full"
+                  className="pl-10 h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl focus:ring-blue-500 text-slate-900 dark:text-slate-100 transition-all w-full"
                 />
               </div>
 
               <Select value={filterPriority} onValueChange={setFilterPriority}>
-                <SelectTrigger className="w-[140px] h-10 bg-white border-slate-200 rounded-xl">
+                <SelectTrigger className="w-[140px] h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-slate-200">
                   <SelectValue placeholder="Priority" />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 shadow-xl">
                   <SelectItem value="all">All Priorities</SelectItem>
                   <SelectItem value="High">🔴 High</SelectItem>
                   <SelectItem value="Medium">🟡 Medium</SelectItem>
@@ -229,7 +229,7 @@ const TasksKanbanPage: React.FC = () => {
                 </SelectContent>
               </Select>
 
-              <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 h-10">
+              <div className="flex items-center gap-2 bg-white dark:bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 h-10 text-slate-800 dark:text-slate-200">
                 <Checkbox
                   id="showCompletedOverdue"
                   checked={showCompletedOverdue}
@@ -238,7 +238,7 @@ const TasksKanbanPage: React.FC = () => {
                 />
                 <label
                   htmlFor="showCompletedOverdue"
-                  className="text-xs font-bold text-slate-600 cursor-pointer select-none"
+                  className="text-xs font-bold text-slate-600 dark:text-slate-400 cursor-pointer select-none"
                 >
                   Show Done
                 </label>
@@ -248,15 +248,15 @@ const TasksKanbanPage: React.FC = () => {
                 variant="outline"
                 onClick={refreshTasks}
                 disabled={loading || refreshing || !employeeId}
-                className="h-10 w-10 p-0 bg-white border-slate-200 rounded-xl hover:bg-slate-50"
+                className="h-10 w-10 p-0 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-850"
               >
-                <RefreshCw className={cn("h-4 w-4 text-slate-500", (loading || refreshing) && 'animate-spin')} />
+                <RefreshCw className={cn("h-4 w-4 text-slate-500 dark:text-slate-400", (loading || refreshing) && 'animate-spin')} />
               </Button>
 
               <Button
                 onClick={() => setIsTaskModalOpen(true)}
                 disabled={!employeeId}
-                className="h-10 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl gap-2 shadow-lg shadow-blue-100 transition-all active:scale-95"
+                className="h-10 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl gap-2 shadow-lg shadow-blue-100 dark:shadow-none transition-all active:scale-95"
               >
                 <Plus size={18} />
                 New Task
@@ -267,18 +267,18 @@ const TasksKanbanPage: React.FC = () => {
           {/* Stats Bar */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {columns.map(column => (
-              <Card key={column.id} className="border-none shadow-sm bg-white rounded-2xl overflow-hidden hover:shadow-md transition-shadow">
+              <Card key={column.id} className="border-none shadow-sm bg-white dark:bg-slate-900 rounded-2xl overflow-hidden hover:shadow-md transition-shadow">
                 <CardContent className="p-4 flex items-center justify-between">
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{column.title}</span>
-                    <span className="text-xl font-bold text-slate-900">{loading ? '...' : column.tasks.length}</span>
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{column.title}</span>
+                    <span className="text-xl font-bold text-slate-900 dark:text-slate-100">{loading ? '...' : column.tasks.length}</span>
                   </div>
                   <div className={cn(
                     "size-10 rounded-xl flex items-center justify-center",
-                    column.id === 'overdue' ? "bg-red-50 text-red-600" :
-                    column.id === 'today' ? "bg-orange-50 text-orange-600" :
-                    column.id === 'tomorrow' ? "bg-blue-50 text-blue-600" :
-                    "bg-slate-50 text-slate-600"
+                    column.id === 'overdue' ? "bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400" :
+                    column.id === 'today' ? "bg-orange-50 dark:bg-orange-950/20 text-orange-600 dark:text-orange-450" :
+                    column.id === 'tomorrow' ? "bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400" :
+                    "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
                   )}>
                     <Layout size={20} />
                   </div>
@@ -293,7 +293,7 @@ const TasksKanbanPage: React.FC = () => {
           {loading ? (
             <div className="h-full flex flex-col items-center justify-center space-y-4">
               <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-200 border-b-blue-600 shadow-sm"></div>
-              <p className="text-slate-500 font-medium">Loading tasks...</p>
+              <p className="text-slate-500 dark:text-slate-400 font-medium">Loading tasks...</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 h-full pb-4">
@@ -314,11 +314,11 @@ const TasksKanbanPage: React.FC = () => {
         {/* Empty State */}
         {!loading && tasks.length > 0 && filteredColumns.every(column => column.tasks.length === 0) && (
           <div className="flex-1 flex flex-col items-center justify-center py-12">
-            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-              <CheckSquare className="h-10 w-10 text-slate-200" />
+            <div className="w-20 h-20 bg-slate-50 dark:bg-slate-900 rounded-full flex items-center justify-center mb-4">
+              <CheckSquare className="h-10 w-10 text-slate-200 dark:text-slate-750" />
             </div>
-            <h3 className="text-lg font-bold text-slate-900 mb-1">No tasks found</h3>
-            <p className="text-slate-500 text-sm mb-6">Change your filters or add a new task.</p>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-1">No tasks found</h3>
+            <p className="text-slate-500 dark:text-slate-405 text-sm mb-6">Change your filters or add a new task.</p>
             <Button variant="outline" onClick={() => {setSearchTerm(''); setFilterPriority('all');}} className="rounded-xl">
               Clear all filters
             </Button>

@@ -99,13 +99,13 @@ const TicketDetails: React.FC = () => {
     if (!ticket) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
-                <Card className="p-12 rounded-3xl border-slate-100 shadow-xl flex flex-col items-center max-w-md">
-                    <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6">
-                        <Ticket className="w-10 h-10 text-slate-300" />
+                <Card className="p-12 rounded-3xl border-slate-100 dark:border-slate-800 shadow-xl flex flex-col items-center max-w-md bg-white dark:bg-slate-900">
+                    <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6">
+                        <Ticket className="w-10 h-10 text-slate-305 dark:text-slate-500" />
                     </div>
-                    <h2 className="text-2xl font-bold text-slate-900 mb-2">Ticket Not Found</h2>
-                    <p className="text-slate-500 mb-8">The ticket you are looking for doesn't exist or you don't have access.</p>
-                    <Button onClick={() => navigate('/ticketing')} className="rounded-xl bg-purple-600 hover:bg-purple-700 h-12 px-8 font-bold">
+                    <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Ticket Not Found</h2>
+                    <p className="text-slate-505 dark:text-slate-400 mb-8">The ticket you are looking for doesn't exist or you don't have access.</p>
+                    <Button onClick={() => navigate('/ticketing')} className="rounded-xl bg-purple-600 hover:bg-purple-700 h-12 px-8 font-bold text-white">
                         Go back to Dashboard
                     </Button>
                 </Card>
@@ -114,28 +114,28 @@ const TicketDetails: React.FC = () => {
     }
 
     return (
-        <div className="flex flex-col h-full w-full animate-in fade-in duration-300 bg-stone-200/50 overflow-hidden">
+        <div className="flex flex-col h-full w-full animate-in fade-in duration-300 bg-stone-200/50 dark:bg-slate-950/20 overflow-hidden">
             <div className="space-y-6 flex-1 flex flex-col min-h-0">
                 {/* Header Section */}
                 <div className="flex flex-wrap items-center justify-between gap-4 shrink-0 px-2 leading-none">
-                    <div className="flex items-center gap-2 text-sm text-slate-500 font-medium">
-                        <button onClick={() => navigate('/ticketing')} className="hover:text-purple-600 transition-colors flex items-center gap-1.5 focus:outline-none">
+                    <div className="flex items-center gap-2 text-sm text-slate-505 dark:text-slate-400 font-medium">
+                        <button onClick={() => navigate('/ticketing')} className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors flex items-center gap-1.5 focus:outline-none">
                             <Home size={16} />
                             Ticketing
                         </button>
-                        <ChevronRight size={14} className="text-slate-300" />
-                        <span className="text-slate-900 font-bold">{ticket.ticket_id}</span>
+                        <ChevronRight size={14} className="text-slate-300 dark:text-slate-600" />
+                        <span className="text-slate-900 dark:text-slate-100 font-bold">{ticket.ticket_id}</span>
                         <div className={cn(
                             "ml-2 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border",
-                            ticket.status === 'Open' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                ticket.status === 'In Progress' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                                    ticket.status === 'Resolved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                        'bg-slate-50 text-slate-700 border-slate-200'
+                            ticket.status === 'Open' ? 'bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-900/30' :
+                                ticket.status === 'In Progress' ? 'bg-purple-50 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-900/30' :
+                                    ticket.status === 'Resolved' ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/30' :
+                                        'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                         )}>
                             {ticket.status}
                         </div>
                         {isSLABreached(ticket) && (
-                            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200 text-[10px] font-bold uppercase tracking-wider animate-pulse">
+                            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/30 text-[10px] font-bold uppercase tracking-wider animate-pulse">
                                 <AlertTriangle size={12} strokeWidth={3} />
                                 SLA Breached
                             </div>
@@ -149,11 +149,11 @@ const TicketDetails: React.FC = () => {
                                 size="sm"
                                 onClick={goToPrevious}
                                 disabled={currentIndex <= 0}
-                                className="rounded-xl h-9 w-9 p-0 border-slate-200 bg-white hover:bg-slate-50 shadow-sm"
+                                className="rounded-xl h-9 w-9 p-0 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-700 dark:text-slate-300 shadow-sm"
                             >
                                 <ChevronLeft size={18} />
                             </Button>
-                            <div className="px-3 py-1.5 bg-white rounded-xl text-[10px] font-bold text-slate-400 border border-slate-100 shadow-sm uppercase tracking-widest whitespace-nowrap">
+                            <div className="px-3 py-1.5 bg-white dark:bg-slate-900 rounded-xl text-[10px] font-bold text-slate-400 dark:text-slate-500 border border-slate-100 dark:border-slate-800 shadow-sm uppercase tracking-widest whitespace-nowrap">
                                 {currentIndex + 1} / {allTickets.length}
                             </div>
                             <Button
@@ -161,13 +161,13 @@ const TicketDetails: React.FC = () => {
                                 size="sm"
                                 onClick={goToNext}
                                 disabled={currentIndex >= allTickets.length - 1}
-                                className="rounded-xl h-9 w-9 p-0 border-slate-200 bg-white hover:bg-slate-50 shadow-sm"
+                                className="rounded-xl h-9 w-9 p-0 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-700 dark:text-slate-300 shadow-sm"
                             >
                                 <ChevronRight size={18} />
                             </Button>
                         </div>
 
-                        <Separator orientation="vertical" className="h-8 bg-slate-200 hidden md:block" />
+                        <Separator orientation="vertical" className="h-8 bg-slate-200 dark:bg-slate-800 hidden md:block" />
 
                         <div className="flex items-center gap-2">
                             {(() => {
@@ -188,12 +188,12 @@ const TicketDetails: React.FC = () => {
                                         size="sm"
                                         onClick={() => handleStatusUpdate(s.status)}
                                         className={cn(
-                                            "hidden md:flex rounded-xl text-[10px] font-bold uppercase tracking-wider gap-2 h-9 border-slate-200 hover:border-purple-200 hover:text-purple-600 transition-all px-4",
-                                            ticket.status === s.status && "bg-slate-900 border-slate-900 text-white hover:bg-slate-800 hover:text-white"
+                                            "hidden md:flex rounded-xl text-[10px] font-bold uppercase tracking-wider gap-2 h-9 border-slate-200 dark:border-slate-800 hover:border-purple-200 dark:hover:border-purple-900/40 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 hover:text-purple-600 dark:hover:text-purple-400 transition-all px-4",
+                                            ticket.status === s.status && "bg-slate-900 dark:bg-slate-100 border-slate-900 dark:border-slate-100 text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200 hover:text-white dark:hover:text-slate-900"
                                         )}
                                     >
                                         {!(ticket.status === s.status) && <div className={cn("w-2 h-2 rounded-full", s.color)} />}
-                                        {ticket.status === s.status && <CheckCircle size={14} className="text-emerald-400" />}
+                                        {ticket.status === s.status && <CheckCircle size={14} className="text-emerald-400 dark:text-emerald-600" />}
                                         {s.status}
                                     </Button>
                                 ));
@@ -203,7 +203,7 @@ const TicketDetails: React.FC = () => {
                 </div>
 
                 {/* Main Tabs Navigation */}
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden shrink-0">
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden shrink-0">
                     <div className="flex">
                         {tabs.map((tab) => {
                             const Icon = tab.icon;
@@ -212,8 +212,8 @@ const TicketDetails: React.FC = () => {
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
                                     className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-all whitespace-nowrap ${activeTab === tab.id
-                                        ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50'
-                                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                        ? 'text-purple-600 dark:text-purple-400 border-b-2 border-purple-600 dark:border-purple-450 bg-purple-50 dark:bg-purple-950/20'
+                                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-250 hover:bg-gray-50 dark:hover:bg-slate-850/40'
                                         }`}
                                 >
                                     <Icon size={18} />
@@ -225,7 +225,7 @@ const TicketDetails: React.FC = () => {
                 </div>
 
                 {/* Content Area */}
-                <Card className="border-slate-200 shadow-xl rounded-xl overflow-hidden flex-1 flex flex-col min-h-0 bg-white">
+                <Card className="border-slate-200 dark:border-slate-800 shadow-xl rounded-xl overflow-hidden flex-1 flex flex-col min-h-0 bg-white dark:bg-slate-900">
                     <ScrollArea className="flex-1">
                         <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 h-full">
                             {activeTab === 'info' && <TicketInfoTab ticket={ticket} />}
@@ -244,7 +244,7 @@ export default TicketDetails;
 
 const Separator = ({ orientation = 'horizontal', className }: { orientation?: 'horizontal' | 'vertical', className?: string }) => (
     <div className={cn(
-        "bg-slate-100 shrink-0",
+        "bg-slate-100 dark:bg-slate-800 shrink-0",
         orientation === 'horizontal' ? 'h-[1px] w-full' : 'w-[1px] h-full',
         className
     )} />

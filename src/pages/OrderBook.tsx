@@ -31,9 +31,9 @@ const orders: Order[] = [
 ];
 
 const statusConfig: Record<OrderStatus, { icon: React.ReactNode; label: string; className: string }> = {
-  executed: { icon: <CheckCircle2 className="h-3.5 w-3.5" />, label: "Executed", className: "bg-success text-success-foreground shadow-[0_0_8px_hsl(152,60%,38%,0.4)]" },
-  pending: { icon: <Clock className="h-3.5 w-3.5 animate-pulse" />, label: "Pending", className: "bg-warning text-warning-foreground shadow-[0_0_8px_hsl(38,92%,55%,0.4)]" },
-  cancelled: { icon: <XCircle className="h-3.5 w-3.5" />, label: "Cancelled", className: "bg-destructive text-destructive-foreground shadow-[0_0_8px_hsl(0,72%,55%,0.3)]" },
+  executed: { icon: <CheckCircle2 className="h-3.5 w-3.5" />, label: "Executed", className: "bg-success text-success-foreground shadow-[0_0_8px_hsl(152,60%,38%,0.4)] dark:shadow-none" },
+  pending: { icon: <Clock className="h-3.5 w-3.5 animate-pulse" />, label: "Pending", className: "bg-warning text-warning-foreground shadow-[0_0_8px_hsl(38,92%,55%,0.4)] dark:shadow-none" },
+  cancelled: { icon: <XCircle className="h-3.5 w-3.5" />, label: "Cancelled", className: "bg-destructive text-destructive-foreground shadow-[0_0_8px_hsl(0,72%,55%,0.3)] dark:shadow-none" },
 };
 
 const OrderBook = () => {
@@ -49,15 +49,15 @@ const OrderBook = () => {
               <button
                 key={f}
                 className={`text-xs font-medium px-3.5 py-1.5 rounded-full border transition-colors ${i === 0
-                  ? "bg-foreground text-card border-foreground"
-                  : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
+                  ? "bg-foreground text-card border-foreground dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100"
+                  : "border-border dark:border-slate-800 text-muted-foreground dark:text-slate-400 hover:text-foreground dark:hover:text-slate-200 hover:border-foreground/30 dark:hover:border-slate-700"
                   }`}
               >
                 {f}
               </button>
             ))}
           </div>
-          <button className="flex items-center gap-1.5 text-xs border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors">
+          <button className="flex items-center gap-1.5 text-xs border border-border dark:border-slate-800 rounded-lg px-3 py-1.5 hover:bg-muted dark:hover:bg-slate-850 transition-colors">
             <Filter className="h-3 w-3" /> Filter
             <ChevronDown className="h-3 w-3" />
           </button>
@@ -67,7 +67,7 @@ const OrderBook = () => {
         <div className="space-y-0">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-xs text-muted-foreground border-b border-border">
+              <tr className="text-xs text-muted-foreground dark:text-slate-400 border-b border-border dark:border-slate-800">
                 <th className="text-left py-2.5 font-medium">Stock</th>
                 <th className="text-left py-2.5 font-medium">Side</th>
                 <th className="text-left py-2.5 font-medium">Type</th>
@@ -82,10 +82,10 @@ const OrderBook = () => {
               {orders.map((order) => {
                 const sc = statusConfig[order.status];
                 return (
-                  <tr key={order.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
+                  <tr key={order.id} className="border-b border-border dark:border-slate-800 last:border-0 hover:bg-muted/30 dark:hover:bg-slate-850/40 transition-colors cursor-pointer">
                     <td className="py-3.5">
                       <div className="flex items-center gap-2.5">
-                        <div className="h-8 w-8 bg-black rounded-full flex items-center justify-center text-white text-sm">
+                        <div className="h-8 w-8 bg-black dark:bg-slate-800 rounded-full flex items-center justify-center text-white dark:text-slate-200 text-sm">
                           {order.icon === "₹" ? order.icon :
                             order.icon === "Landmark" ? <Landmark className="h-4 w-4" /> :
                               order.icon === "Monitor" ? <Monitor className="h-4 w-4" /> :
@@ -97,8 +97,8 @@ const OrderBook = () => {
                           }
                         </div>
                         <div>
-                          <p className="font-medium text-sm">{order.stock}</p>
-                          <p className="text-[11px] text-muted-foreground">{order.ticker}</p>
+                          <p className="font-medium text-sm text-foreground dark:text-slate-100">{order.stock}</p>
+                          <p className="text-[11px] text-muted-foreground dark:text-slate-400">{order.ticker}</p>
                         </div>
                       </div>
                     </td>
@@ -109,10 +109,10 @@ const OrderBook = () => {
                       </span>
                     </td>
                     <td className="py-3.5">
-                      <span className="text-xs bg-muted px-2 py-0.5 rounded font-medium">{order.type}</span>
+                      <span className="text-xs bg-muted dark:bg-slate-800 text-foreground dark:text-slate-300 px-2 py-0.5 rounded font-medium">{order.type}</span>
                     </td>
-                    <td className="py-3.5 text-sm">{order.qty}</td>
-                    <td className="py-3.5 text-sm font-medium">{order.price}</td>
+                    <td className="py-3.5 text-sm text-foreground dark:text-slate-200">{order.qty}</td>
+                    <td className="py-3.5 text-sm font-medium text-foreground dark:text-slate-100">{order.price}</td>
                     <td className="py-3.5">
                       <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-3 py-1 rounded-full ${sc.className}`}>
                         {sc.icon} {sc.label}
@@ -120,12 +120,12 @@ const OrderBook = () => {
                     </td>
                     <td className="py-3.5">
                       <div>
-                        <p className="text-xs text-muted-foreground">{order.time}</p>
-                        <p className="text-[10px] text-muted-foreground/60">{order.date}</p>
+                        <p className="text-xs text-muted-foreground dark:text-slate-400">{order.time}</p>
+                        <p className="text-[10px] text-muted-foreground/60 dark:text-slate-500">{order.date}</p>
                       </div>
                     </td>
                     <td className="py-3.5">
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      <ChevronRight className="h-4 w-4 text-muted-foreground dark:text-slate-500" />
                     </td>
                   </tr>
                 );

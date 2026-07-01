@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   ChevronRight, ArrowUpRight, ArrowDownRight, Clock,
@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import useSWR from 'swr';
 
 interface ClientOrdersTabProps {
   clientCode: string;
@@ -28,6 +29,7 @@ interface ApiOrder {
   norentm?: string;
   exch_tm?: string;
   avgprc?: string;
+  actid?: string;
 }
 
 interface ParsedOrder {
@@ -69,96 +71,116 @@ const enrichOrderIcon = (ticker: string) => {
   return "Hexagon";
 };
 
+const postFetcher = async (payload: { url: string; body: Record<string, any> }) => {
+  const response = await fetch(payload.url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload.body)
+  });
+  if (!response.ok) {
+    let errData;
+    try { errData = await response.json(); } catch (e) { errData = { message: response.statusText || 'Fetch failed' }; }
+    const error: any = new Error(errData.message || 'Fetch failed');
+    error.status = response.status;
+    error.info = errData;
+    throw error;
+  }
+  const data = await response.json();
+  return data.message;
+};
+
 const ClientOrdersTab: React.FC<ClientOrdersTabProps> = ({ clientCode, refreshKey }) => {
-  const { logout, user } = useAuth();
-  const [orders, setOrders] = useState<ParsedOrder[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
+  const { data: ordersData = [], error: listError, isLoading, mutate } = useSWR<any[]>(
+    clientCode ? {
+      url: `${API_BASE_URL}/api/method/frappe.client.get_list`,
+      body: {
+        doctype: 'Sky Order Feed',
+        fields: ['name', 'norenordno', 'tsym', 'trantype', 'prctyp', 'qty', 'prc', 'status', 'norentm', 'exch_tm', 'avgprc'],
+        filters: [['actid', '=', clientCode]],
+        order_by: 'norentm desc',
+        limit_page_length: 1000
+      }
+    } : null,
+    postFetcher,
+    { revalidateOnFocus: false, revalidateOnReconnect: true }
+  );
 
   useEffect(() => {
-    let isMounted = true;
+    if (refreshKey !== undefined) {
+      mutate();
+    }
+  }, [refreshKey, mutate]);
 
-    const fetchOrders = async () => {
-      if (!user) return;
-      setIsLoading(true);
-      setError(null);
-
+  const error = useMemo(() => {
+    if (!listError) return null;
+    const info = listError.info || {};
+    const exception = info.exception || "";
+    const exc_type = info.exc_type || "";
+    const _server_messages = info._server_messages || "";
+    const message = info.message || listError.message || "";
+    const is403 = listError.status === 403;
+    const isPermissionError = exception.includes('PermissionError') ||
+                              exc_type === 'PermissionError' ||
+                              _server_messages.includes('PermissionError') ||
+                              _server_messages.includes('Insufficient Permission') ||
+                              message.includes('PermissionError') ||
+                              message.includes('Insufficient Permission');
+    if (is403 || isPermissionError) {
       try {
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-        const response = await fetch(`${API_BASE_URL}/api/method/rms.clientdetails.orders`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ client_code: clientCode }),
-          mode: 'cors',
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch Orders');
-        }
-
-        const data = await response.json();
-
-        if (data.message?.status === 'Ok' && Array.isArray(data.message?.data)) {
-          const orderData = data.message.data[0]?.orders || [];
-
-          const parsed: ParsedOrder[] = orderData.map((o: ApiOrder) => {
-            const tickerFull = o.tsym || o.name || "UNKNOWN";
-            const tickerParts = tickerFull.match(/[A-Za-z]+/) || [];
-            const stock = tickerParts[0] || tickerFull.split('-')[0] || "STOCK";
-
-            const side: OrderSide = o.trantype?.toUpperCase() === 'B' ? "buy" : "sell";
-            const type = o.prctyp || "MARGIN";
-            const qty = parseInt(o.qty || "0", 10);
-            const priceVal = parseFloat(o.prc || "0");
-            const price = `₹${priceVal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-            const avgPriceVal = parseFloat(o.avgprc || "0");
-            const avgprc = `₹${avgPriceVal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-            const statusRaw = o.status || "UNKNOWN";
-            const statusType = statusMap(statusRaw);
-
-            const dateTime = o.norentm || o.exch_tm || "";
-            const [dateStr, timeStr] = dateTime.split(' ');
-
-            return {
-              id: o.norenordno || o.name,
-              stock,
-              ticker: tickerFull,
-              icon: enrichOrderIcon(tickerFull),
-              side,
-              type,
-              qty,
-              price,
-              avgprc,
-              status: statusType,
-              statusText: statusRaw,
-              time: timeStr || "-",
-              date: dateStr || "-"
-            };
-          });
-
-          if (isMounted) {
-            setOrders(parsed);
-            setIsLoading(false);
+        if (_server_messages) {
+          const parsedMsgs = JSON.parse(_server_messages);
+          if (Array.isArray(parsedMsgs) && parsedMsgs[0]?.message) {
+            return parsedMsgs[0].message.replace(/<[^>]*>/g, '');
           }
-        } else {
-          throw new Error('Invalid data format received');
         }
-      } catch (err: any) {
-        if (isMounted) {
-          setError(err.message || 'An error occurred while fetching orders.');
-          setIsLoading(false);
-        }
-      }
-    };
+      } catch (e) {}
+      return message || "Insufficient Permission for Sky Order Feed";
+    }
+    return message || 'An error occurred while fetching orders.';
+  }, [listError]);
 
-    fetchOrders();
+  const orders = useMemo(() => {
+    if (!ordersData || !Array.isArray(ordersData)) return [];
+    return ordersData.map((o: any) => {
+      const tickerFull = o.tsym || o.name || "UNKNOWN";
+      const tickerParts = tickerFull.match(/[A-Za-z]+/) || [];
+      const stock = tickerParts[0] || tickerFull.split('-')[0] || "STOCK";
 
-    return () => { isMounted = false; };
-  }, [clientCode, logout, user, refreshKey]);
+      const side: OrderSide = o.trantype?.toUpperCase() === 'B' ? "buy" : "sell";
+      const type = o.prctyp || "MARGIN";
+      const qty = parseInt(o.qty || "0", 10);
+      const priceVal = parseFloat(o.prc || "0");
+      const price = `₹${priceVal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+      const avgPriceVal = parseFloat(o.avgprc || "0");
+      const avgprc = `₹${avgPriceVal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+      const statusRaw = o.status || "UNKNOWN";
+      const statusType = statusMap(statusRaw);
+
+      const dateTime = o.norentm || o.exch_tm || "";
+      const [dateStr, timeStr] = dateTime.split(' ');
+
+      return {
+        id: o.norenordno || o.name,
+        stock,
+        ticker: tickerFull,
+        icon: enrichOrderIcon(tickerFull),
+        side,
+        type,
+        qty,
+        price,
+        avgprc,
+        status: statusType,
+        statusText: statusRaw,
+        time: timeStr || "-",
+        date: dateStr || "-"
+      };
+    });
+  }, [ordersData]);
 
   if (isLoading) {
     return (

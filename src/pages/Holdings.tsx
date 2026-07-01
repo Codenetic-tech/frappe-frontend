@@ -192,7 +192,7 @@ const Holdings = () => {
         <ScrollArea className="flex-1">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-xs text-muted-foreground border-b border-border sticky top-0 bg-white z-10">
+              <tr className="text-xs text-muted-foreground border-b border-border sticky top-0 bg-white dark:bg-card z-10">
                 <th className="text-left py-2.5 font-medium">Stock</th>
                 <th className="text-left py-2.5 font-medium">Qty</th>
                 <th className="text-left py-2.5 font-medium">Avg Price</th>

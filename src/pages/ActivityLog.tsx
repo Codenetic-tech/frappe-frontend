@@ -394,7 +394,7 @@ const ActivityLog: React.FC = () => {
                 <Button
                     variant="ghost"
                     onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-                    className="-ml-4 hover:bg-transparent text-slate-600 font-semibold"
+                    className="-ml-4 hover:bg-transparent text-slate-600 dark:text-slate-350 font-semibold"
                 >
                     Log ID
                     <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -404,12 +404,12 @@ const ActivityLog: React.FC = () => {
                 const name = row.getValue('name') as string;
                 return (
                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 font-bold text-xs uppercase shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-purple-50 dark:bg-purple-950/30 flex items-center justify-center text-purple-600 dark:text-purple-400 font-bold text-xs uppercase shrink-0">
                             {name?.[0] || 'L'}
                         </div>
                         <button
                             onClick={() => handleRowClick(name)}
-                            className="font-semibold text-slate-900 leading-tight hover:text-purple-600 transition-colors text-left focus:outline-none"
+                            className="font-semibold text-slate-900 dark:text-slate-100 leading-tight hover:text-purple-600 dark:hover:text-purple-400 transition-colors text-left focus:outline-none"
                         >
                             {name}
                         </button>
@@ -424,9 +424,9 @@ const ActivityLog: React.FC = () => {
                 const fullName = row.getValue('full_name') as string;
                 return (
                     <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1.5 text-slate-600">
-                            <User className="w-3.5 h-3.5 text-slate-400" />
-                            <span className="font-semibold text-slate-900 leading-tight">{fullName || 'System'}</span>
+                        <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+                            <User className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                            <span className="font-semibold text-slate-900 dark:text-slate-150 leading-tight">{fullName || 'System'}</span>
                         </div>
                     </div>
                 );
@@ -438,7 +438,7 @@ const ActivityLog: React.FC = () => {
             cell: ({ row }) => {
                 const subject = row.getValue('subject') as string;
                 return (
-                    <span className="text-xs text-slate-500 truncate block max-w-[320px] bg-slate-50 px-2 py-1 rounded" title={subject}>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 truncate block max-w-[320px] bg-slate-50 dark:bg-slate-800/40 px-2 py-1 rounded" title={subject}>
                         {subject || '-'}
                     </span>
                 );
@@ -448,7 +448,7 @@ const ActivityLog: React.FC = () => {
             accessorKey: 'operation',
             header: 'Operation',
             cell: ({ row }) => (
-                <Badge variant="outline" className="text-slate-700 bg-slate-50 border-slate-200 py-0.5 text-[10px] font-medium">
+                <Badge variant="outline" className="text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-850 border-slate-200 dark:border-slate-800 py-0.5 text-[10px] font-medium">
                     {row.getValue('operation') || 'N/A'}
                 </Badge>
             ),
@@ -462,11 +462,11 @@ const ActivityLog: React.FC = () => {
                     <div className="flex items-center gap-2">
                         <div className={cn(
                             "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5",
-                            status === 'Success' ? "bg-green-100 text-green-700" :
-                                status === 'Failed' || status === 'Error' ? "bg-red-100 text-red-700" :
-                                    status === 'Warning' ? "bg-amber-100 text-amber-700" :
-                                        status === 'Info' ? "bg-blue-100 text-blue-700" :
-                                            "bg-slate-100 text-slate-700"
+                            status === 'Success' ? "bg-green-100 dark:bg-green-950/20 text-green-700 dark:text-green-400" :
+                                status === 'Failed' || status === 'Error' ? "bg-red-100 dark:bg-red-950/20 text-red-700 dark:text-red-400" :
+                                    status === 'Warning' ? "bg-amber-100 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400" :
+                                        status === 'Info' ? "bg-blue-100 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400" :
+                                            "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-350"
                         )}>
                             <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse",
                                 status === 'Success' ? "bg-green-500" :
@@ -487,15 +487,15 @@ const ActivityLog: React.FC = () => {
                 <Button
                     variant="ghost"
                     onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-                    className="-ml-4 hover:bg-transparent text-slate-600 font-semibold"
+                    className="-ml-4 hover:bg-transparent text-slate-600 dark:text-slate-350 font-semibold"
                 >
                     Timestamp
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
             ),
             cell: ({ row }) => (
-                <div className="flex items-center gap-1.5 text-slate-600">
-                    <Clock className="w-3 h-3 text-slate-400" />
+                <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+                    <Clock className="w-3 h-3 text-slate-400 dark:text-slate-500" />
                     <span className="text-xs whitespace-nowrap">{formatDateTime(row.getValue('creation'))}</span>
                 </div>
             ),
@@ -524,21 +524,21 @@ const ActivityLog: React.FC = () => {
                     <Card 
                         onClick={() => setStatusFilter('ALL')}
                         className={cn(
-                            "p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-all cursor-pointer",
-                            statusFilter === 'ALL' && "ring-2 ring-purple-600 ring-offset-1 border-purple-200"
+                            "p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-all cursor-pointer",
+                            statusFilter === 'ALL' && "ring-2 ring-purple-600 dark:ring-purple-400 ring-offset-1 border-purple-200 dark:border-purple-800"
                         )}
                     >
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[12px] font-bold text-slate-700 uppercase tracking-wider">Total</span>
-                            <div className="p-2 bg-slate-50 rounded-lg">
-                                <FileText className="w-4 h-4 text-slate-600" />
+                            <span className="text-[12px] font-bold text-slate-700 dark:text-slate-355 uppercase tracking-wider">Total</span>
+                            <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                                <FileText className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                             </div>
                         </div>
                         <div className="space-y-0.5">
                             {isLoading ? (
                                 <Skeleton className="h-8 w-16 mb-1" />
                             ) : (
-                                <p className="text-2xl font-bold text-slate-900">{count}</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{count}</p>
                             )}
                         </div>
                     </Card>
@@ -554,29 +554,29 @@ const ActivityLog: React.FC = () => {
                             key={item.key} 
                             onClick={() => setStatusFilter(item.key)}
                             className={cn(
-                                "p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-all cursor-pointer",
-                                statusFilter === item.key && "ring-2 ring-purple-600 ring-offset-1 border-purple-200"
+                                "p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-all cursor-pointer",
+                                statusFilter === item.key && "ring-2 ring-purple-600 dark:ring-purple-400 ring-offset-1 border-purple-200 dark:border-purple-800"
                             )}
                         >
                             <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
                                     <span className={cn("text-[12px] font-bold uppercase tracking-wider", 
-                                        item.color === 'green' && "text-green-600",
-                                        item.color === 'red' && "text-red-600",
-                                        item.color === 'amber' && "text-amber-600",
-                                        item.color === 'blue' && "text-blue-600"
+                                        item.color === 'green' && "text-green-600 dark:text-green-405",
+                                        item.color === 'red' && "text-red-600 dark:text-red-405",
+                                        item.color === 'amber' && "text-amber-600 dark:text-amber-405",
+                                        item.color === 'blue' && "text-blue-600 dark:text-blue-405"
                                     )}>{item.label}</span>
                                     {count > 0 && (
-                                        <span className="text-[10px] font-bold text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
+                                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-450 bg-slate-50 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-100 dark:border-slate-800">
                                             {(((item.value || 0) / count) * 100).toFixed(1)}%
                                         </span>
                                     )}
                                 </div>
-                                <div className={cn("p-2 rounded-lg", 
-                                    item.color === 'green' && "bg-green-50",
-                                    item.color === 'red' && "bg-red-50",
-                                    item.color === 'amber' && "bg-amber-50",
-                                    item.color === 'blue' && "bg-blue-50"
+                                <div className={cn("p-2 rounded-lg shrink-0", 
+                                    item.color === 'green' && "bg-green-50 dark:bg-green-950/20",
+                                    item.color === 'red' && "bg-red-50 dark:bg-red-950/20",
+                                    item.color === 'amber' && "bg-amber-50 dark:bg-amber-950/20",
+                                    item.color === 'blue' && "bg-blue-50 dark:bg-blue-950/20"
                                 )}>
                                     {getStatusIcon(item.key)}
                                 </div>
@@ -585,7 +585,7 @@ const ActivityLog: React.FC = () => {
                                 {isLoading ? (
                                     <Skeleton className="h-8 w-12 mb-1" />
                                 ) : (
-                                    <p className="text-2xl font-bold text-slate-900">{item.value}</p>
+                                    <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{item.value}</p>
                                 )}
                             </div>
                         </Card>
@@ -593,12 +593,12 @@ const ActivityLog: React.FC = () => {
                 </div>
 
                 {/* Filters Row */}
-                <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50/50 border border-slate-200 rounded-2xl backdrop-blur-sm relative z-20">
+                <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl backdrop-blur-sm relative z-20">
                     {/* Advanced Filters */}
                     <Popover open={openFilterPanel} onOpenChange={handleFilterPanelOpen}>
                         <PopoverTrigger asChild>
-                            <Button variant="outline" className="rounded-xl h-10 border-slate-200 bg-white hover:bg-slate-50 gap-2">
-                                <Filter className="w-4 h-4 text-slate-500" />
+                            <Button variant="outline" className="rounded-xl h-10 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-250 gap-2">
+                                <Filter className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                                 {advancedFilters.length > 0 && (
                                     <span className="bg-purple-600 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center shrink-0">
                                         {advancedFilters.length}
@@ -606,10 +606,10 @@ const ActivityLog: React.FC = () => {
                                 )}
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent align="start" side="bottom" className="w-[480px] p-3 rounded-2xl border-slate-200 shadow-xl z-50">
+                        <PopoverContent align="start" side="bottom" className="w-[480px] p-3 rounded-2xl border-slate-200 dark:border-slate-800 shadow-xl z-50 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200">
                             <div className="flex items-center justify-between mb-2">
-                                <p className="text-xs font-bold text-slate-800">Advanced Filters</p>
-                                <span className="text-[9px] text-slate-400 font-medium">Use % as wildcard for "like"</span>
+                                <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Advanced Filters</p>
+                                <span className="text-[9px] text-slate-400 dark:text-slate-500 font-medium">Use % as wildcard for "like"</span>
                             </div>
 
                             <div className="space-y-1.5 max-h-[300px] overflow-y-auto no-scrollbar">
@@ -624,7 +624,7 @@ const ActivityLog: React.FC = () => {
                                                 <Button
                                                     variant="outline"
                                                     role="combobox"
-                                                    className="w-[150px] justify-between h-8 text-xs font-normal border-slate-200 shrink-0"
+                                                    className="w-[150px] justify-between h-8 text-xs font-normal border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-250 shrink-0"
                                                 >
                                                     <span className="truncate">
                                                         {filter.field
@@ -634,11 +634,11 @@ const ActivityLog: React.FC = () => {
                                                     <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
                                                 </Button>
                                             </PopoverTrigger>
-                                            <PopoverContent className="w-[170px] p-0 rounded-xl border-slate-200 shadow-xl z-[60]" side="bottom" align="start">
-                                                <Command>
-                                                    <CommandInput placeholder="Search field..." className="h-8 text-xs" />
+                                            <PopoverContent className="w-[170px] p-0 rounded-xl border-slate-200 dark:border-slate-800 shadow-xl z-[60] bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100" side="bottom" align="start">
+                                                <Command className="bg-white dark:bg-slate-900">
+                                                    <CommandInput placeholder="Search field..." className="h-8 text-xs text-foreground bg-transparent" />
                                                     <CommandList>
-                                                        <CommandEmpty className="py-2 text-center text-xs text-slate-500">No field found.</CommandEmpty>
+                                                        <CommandEmpty className="py-2 text-center text-xs text-slate-500 dark:text-slate-400">No field found.</CommandEmpty>
                                                         <CommandGroup>
                                                             {ACTIVITY_LOG_FILTER_FIELDS.map((field) => (
                                                                 <CommandItem
@@ -650,7 +650,7 @@ const ActivityLog: React.FC = () => {
                                                                         updateDraftFilter(filter.id, { field: field.value, operator: defaultOp, value: defaultVal });
                                                                         setFieldComboOpen(prev => ({ ...prev, [filter.id]: false }));
                                                                     }}
-                                                                    className="text-xs"
+                                                                    className="text-xs focus:bg-slate-100 dark:focus:bg-slate-800 cursor-pointer"
                                                                 >
                                                                     <Check className={cn('mr-2 h-3 w-3', filter.field === field.value ? 'opacity-100' : 'opacity-0')} />
                                                                     {field.label}
@@ -671,10 +671,10 @@ const ActivityLog: React.FC = () => {
                                                     updateDraftFilter(filter.id, { operator: val, value: newVal });
                                                 }}
                                             >
-                                                <SelectTrigger className="h-8 text-xs w-[95px] border-slate-200 shrink-0">
+                                                <SelectTrigger className="h-8 text-xs w-[95px] border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 shrink-0">
                                                     <SelectValue placeholder="Operator" />
                                                 </SelectTrigger>
-                                                <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                                                <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 shadow-xl">
                                                     {getOperatorsForType(getFieldType(filter.field)).map((op: string) => (
                                                         <SelectItem key={op} value={op} className="text-xs">
                                                             {OPERATOR_LABELS[op] ?? op}
@@ -692,11 +692,11 @@ const ActivityLog: React.FC = () => {
                                                         <Button
                                                             variant="outline"
                                                             className={cn(
-                                                                'flex-1 h-8 text-xs font-normal border-slate-200 justify-start gap-1.5 min-w-0 truncate',
-                                                                !(Array.isArray(filter.value) && filter.value[0]) && 'text-slate-400'
+                                                                'flex-1 h-8 text-xs font-normal border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-250 justify-start gap-1.5 min-w-0 truncate',
+                                                                !(Array.isArray(filter.value) && filter.value[0]) && 'text-slate-400 dark:text-slate-500'
                                                             )}
                                                         >
-                                                            <CalendarIcon className="h-3 w-3 shrink-0 text-slate-400" />
+                                                            <CalendarIcon className="h-3 w-3 shrink-0 text-slate-400 dark:text-slate-500" />
                                                             <span className="truncate">
                                                                 {Array.isArray(filter.value) && filter.value[0]
                                                                     ? filter.value[1]
@@ -706,7 +706,7 @@ const ActivityLog: React.FC = () => {
                                                             </span>
                                                         </Button>
                                                     </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0 rounded-xl border-slate-200 shadow-xl z-[60]" align="start">
+                                                    <PopoverContent className="w-auto p-0 rounded-xl border-slate-200 dark:border-slate-800 shadow-xl z-[60]" align="start">
                                                         <Calendar
                                                             mode="range"
                                                             selected={{
@@ -734,10 +734,10 @@ const ActivityLog: React.FC = () => {
                                                     value={typeof filter.value === 'string' ? filter.value : ''}
                                                     onValueChange={(val) => updateDraftFilter(filter.id, { value: val })}
                                                 >
-                                                    <SelectTrigger className="flex-1 h-8 text-xs border-slate-200">
+                                                    <SelectTrigger className="flex-1 h-8 text-xs border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-850 dark:text-slate-250">
                                                         <SelectValue placeholder="Select period..." />
                                                     </SelectTrigger>
-                                                    <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                                                    <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-850 dark:text-slate-250 shadow-xl">
                                                         <SelectItem value="today" className="text-xs">Today</SelectItem>
                                                         <SelectItem value="yesterday" className="text-xs">Yesterday</SelectItem>
                                                         <SelectItem value="last week" className="text-xs">Last Week</SelectItem>
@@ -756,7 +756,7 @@ const ActivityLog: React.FC = () => {
                                                     placeholder="Value"
                                                     value={typeof filter.value === 'string' ? filter.value : ''}
                                                     onChange={(e) => updateDraftFilter(filter.id, { value: e.target.value })}
-                                                    className="flex-1 h-8 text-xs border-slate-200 rounded-lg"
+                                                    className="flex-1 h-8 text-xs border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-lg"
                                                 />
                                             )
                                         )}
@@ -765,7 +765,7 @@ const ActivityLog: React.FC = () => {
                                             type="button"
                                             variant="ghost"
                                             size="icon"
-                                            className="h-8 w-8 text-slate-400 hover:text-red-500 shrink-0"
+                                            className="h-8 w-8 text-slate-400 dark:text-slate-500 hover:text-red-500 shrink-0"
                                             onClick={() => removeDraftFilter(filter.id)}
                                         >
                                             <X className="h-4 w-4" />
@@ -774,13 +774,13 @@ const ActivityLog: React.FC = () => {
                                 ))}
                             </div>
 
-                            <div className="flex items-center justify-between pt-2 mt-2 border-t border-slate-100">
+                            <div className="flex items-center justify-between pt-2 mt-2 border-t border-slate-100 dark:border-slate-800">
                                 <Button
                                     type="button"
                                     variant="outline"
                                     size="sm"
                                     onClick={addDraftFilter}
-                                    className="h-8 text-xs gap-1 hover:bg-slate-50 border-slate-200"
+                                    className="h-8 text-xs gap-1 hover:bg-slate-50 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200"
                                 >
                                     <Plus className="w-3.5 h-3.5" /> Add Condition
                                 </Button>
@@ -790,7 +790,7 @@ const ActivityLog: React.FC = () => {
                                         variant="ghost"
                                         size="sm"
                                         onClick={clearAdvancedFilters}
-                                        className="h-8 text-xs text-slate-500 hover:text-slate-800"
+                                        className="h-8 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
                                     >
                                         Clear All
                                     </Button>
@@ -810,13 +810,13 @@ const ActivityLog: React.FC = () => {
                     {/* Status dropdown */}
                     <div className="w-[160px]">
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="bg-white border-slate-200 focus:ring-purple-500 rounded-xl h-10">
+                            <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 focus:ring-purple-500 rounded-xl h-10">
                                 <div className="flex items-center gap-2">
-                                    <Filter className="w-3.5 h-3.5 text-slate-400" />
+                                    <Filter className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                                     <SelectValue placeholder="Status" />
                                 </div>
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                            <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-xl">
                                 <SelectItem value="ALL">All Statuses</SelectItem>
                                 <SelectItem value="Success">Success</SelectItem>
                                 <SelectItem value="Failed">Failed</SelectItem>
@@ -829,7 +829,7 @@ const ActivityLog: React.FC = () => {
 
                     {/* Search Bar */}
                     <div className="relative flex-1 min-w-[200px]">
-                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                         <Input
                             placeholder="Search Log ID or Subject..."
                             value={searchQuery}
@@ -837,7 +837,7 @@ const ActivityLog: React.FC = () => {
                                 setSearchQuery(e.target.value);
                                 setCurrentPage(1);
                             }}
-                            className="pl-9 bg-white border-slate-200 focus:ring-purple-500 rounded-xl h-10"
+                            className="pl-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 focus:ring-purple-500 rounded-xl h-10"
                         />
                     </div>
 
@@ -847,7 +847,7 @@ const ActivityLog: React.FC = () => {
                         onClick={handleRefresh}
                         disabled={isRefreshing || isLoading}
                         variant="outline"
-                        className="rounded-xl px-4 font-semibold gap-2 h-10 border-slate-200 bg-white hover:bg-slate-50 transition-all"
+                        className="rounded-xl px-4 font-semibold gap-2 h-10 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
                     >
                         <RefreshCcw className={cn("w-4 h-4", (isRefreshing || isLoading) && "animate-spin")} />
                     </Button>
@@ -857,34 +857,34 @@ const ActivityLog: React.FC = () => {
                         <Button
                             variant="ghost"
                             onClick={handleResetFilters}
-                            className="text-slate-500 hover:text-slate-900 font-semibold px-3 py-2 rounded-xl transition-colors hover:bg-slate-50"
+                            className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 font-semibold px-3 py-2 rounded-xl transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
                         >
                             Reset
                         </Button>
                     )}
 
                     {/* Pagination Controls nested inside Filters Row */}
-                    <div className="flex items-center gap-2 ml-auto border-l pl-3 border-slate-200">
+                    <div className="flex items-center gap-2 ml-auto border-l pl-3 border-slate-200 dark:border-slate-800">
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                             disabled={currentPage === 1 || isLoading}
-                            className="h-9 w-9 p-0 rounded-xl border-slate-200 bg-white hover:bg-slate-50"
+                            className="h-9 w-9 p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-750 dark:text-slate-250 hover:bg-slate-50 dark:hover:bg-slate-800"
                         >
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
-                        <div className="flex items-center gap-1.5 px-3 h-9 bg-white border border-slate-200 rounded-xl">
-                            <span className="text-sm font-bold text-purple-600">{currentPage}</span>
+                        <div className="flex items-center gap-1.5 px-3 h-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-foreground">
+                            <span className="text-sm font-bold text-purple-600 dark:text-purple-400">{currentPage}</span>
                             <span className="text-xs text-slate-400 font-bold">/</span>
-                            <span className="text-xs text-slate-500 font-bold">{totalPages || 1}</span>
+                            <span className="text-xs text-slate-500 dark:text-slate-400 font-bold">{totalPages || 1}</span>
                         </div>
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                             disabled={currentPage === totalPages || totalPages === 0 || isLoading}
-                            className="h-9 w-9 p-0 rounded-xl border-slate-200 bg-white hover:bg-slate-50"
+                            className="h-9 w-9 p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-750 dark:text-slate-250 hover:bg-slate-50 dark:hover:bg-slate-800"
                         >
                             <ChevronRight className="h-4 w-4" />
                         </Button>
@@ -893,14 +893,14 @@ const ActivityLog: React.FC = () => {
             </div>
 
             {/* Data Table Section */}
-            <Card className="flex-1 min-h-0 flex flex-col border-none shadow-sm bg-white rounded-2xl border border-slate-100 relative group/table overflow-hidden">
+            <Card className="flex-1 min-h-0 flex flex-col border-none shadow-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 relative group/table overflow-hidden">
                 <ScrollArea className="flex-1 w-full h-full">
                     <table className="w-full caption-bottom text-sm relative min-w-[1000px]">
-                        <TableHeader className="sticky top-0 z-30 bg-slate-50/95 backdrop-blur-md">
+                        <TableHeader className="sticky top-0 z-30 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-md">
                             {table.getHeaderGroups().map((headerGroup) => (
-                                <TableRow key={headerGroup.id} className="bg-slate-50/95 backdrop-blur-md border-b border-slate-100 hover:bg-slate-50/95 transition-none">
+                                <TableRow key={headerGroup.id} className="bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/95 dark:hover:bg-slate-900/95 transition-none">
                                     {headerGroup.headers.map((header) => (
-                                        <TableHead key={header.id} className="font-semibold text-slate-600 h-11 whitespace-nowrap">
+                                        <TableHead key={header.id} className="font-semibold text-slate-600 dark:text-slate-400 h-11 whitespace-nowrap">
                                             {header.isPlaceholder
                                                 ? null
                                                 : flexRender(
@@ -917,12 +917,12 @@ const ActivityLog: React.FC = () => {
                                 <TableRow>
                                     <TableCell colSpan={columns.length} className="h-64 text-center text-slate-400">
                                         <div className="flex flex-col items-center justify-center space-y-3">
-                                            <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center text-red-500">
+                                            <div className="w-12 h-12 bg-red-50 dark:bg-red-950/20 rounded-full flex items-center justify-center text-red-500">
                                                 <AlertCircle className="w-6 h-6" />
                                             </div>
                                             <div>
-                                                <p className="text-sm font-bold text-slate-800">Permission Error</p>
-                                                <p className="text-xs text-red-600 mt-1 max-w-md mx-auto leading-relaxed">{permissionError}</p>
+                                                <p className="text-sm font-bold text-slate-800 dark:text-slate-205">Permission Error</p>
+                                                <p className="text-xs text-red-600 dark:text-red-400 mt-1 max-w-md mx-auto leading-relaxed">{permissionError}</p>
                                             </div>
                                         </div>
                                     </TableCell>
@@ -941,7 +941,7 @@ const ActivityLog: React.FC = () => {
                                 table.getRowModel().rows.map((row) => (
                                     <TableRow
                                         key={row.id}
-                                        className="border-0 hover:bg-slate-50/50 transition-colors"
+                                        className="border-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
                                     >
                                         {row.getVisibleCells().map((cell) => (
                                             <TableCell key={cell.id} className="py-3 whitespace-nowrap">
@@ -957,14 +957,14 @@ const ActivityLog: React.FC = () => {
                                 <TableRow>
                                     <TableCell colSpan={columns.length} className="h-64 text-center text-slate-400">
                                         <div className="flex flex-col items-center justify-center space-y-3">
-                                            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center">
-                                                <Search className="w-8 h-8 text-slate-200" />
+                                            <div className="w-16 h-16 bg-slate-50 dark:bg-slate-850 rounded-full flex items-center justify-center">
+                                                <Search className="w-8 h-8 text-slate-200 dark:text-slate-700" />
                                             </div>
                                             <div>
-                                                <p className="text-sm font-semibold text-slate-600">No activity logs found</p>
-                                                <p className="text-xs text-slate-400">Try adjusting your filters to find what you're looking for.</p>
+                                                <p className="text-sm font-semibold text-slate-600 dark:text-slate-400">No activity logs found</p>
+                                                <p className="text-xs text-slate-450 dark:text-slate-550">Try adjusting your filters to find what you're looking for.</p>
                                             </div>
-                                            <Button variant="outline" size="sm" onClick={handleResetFilters} className="rounded-xl border-slate-200">
+                                            <Button variant="outline" size="sm" onClick={handleResetFilters} className="rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200">
                                                 Clear Search Filters
                                             </Button>
                                         </div>

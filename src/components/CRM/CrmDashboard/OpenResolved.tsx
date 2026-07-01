@@ -1,4 +1,5 @@
 import { ChevronDown } from "lucide-react";
+import { useTickets } from "@/contexts/TicketContext";
 
 const openData = [165, 168, 170, 172, 175, 185, 182];
 const resolvedData = [15, 18, 16, 17, 18, 17, 18];
@@ -31,19 +32,23 @@ function Line({ data, color, max }: { data: number[]; color: string; max: number
 }
 
 export function OpenResolved() {
+  const { statusCount } = useTickets();
+  const openCount = statusCount?.Open || 0;
+  const resolvedCount = (statusCount?.Resolved || 0) + (statusCount?.Closed || 0);
+
   return (
     <div className="bg-card border border-border rounded-lg p-4 h-full flex flex-col min-h-0 overflow-hidden select-none transition-colors">
       {/* Header bar */}
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">Open vs. Resolved Vul.</span>
+        <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">Open vs. Resolved Tickets</span>
         
         {/* Dropdowns */}
         <div className="flex gap-1.5">
           <button className="flex items-center gap-1 bg-muted border border-border text-muted-foreground text-[9px] font-bold px-2 py-1 rounded cursor-pointer hover:bg-muted/80 transition-colors whitespace-nowrap">
-            High & Above <ChevronDown className="w-2.5 h-2.5 text-muted-foreground/60" />
+            All Depts <ChevronDown className="w-2.5 h-2.5 text-muted-foreground/60" />
           </button>
           <button className="flex items-center gap-1 bg-muted border border-border text-muted-foreground text-[9px] font-bold px-2 py-1 rounded cursor-pointer hover:bg-muted/80 transition-colors whitespace-nowrap">
-            Executed <ChevronDown className="w-2.5 h-2.5 text-muted-foreground/60" />
+            All Status <ChevronDown className="w-2.5 h-2.5 text-muted-foreground/60" />
           </button>
         </div>
       </div>
@@ -92,11 +97,11 @@ export function OpenResolved() {
       <div className="flex justify-center gap-4 text-[10px] mt-2 shrink-0">
         <span className="flex items-center gap-1.5 font-semibold text-muted-foreground">
           <span className="w-2.5 h-2.5 rounded-full bg-[#ef4444] border border-[#ef4444]/30" />
-          Open
+          Open ({openCount})
         </span>
         <span className="flex items-center gap-1.5 font-semibold text-muted-foreground">
           <span className="w-2.5 h-2.5 rounded-full bg-[#22c55e] border border-[#22c55e]/30" />
-          Resolved
+          Resolved ({resolvedCount})
         </span>
       </div>
     </div>

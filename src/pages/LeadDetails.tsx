@@ -6,8 +6,9 @@ import {
   Search, Filter, RefreshCw,
   ChevronLeft, Users,
 } from 'lucide-react';
-import { useLead, LeadItem } from '@/contexts/LeadContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFrappeGetDoc } from 'frappe-react-sdk';
+import { LeadItem } from './Leads';
 import LeadFormTab from '@/components/CRM/LeadDetails/LeadFormTab';
 import LeadCommentsTab from '@/components/CRM/LeadDetails/LeadCommentsTab';
 import { toast } from '@/hooks/use-toast';
@@ -27,12 +28,25 @@ interface Tab {
 
 const LeadDetails: React.FC = () => {
   const { user } = useAuth();
-  const { leadsData, isLoading: contextLoading, refreshLeadsData } = useLead();
   const { leadId } = useParams<{ leadId: string }>();
+
+  const {
+    data: leadData,
+    isLoading: isLeadLoading,
+    error: leadError,
+    mutate: refetchLead
+  } = useFrappeGetDoc<any>('CRM Lead', leadId || undefined);
+
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [lead, setLead] = useState<LeadItem | null>(null);
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'form');
+
+  useEffect(() => {
+    if (leadData) {
+      setLead(leadData);
+    }
+  }, [leadData]);
 
   const tabs: Tab[] = [
     { id: 'form', label: 'Lead Details', icon: FileText },
@@ -43,11 +57,11 @@ const LeadDetails: React.FC = () => {
     { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle }
   ];
 
-  // Map leadsData to a sorted list for navigation
+  // Retrieve leads list from sessionStorage for navigation
   const allLeads = useMemo(() => {
-    if (!leadsData) return [];
-    return [...leadsData].sort((a, b) => new Date(b.creation).getTime() - new Date(a.creation).getTime());
-  }, [leadsData]);
+    const stored = sessionStorage.getItem('leadsData');
+    return stored ? JSON.parse(stored) : [];
+  }, [leadId]);
 
   // Find current lead index for navigation
   const currentLeadIndex = useMemo(() => {
@@ -79,23 +93,23 @@ const LeadDetails: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
-      case 'won': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-      case 'new': return 'bg-purple-100 text-purple-700 border-purple-200';
-      case 'followup': return 'bg-amber-100 text-amber-700 border-amber-200';
-      case 'not interested': return 'bg-red-100 text-red-700 border-red-200';
-      default: return 'bg-slate-100 text-slate-700 border-slate-200';
+      case 'won': return 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900';
+      case 'new': return 'bg-purple-100 dark:bg-purple-950/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-900';
+      case 'followup': return 'bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900';
+      case 'not interested': return 'bg-red-100 dark:bg-red-950/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900';
+      default: return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800';
     }
   };
 
-  if (!lead && !contextLoading) {
+  if (!lead && !isLeadLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
-        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-          <Users className="w-8 h-8 text-slate-300" />
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8 text-foreground bg-card">
+        <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
+          <Users className="w-8 h-8 text-slate-300 dark:text-slate-600" />
         </div>
-        <h2 className="text-xl font-bold text-slate-900 mb-2">Lead Not Found</h2>
-        <p className="text-slate-500 mb-6">The requested lead could not be located in your list.</p>
-        <Button onClick={() => navigate('/leads')} className="rounded-xl bg-purple-600 hover:bg-purple-700">
+        <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">Lead Not Found</h2>
+        <p className="text-slate-500 dark:text-slate-450 mb-6">The requested lead could not be located in your list.</p>
+        <Button onClick={() => navigate('/leads')} className="rounded-xl bg-purple-600 hover:bg-purple-700 text-white">
           Back to Leads
         </Button>
       </div>
@@ -105,21 +119,21 @@ const LeadDetails: React.FC = () => {
   if (!lead) return null;
 
   return (
-    <div className="flex flex-col h-full w-full animate-in fade-in duration-300 bg-stone-200/50 overflow-hidden">
-      <div className="space-y-6 flex-1 flex flex-col min-h-0">
+    <div className="flex flex-col h-full w-full animate-in fade-in duration-300 bg-stone-200/50 dark:bg-slate-950/50 overflow-hidden">
+      <div className="space-y-6 flex-1 flex flex-col min-h-0 p-4">
         {/* Breadcrumbs & Navigation */}
         <div className="flex flex-wrap items-center justify-between gap-4 shrink-0">
-          <div className="flex items-center gap-2 text-sm text-slate-500 font-medium">
-            <button onClick={() => navigate('/leads')} className="hover:text-purple-600 transition-colors flex items-center gap-1.5 focus:outline-none">
+          <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 font-medium">
+            <button onClick={() => navigate('/leads')} className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors flex items-center gap-1.5 focus:outline-none">
               <Home size={16} />
               CRM
             </button>
-            <ChevronRight size={14} className="text-slate-300" />
-            <button onClick={() => navigate('/leads')} className="hover:text-purple-600 transition-colors focus:outline-none">
+            <ChevronRight size={14} className="text-slate-300 dark:text-slate-700" />
+            <button onClick={() => navigate('/leads')} className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors focus:outline-none">
               Leads
             </button>
-            <ChevronRight size={14} className="text-slate-300" />
-            <span className="text-slate-900 font-bold">{lead.name}</span>
+            <ChevronRight size={14} className="text-slate-300 dark:text-slate-700" />
+            <span className="text-slate-900 dark:text-slate-100 font-bold">{lead.name}</span>
             <div className={cn("ml-2 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border", getStatusColor(lead.status))}>
               {lead.status}
             </div>
@@ -131,11 +145,11 @@ const LeadDetails: React.FC = () => {
               size="sm"
               onClick={goToPreviousLead}
               disabled={currentLeadIndex <= 0}
-              className="rounded-xl h-9 w-9 p-0 border-slate-200 bg-white hover:bg-slate-50 shadow-sm"
+              className="rounded-xl h-9 w-9 p-0 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm"
             >
               <ChevronLeft size={18} />
             </Button>
-            <div className="px-3 py-1.5 bg-slate-100/50 rounded-xl text-xs font-bold text-slate-600 border border-slate-200">
+            <div className="px-3 py-1.5 bg-slate-100/50 dark:bg-slate-900/50 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800">
               {currentLeadIndex + 1} / {allLeads.length}
             </div>
             <Button
@@ -143,7 +157,7 @@ const LeadDetails: React.FC = () => {
               size="sm"
               onClick={goToNextLead}
               disabled={currentLeadIndex >= allLeads.length - 1}
-              className="rounded-xl h-9 w-9 p-0 border-slate-200 bg-white hover:bg-slate-50 shadow-sm"
+              className="rounded-xl h-9 w-9 p-0 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm"
             >
               <ChevronRight size={18} />
             </Button>
@@ -151,8 +165,8 @@ const LeadDetails: React.FC = () => {
         </div>
 
         {/* Tabs Layout */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden shrink-0">
-          <div className="flex">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden shrink-0">
+          <div className="flex flex-wrap">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
@@ -160,8 +174,8 @@ const LeadDetails: React.FC = () => {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-all whitespace-nowrap ${activeTab === tab.id
-                    ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50 dark:bg-purple-950/30'
+                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800/40'
                     }`}
                 >
                   <Icon size={18} />
@@ -173,7 +187,7 @@ const LeadDetails: React.FC = () => {
         </div>
 
         {/* Tab Content Area */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col flex-1 min-h-0">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col flex-1 min-h-0">
           <ScrollArea className="flex-1 w-full">
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
               {activeTab === 'form' && lead && (
@@ -182,7 +196,7 @@ const LeadDetails: React.FC = () => {
                   leadId={lead.name}
                   onLeadUpdate={(updated) => {
                     setLead(updated);
-                    refreshLeadsData();
+                    refetchLead();
                   }}
                 />
               )}
@@ -190,7 +204,7 @@ const LeadDetails: React.FC = () => {
               {activeTab === 'comment' && (
                 <LeadCommentsTab
                   lead={lead}
-                  onNoteAdded={() => refreshLeadsData()}
+                  onNoteAdded={() => refetchLead()}
                 />
               )}
               {activeTab === 'task' && <LeadTasksTab />}

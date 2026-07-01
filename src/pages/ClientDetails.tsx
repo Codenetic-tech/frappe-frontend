@@ -3,14 +3,14 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ChevronRight, Home, ChevronLeft, Users, User,
   FileText, Briefcase, Wallet, CreditCard, LayoutDashboard,
-  Calendar, Phone, MapPin, Building, Globe, CheckCircle2, RefreshCw
+  Calendar, Phone, MapPin, Building, Globe, CheckCircle2, RefreshCw,
+  Mail, ShieldAlert, Activity, UserCheck, Coins, Map, Heart, FileCheck2
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFrappeGetDoc } from 'frappe-react-sdk';
 import { ClientItem } from './Clients';
 import ClientHoldingsTab from '@/components/CRM/ClientDetails/ClientHoldingsTab';
 import ClientOrdersTab from '@/components/CRM/ClientDetails/ClientOrdersTab';
-import ClientTradeReportTab from '@/components/CRM/ClientDetails/ClientTradeReportTab';
 import ClientOrderReportTab from '@/components/CRM/ClientDetails/ClientOrderReportTab';
 import ClientLedgerTab from '@/components/CRM/ClientDetails/ClientLedgerTab';
 import { Button } from '@/components/ui/button';
@@ -41,8 +41,8 @@ const ClientDetails: React.FC = () => {
     mutate: refetchClient
   } = useFrappeGetDoc<any>('Gopocket Client', clientId || undefined);
 
-  // Map clientData to ClientItem
-  const client = clientData as ClientItem | null;
+  // Map clientData to any to allow newly added backend fields
+  const client = clientData as any;
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -90,17 +90,17 @@ const ClientDetails: React.FC = () => {
 
   const getStatusColor = (status: string | undefined) => {
     switch (status?.toUpperCase()) {
-      case 'ACTIVE': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-      case 'CLOSED': return 'bg-red-100 text-red-700 border-red-200';
-      case 'DORMANT': return 'bg-amber-100 text-amber-700 border-amber-200';
-      default: return 'bg-slate-100 text-slate-700 border-slate-200';
+      case 'ACTIVE': return 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/55';
+      case 'CLOSED': return 'bg-red-100 dark:bg-red-950/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900/55';
+      case 'DORMANT': return 'bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900/55';
+      default: return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-350 border-slate-200 dark:border-slate-700';
     }
   };
 
   if (isClientLoading) {
     return (
-      <div className="flex-grow flex flex-col items-center justify-center min-h-[60vh] text-slate-400 gap-2">
-        <RefreshCw className="h-8 w-8 animate-spin text-purple-600" />
+      <div className="flex-grow flex flex-col items-center justify-center min-h-[60vh] text-slate-400 dark:text-slate-500 gap-2">
+        <RefreshCw className="h-8 w-8 animate-spin text-purple-600 dark:text-purple-400" />
         <span className="text-sm">Fetching client details...</span>
       </div>
     );
@@ -109,11 +109,11 @@ const ClientDetails: React.FC = () => {
   if (clientError || (!client && !isClientLoading)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
-        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-          <Users className="w-8 h-8 text-slate-300" />
+        <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
+          <Users className="w-8 h-8 text-slate-300 dark:text-slate-600" />
         </div>
-        <h2 className="text-xl font-bold text-slate-900 mb-2">Client Not Found</h2>
-        <p className="text-slate-500 mb-6">
+        <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">Client Not Found</h2>
+        <p className="text-slate-505 dark:text-slate-400 mb-6">
           {clientError ? (clientError.message || 'An error occurred while loading client details.') : 'The requested client could not be located.'}
         </p>
         <Button onClick={() => navigate('/clients')} className="rounded-xl bg-purple-600 hover:bg-purple-700">
@@ -126,23 +126,52 @@ const ClientDetails: React.FC = () => {
   if (!client) return null;
 
   const InfoRow = ({ label, value, icon: Icon }: { label: string, value: string | null | undefined, icon?: any }) => (
-    <div className="flex items-center justify-between py-3 border-b border-slate-50 last:border-0 group">
+    <div className="flex items-center justify-between py-1.5 border-b border-slate-50 dark:border-slate-850 last:border-0 group">
       <div className="flex items-center gap-3">
-        {Icon && <Icon size={16} className="text-slate-400 group-hover:text-purple-500 transition-colors" />}
-        <span className="text-sm font-medium text-slate-500">{label}</span>
+        {Icon && <Icon size={15} className="text-slate-400 dark:text-slate-550 group-hover:text-purple-500 dark:group-hover:text-purple-400 transition-colors" />}
+        <span className="text-[13px] font-medium text-slate-500 dark:text-slate-400">{label}</span>
       </div>
-      <span className="text-sm font-bold text-slate-900">{value || '-'}</span>
+      <span className="text-[13px] font-bold text-slate-900 dark:text-slate-150">{value || '-'}</span>
     </div>
   );
+
+  const AddressRow = ({ label, value, icon: Icon }: { label: string, value: string | null | undefined, icon?: any }) => (
+    <div className="flex flex-col py-1.5 border-b border-slate-50 dark:border-slate-850 last:border-0 group gap-1">
+      <div className="flex items-center gap-3">
+        {Icon && <Icon size={15} className="text-slate-400 dark:text-slate-550 group-hover:text-purple-500 dark:group-hover:text-purple-400 transition-colors" />}
+        <span className="text-[13px] font-medium text-slate-500 dark:text-slate-400">{label}</span>
+      </div>
+      <span className="text-[13px] font-semibold text-slate-700 dark:text-slate-300 leading-normal pl-6">{value || '-'}</span>
+    </div>
+  );
+
+  const SegmentCard = ({ label, status }: { label: string, status: string | undefined }) => {
+    const s = status?.toUpperCase() || 'INACTIVE';
+    const isAct = s === 'ACTIVE';
+    const isDor = s === 'DORMANT';
+    return (
+      <div className="flex flex-col items-center justify-center gap-1.5 p-3.5 bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl border border-slate-100/70 dark:border-slate-800/80 text-center hover:bg-slate-50 dark:hover:bg-slate-850/50 transition-colors">
+        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{label}</span>
+        <Badge className={cn(
+          "text-[10px] font-extrabold px-2.5 py-0.5 h-5 border-none rounded-full",
+          isAct ? "bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50" :
+          isDor ? "bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/50" :
+          "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+        )}>
+          {status || 'INACTIVE'}
+        </Badge>
+      </div>
+    );
+  };
 
   const ExchangeBadge = ({ label, status }: { label: string, status: string | undefined }) => {
     const isActive = status?.toUpperCase() === 'ACTIVE';
     return (
-      <div className="flex flex-col items-center gap-1 p-3 bg-slate-50 rounded-xl border border-slate-100 min-w-[80px]">
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{label}</span>
+      <div className="flex flex-col items-center gap-1 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 min-w-[80px]">
+        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{label}</span>
         <Badge className={cn(
           "text-[10px] font-bold px-2 py-0 h-5 border-none",
-          isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-500"
+          isActive ? "bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400" : "bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-450"
         )}>
           {status || 'N/A'}
         </Badge>
@@ -151,21 +180,21 @@ const ClientDetails: React.FC = () => {
   };
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-stone-200/50">
-      <div className="space-y-6 flex-1 flex flex-col min-h-0">
+    <div className="h-full flex flex-col overflow-hidden bg-stone-200/50 dark:bg-slate-950/50">
+      <div className="space-y-6 flex-1 flex flex-col min-h-0 p-4">
         {/* Breadcrumbs & Navigation */}
         <div className="flex flex-wrap items-center justify-between gap-4 shrink-0 px-1">
-          <div className="flex items-center gap-2 text-sm text-slate-500 font-medium font-sans">
-            <button onClick={() => navigate('/clients')} className="hover:text-purple-600 transition-colors flex items-center gap-1.5 focus:outline-none">
+          <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 font-medium font-sans">
+            <button onClick={() => navigate('/clients')} className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors flex items-center gap-1.5 focus:outline-none bg-transparent">
               <Home size={16} />
               Backoffice
             </button>
-            <ChevronRight size={14} className="text-slate-300" />
-            <button onClick={() => navigate('/clients')} className="hover:text-purple-600 transition-colors focus:outline-none">
+            <ChevronRight size={14} className="text-slate-300 dark:text-slate-700" />
+            <button onClick={() => navigate('/clients')} className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors focus:outline-none bg-transparent">
               Clients
             </button>
-            <ChevronRight size={14} className="text-slate-300" />
-            <span className="text-slate-900 font-bold">{client.client_code}</span>
+            <ChevronRight size={14} className="text-slate-300 dark:text-slate-700" />
+            <span className="text-slate-900 dark:text-slate-100 font-bold">{client.client_code}</span>
             <div className={cn("ml-2 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border", getStatusColor(client.activation_status))}>
               {client.activation_status}
             </div>
@@ -177,11 +206,11 @@ const ClientDetails: React.FC = () => {
               size="sm"
               onClick={goToPreviousClient}
               disabled={currentClientIndex <= 0}
-              className="rounded-xl h-9 w-9 p-0 border-slate-200 bg-white hover:bg-slate-50 shadow-sm"
+              className="rounded-xl h-9 w-9 p-0 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 shadow-sm"
             >
               <ChevronLeft size={18} />
             </Button>
-            <div className="px-3 py-1.5 bg-slate-100/50 rounded-xl text-xs font-bold text-slate-600 border border-slate-200">
+            <div className="px-3 py-1.5 bg-slate-100/50 dark:bg-slate-900/50 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-350 border border-slate-200 dark:border-slate-800">
               {currentClientIndex + 1} / {allClients.length}
             </div>
             <Button
@@ -189,47 +218,15 @@ const ClientDetails: React.FC = () => {
               size="sm"
               onClick={goToNextClient}
               disabled={currentClientIndex >= allClients.length - 1}
-              className="rounded-xl h-9 w-9 p-0 border-slate-200 bg-white hover:bg-slate-50 shadow-sm"
+              className="rounded-xl h-9 w-9 p-0 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 shadow-sm"
             >
               <ChevronRight size={18} />
             </Button>
           </div>
         </div>
 
-        {/* Header Summary Card */}
-        {/* <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 shrink-0 bg-gradient-to-br from-white to-slate-50/50">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex items-start gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-purple-100 flex items-center justify-center text-purple-600 shrink-0 shadow-inner">
-                <User size={32} />
-              </div>
-              <div className="space-y-1">
-                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{client.client_name}</h1>
-                <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
-                  <div className="flex items-center gap-1.5 font-medium">
-                    <Building size={14} className="text-slate-400" />
-                    {client.branch}
-                  </div>
-                  <span className="text-slate-200">•</span>
-                  <div className="flex items-center gap-1.5 font-medium">
-                    <Phone size={14} className="text-slate-400" />
-                    {client.mobile_number}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <ExchangeBadge label="NSE" status={client.nse} />
-              <ExchangeBadge label="BSE" status={client.bse} />
-              <ExchangeBadge label="MCX" status={client.mcx} />
-              <ExchangeBadge label="NFO" status={client.nfo} />
-            </div>
-          </div>
-        </div> */}
-
         {/* Tabs Navigation */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden shrink-0 flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden shrink-0 flex items-center justify-between">
           <div className="flex overflow-x-auto no-scrollbar flex-1">
             {tabs.map((tab) => {
               const Icon = tab.icon;
@@ -240,23 +237,23 @@ const ClientDetails: React.FC = () => {
                   className={cn(
                     "flex items-center gap-2 px-6 py-4 text-sm font-bold transition-all whitespace-nowrap relative min-w-[140px] justify-center",
                     activeTab === tab.id
-                      ? 'text-purple-600 bg-purple-50/50'
-                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'text-purple-600 dark:text-purple-400 bg-purple-50/50 dark:bg-purple-950/30'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40'
                   )}
                 >
                   <Icon size={18} />
                   {tab.label}
                   {activeTab === tab.id && (
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600" />
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600 dark:bg-purple-500" />
                   )}
                 </button>
               );
             })}
           </div>
-          <div className="flex items-center px-4 border-l border-slate-100">
+          <div className="flex items-center px-4 border-l border-slate-100 dark:border-slate-800">
             <button
               onClick={handleRefresh}
-              className="p-2 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
+              className="p-2 text-slate-450 dark:text-slate-500 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30 rounded-lg transition-all bg-transparent"
               title="Refresh current tab"
             >
               <RefreshCw size={18} className={cn("transition-transform duration-500", refreshKey && "hover:rotate-180")} />
@@ -265,43 +262,90 @@ const ClientDetails: React.FC = () => {
         </div>
 
         {/* Tab Content Area */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col flex-1 min-h-0 relative">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col flex-1 min-h-0 relative">
           <ScrollArea className="flex-1 w-full">
             <div className="p-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className={cn("max-w-4xl mx-auto space-y-8", activeTab !== 'info' && "hidden")}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-6">
+              <div className={cn("w-full space-y-4", activeTab !== 'info' && "hidden")}>
+                {/* Segment Status Cards */}
+                <div className="space-y-3">
+                  <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Segment Status</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
+                    <SegmentCard label="NSE" status={client.nse} />
+                    <SegmentCard label="BSE" status={client.bse} />
+                    <SegmentCard label="MCX" status={client.mcx} />
+                    <SegmentCard label="NFO" status={client.nfo} />
+                    <SegmentCard label="BFO" status={client.bfo} />
+                    <SegmentCard label="NCD" status={client.ncd} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Column 1 */}
+                  <div className="space-y-4">
+                    {/* Personal Information Card */}
                     <div>
-                      <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Account Details</h3>
-                      <div className="bg-slate-50/50 rounded-2xl p-6 border border-slate-100 space-y-1">
-                        <InfoRow label="Client Code" value={client.client_code} icon={User} />
-                        <InfoRow label="Account Opened" value={client.account_opened_date} icon={Calendar} />
-                        <InfoRow label="Status" value={client.activation_status} icon={CheckCircle2} />
+                      <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Personal Information</h3>
+                      <div className="bg-slate-50/50 dark:bg-slate-950/20 rounded-xl p-3 border border-slate-100/70 dark:border-slate-800 space-y-0.5">
+                        <InfoRow label="Client Name" value={client.client_name} icon={User} />
+                        <InfoRow label="Gender" value={client.gender === 'M' ? 'Male' : client.gender === 'F' ? 'Female' : client.gender || '-'} icon={Users} />
+                        <InfoRow label="Date of Birth" value={client.dob} icon={Calendar} />
+                        <InfoRow label="Marital Status" value={client.marital_status} icon={Heart} />
+                        <InfoRow label="PAN Number" value={client.pan_number} icon={CreditCard} />
+                        <InfoRow label="Occupation" value={client.occupation} icon={Briefcase} />
+                        <InfoRow label="Annual Income" value={client.annual_income} icon={Coins} />
                       </div>
                     </div>
 
+                    {/* Organization & Hierarchy Card */}
                     <div>
-                      <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Organization & Hierarchy</h3>
-                      <div className="bg-slate-50/50 rounded-2xl p-6 border border-slate-100 space-y-1">
+                      <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Organization & Hierarchy</h3>
+                      <div className="bg-slate-50/50 dark:bg-slate-955/20 rounded-xl p-3 border border-slate-100/70 dark:border-slate-800 space-y-0.5">
                         <InfoRow label="Branch" value={client.branch} icon={Building} />
-                        <InfoRow label="Parent / Partner" value={client.parent1} icon={Globe} />
+                        <InfoRow label="Parent Code" value={client.parent1} icon={Globe} />
+                        <InfoRow label="Parent Type" value={client.parent_type} icon={Users} />
                       </div>
                     </div>
                   </div>
 
-                  <div className="space-y-6">
+                  {/* Column 2 */}
+                  <div className="space-y-4">
+                    {/* Account Details Card */}
                     <div>
-                      <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Contact Information</h3>
-                      <div className="bg-slate-50/50 rounded-2xl p-6 border border-slate-100 space-y-1">
-                        <InfoRow label="Mobile Number" value={client.mobile_number} icon={Phone} />
-                        <InfoRow label="Email Address" value="-" icon={FileText} />
+                      <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Account Details</h3>
+                      <div className="bg-slate-50/50 dark:bg-slate-955/20 rounded-xl p-3 border border-slate-100/70 dark:border-slate-800 space-y-0.5">
+                        <InfoRow label="Client Code" value={client.client_code} icon={User} />
+                        <InfoRow label="BO Code" value={client.bo_code} icon={FileText} />
+                        <InfoRow label="Account Opened" value={client.account_opened_date} icon={Calendar} />
+                        <InfoRow label="Customer Type" value={client.customer_type} icon={UserCheck} />
+                        <InfoRow label="Authorize Type" value={client.authorize_type} icon={FileCheck2} />
                       </div>
                     </div>
 
+                    {/* Trading & Compliance Card */}
                     <div>
-                      <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Trading Summary</h3>
-                      <div className="bg-slate-50/50 rounded-2xl p-6 border border-slate-100 space-y-1">
+                      <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Trading & Compliance</h3>
+                      <div className="bg-slate-50/50 dark:bg-slate-955/20 rounded-xl p-3 border border-slate-100/70 dark:border-slate-800 space-y-0.5">
+                        <InfoRow label="Status" value={client.activation_status} icon={CheckCircle2} />
+                        <InfoRow label="Trade Done" value={client.trade_done} icon={Activity} />
+                        <InfoRow label="Traded Days" value={client.traded_days !== undefined && client.traded_days !== null ? String(client.traded_days) : undefined} icon={Calendar} />
+                        <InfoRow label="First Trade Date" value={client.first_trade_day} icon={Calendar} />
                         <InfoRow label="Last Trade Date" value={client.last_traded_day} icon={Calendar} />
+                        <InfoRow label="SEBI Action" value={client.sebi_action !== undefined && client.sebi_action !== null ? String(client.sebi_action) : undefined} icon={ShieldAlert} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Column 3 */}
+                  <div className="space-y-4">
+                    {/* Contact Information Card */}
+                    <div>
+                      <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Contact Information</h3>
+                      <div className="bg-slate-50/50 dark:bg-slate-955/20 rounded-xl p-3 border border-slate-100/70 dark:border-slate-800 space-y-0.5">
+                        <InfoRow label="Mobile Number" value={client.mobile_number} icon={Phone} />
+                        <InfoRow label="Email Address" value={client.email_id} icon={Mail} />
+                        <InfoRow label="State" value={client.state} icon={MapPin} />
+                        <InfoRow label="PIN Code" value={client.pin} icon={MapPin} />
+                        <AddressRow label="Address" value={client.address} icon={Map} />
                       </div>
                     </div>
                   </div>
@@ -320,9 +364,6 @@ const ClientDetails: React.FC = () => {
                 <ClientLedgerTab clientCode={client.client_code} refreshKey={refreshKey} />
               </div>
 
-              <div className={cn("w-full", activeTab !== 'trade_report' && "hidden")}>
-                <ClientTradeReportTab clientCode={client.client_code} refreshKey={refreshKey} />
-              </div>
 
               <div className={cn("w-full", activeTab !== 'order_report' && "hidden")}>
                 <ClientOrderReportTab clientCode={client.client_code} refreshKey={refreshKey} />

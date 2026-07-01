@@ -291,10 +291,10 @@ const fmt = (n: number) =>
     n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const riskColors: Record<string, string> = {
-    Low: "text-emerald-600 bg-emerald-50",
-    Moderate: "text-amber-600 bg-amber-50",
-    High: "text-orange-600 bg-orange-50",
-    "Very High": "text-red-600 bg-red-50",
+    Low: "text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/20",
+    Moderate: "text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-950/20",
+    High: "text-orange-600 bg-orange-50 dark:text-orange-400 dark:bg-orange-950/20",
+    "Very High": "text-red-600 bg-red-50 dark:text-red-405 dark:bg-red-950/20",
 };
 
 const categoryColors: Record<string, string> = {
@@ -311,7 +311,7 @@ const RatingStars = ({ rating }: { rating: number }) => (
         {Array.from({ length: 5 }).map((_, i) => (
             <Star
                 key={i}
-                className={`h-3 w-3 ${i < rating ? "text-amber-400 fill-amber-400" : "text-slate-200"}`}
+                className={`h-3 w-3 ${i < rating ? "text-amber-400 fill-amber-400" : "text-slate-200 dark:text-slate-800"}`}
             />
         ))}
     </div>
@@ -322,7 +322,7 @@ const FundCard = ({ fund, accent }: { fund: MutualFund; accent?: string }) => {
     const [expanded, setExpanded] = useState(false);
 
     return (
-        <div className="bg-white border border-slate-100 rounded-xl p-4 hover:shadow-md transition-all duration-200 group">
+        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-4 hover:shadow-md transition-all duration-200 group">
             {/* Header row */}
             <div className="flex items-start justify-between mb-3">
                 <div className="flex-1 min-w-0">
@@ -330,12 +330,12 @@ const FundCard = ({ fund, accent }: { fund: MutualFund; accent?: string }) => {
                         <div
                             className={`h-2 w-2 rounded-full shrink-0 ${categoryColors[fund.category] || "bg-slate-400"}`}
                         />
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-slate-400">
                             {fund.category}
                         </span>
                     </div>
-                    <h4 className="text-sm font-bold text-foreground leading-tight truncate">{fund.name}</h4>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">{fund.amc} &middot; NAV ₹{fmt(fund.nav)}</p>
+                    <h4 className="text-sm font-bold text-foreground dark:text-slate-100 leading-tight truncate">{fund.name}</h4>
+                    <p className="text-[11px] text-muted-foreground dark:text-slate-400 mt-0.5">{fund.amc} &middot; NAV ₹{fmt(fund.nav)}</p>
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0 ml-3">
                     <RatingStars rating={fund.rating} />
@@ -346,35 +346,35 @@ const FundCard = ({ fund, accent }: { fund: MutualFund; accent?: string }) => {
             </div>
 
             {/* Returns row */}
-            <div className="grid grid-cols-4 gap-2 py-2.5 border-t border-slate-50">
+            <div className="grid grid-cols-4 gap-2 py-2.5 border-t border-slate-50 dark:border-slate-800/40">
                 <div>
-                    <p className="text-[10px] text-muted-foreground mb-0.5">1Y CAGR</p>
-                    <p className={`text-xs font-bold ${fund.cagr1Y >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                    <p className="text-[10px] text-muted-foreground dark:text-slate-400 mb-0.5">1Y CAGR</p>
+                    <p className={`text-xs font-bold ${fund.cagr1Y >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
                         {fund.cagr1Y >= 0 ? "+" : ""}{fund.cagr1Y}%
                     </p>
                 </div>
                 <div>
-                    <p className="text-[10px] text-muted-foreground mb-0.5">3Y CAGR</p>
-                    <p className={`text-xs font-bold ${fund.cagr3Y >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                    <p className="text-[10px] text-muted-foreground dark:text-slate-400 mb-0.5">3Y CAGR</p>
+                    <p className={`text-xs font-bold ${fund.cagr3Y >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
                         {fund.cagr3Y >= 0 ? "+" : ""}{fund.cagr3Y}%
                     </p>
                 </div>
                 <div>
-                    <p className="text-[10px] text-muted-foreground mb-0.5">5Y CAGR</p>
-                    <p className={`text-xs font-bold ${fund.cagr5Y >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                    <p className="text-[10px] text-muted-foreground dark:text-slate-400 mb-0.5">5Y CAGR</p>
+                    <p className={`text-xs font-bold ${fund.cagr5Y >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
                         {fund.cagr5Y >= 0 ? "+" : ""}{fund.cagr5Y}%
                     </p>
                 </div>
                 <div>
-                    <p className="text-[10px] text-muted-foreground mb-0.5">XIRR</p>
-                    <p className={`text-xs font-bold ${fund.xirr >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                    <p className="text-[10px] text-muted-foreground dark:text-slate-400 mb-0.5">XIRR</p>
+                    <p className={`text-xs font-bold ${fund.xirr >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
                         {fund.xirr >= 0 ? "+" : ""}{fund.xirr}%
                     </p>
                 </div>
             </div>
 
             {/* Meta row */}
-            <div className="flex items-center justify-between py-2 border-t border-slate-50 text-[11px] text-muted-foreground">
+            <div className="flex items-center justify-between py-2 border-t border-slate-50 dark:border-slate-800/40 text-[11px] text-muted-foreground dark:text-slate-400">
                 <span>AUM: {fund.aum}</span>
                 <span>Exp Ratio: {fund.expenseRatio}%</span>
                 <span>Min SIP: ₹{fund.minSIP.toLocaleString("en-IN")}</span>
@@ -383,7 +383,7 @@ const FundCard = ({ fund, accent }: { fund: MutualFund; accent?: string }) => {
             {/* Holdings toggle */}
             <button
                 onClick={() => setExpanded(!expanded)}
-                className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline mt-1"
+                className="flex items-center gap-1 text-[11px] font-medium text-primary dark:text-purple-400 hover:underline mt-1"
             >
                 <PieChart className="h-3 w-3" />
                 {expanded ? "Hide Holdings" : "View Top Holdings"}
@@ -392,18 +392,18 @@ const FundCard = ({ fund, accent }: { fund: MutualFund; accent?: string }) => {
 
             {/* Holdings panel */}
             {expanded && (
-                <div className="mt-2 bg-slate-50 rounded-lg p-3 space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                <div className="mt-2 bg-slate-50 dark:bg-slate-950/20 rounded-lg p-3 space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
                     {fund.holdings.map((h) => (
                         <div key={h.name} className="flex items-center justify-between">
-                            <span className="text-xs text-foreground font-medium">{h.name}</span>
+                            <span className="text-xs text-foreground dark:text-slate-200 font-medium">{h.name}</span>
                             <div className="flex items-center gap-2">
-                                <div className="w-20 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                <div className="w-20 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
                                     <div
                                         className={`h-full rounded-full ${categoryColors[fund.category] || "bg-primary"}`}
                                         style={{ width: `${Math.min(h.percent * 4, 100)}%` }}
                                     />
                                 </div>
-                                <span className="text-[11px] text-muted-foreground font-medium w-10 text-right">
+                                <span className="text-[11px] text-muted-foreground dark:text-slate-400 font-medium w-10 text-right">
                                     {h.percent}%
                                 </span>
                             </div>
@@ -414,7 +414,7 @@ const FundCard = ({ fund, accent }: { fund: MutualFund; accent?: string }) => {
 
             {/* Action buttons */}
             <div className="grid grid-cols-2 gap-2 mt-3">
-                <button className="py-1.5 text-xs font-semibold rounded-lg border border-primary text-primary hover:bg-primary/5 transition-colors">
+                <button className="py-1.5 text-xs font-semibold rounded-lg border border-primary text-primary hover:bg-primary/5 dark:border-purple-500 dark:text-purple-400 dark:hover:bg-purple-950/20 transition-colors">
                     Start SIP
                 </button>
                 <button className="py-1.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity">
@@ -440,8 +440,8 @@ const SectionHeader = ({
             {icon}
         </div>
         <div>
-            <h3 className="text-base font-bold text-foreground">{title}</h3>
-            <p className="text-xs text-muted-foreground">{subtitle}</p>
+            <h3 className="text-base font-bold text-foreground dark:text-slate-100">{title}</h3>
+            <p className="text-xs text-muted-foreground dark:text-slate-400">{subtitle}</p>
         </div>
     </div>
 );
@@ -464,31 +464,31 @@ const MutualFunds = () => {
                         <p className="text-2xl font-bold">₹12,50,000</p>
                         <p className="text-[11px] opacity-60 mt-1">Across 8 funds</p>
                     </div>
-                    <div className="bg-white border border-slate-100 rounded-xl p-4">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-4">
                         <div className="flex items-center gap-2 mb-2">
-                            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-[11px] font-medium text-muted-foreground">Current Value</span>
+                            <BarChart3 className="h-4 w-4 text-muted-foreground dark:text-slate-400" />
+                            <span className="text-[11px] font-medium text-muted-foreground dark:text-slate-400">Current Value</span>
                         </div>
-                        <p className="text-2xl font-bold text-foreground">₹16,84,250</p>
-                        <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-emerald-600 mt-1">
+                        <p className="text-2xl font-bold text-foreground dark:text-slate-100">₹16,84,250</p>
+                        <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-450 mt-1">
                             <ArrowUpRight className="h-3 w-3" /> +₹4,34,250
                         </span>
                     </div>
-                    <div className="bg-white border border-slate-100 rounded-xl p-4">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-4">
                         <div className="flex items-center gap-2 mb-2">
                             <TrendingUp className="h-4 w-4 text-emerald-500" />
-                            <span className="text-[11px] font-medium text-muted-foreground">Overall XIRR</span>
+                            <span className="text-[11px] font-medium text-muted-foreground dark:text-slate-400">Overall XIRR</span>
                         </div>
-                        <p className="text-2xl font-bold text-emerald-600">+18.6%</p>
-                        <p className="text-[11px] text-muted-foreground mt-1">Since inception</p>
+                        <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-450">+18.6%</p>
+                        <p className="text-[11px] text-muted-foreground dark:text-slate-400 mt-1">Since inception</p>
                     </div>
-                    <div className="bg-white border border-slate-100 rounded-xl p-4">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-4">
                         <div className="flex items-center gap-2 mb-2">
                             <Zap className="h-4 w-4 text-amber-500" />
-                            <span className="text-[11px] font-medium text-muted-foreground">Active SIPs</span>
+                            <span className="text-[11px] font-medium text-muted-foreground dark:text-slate-400">Active SIPs</span>
                         </div>
-                        <p className="text-2xl font-bold text-foreground">5</p>
-                        <p className="text-[11px] text-muted-foreground mt-1">₹25,000/month</p>
+                        <p className="text-2xl font-bold text-foreground dark:text-slate-100">5</p>
+                        <p className="text-[11px] text-muted-foreground dark:text-slate-400 mt-1">₹25,000/month</p>
                     </div>
                 </div>
 
@@ -499,8 +499,8 @@ const MutualFunds = () => {
                             key={cat}
                             onClick={() => setActiveCategory(cat)}
                             className={`shrink-0 text-xs font-medium px-3.5 py-1.5 rounded-full border transition-all ${activeCategory === cat
-                                ? "bg-foreground text-white border-foreground"
-                                : "border-slate-200 text-muted-foreground hover:text-foreground hover:border-slate-300"
+                                ? "bg-foreground text-white border-foreground dark:bg-slate-105 dark:text-slate-900 dark:border-slate-105"
+                                : "border-slate-200 text-muted-foreground hover:text-foreground hover:border-slate-300 dark:border-slate-800 dark:text-slate-400 dark:hover:text-slate-205 dark:hover:border-slate-700"
                                 }`}
                         >
                             {cat}

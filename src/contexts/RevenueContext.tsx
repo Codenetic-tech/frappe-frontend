@@ -160,15 +160,22 @@ export const RevenueProvider: React.FC<{ children: ReactNode }> = ({ children })
         : null;
 
     const fetcher = useCallback(async ([_, params, page, code]: [string, RevenueFetchParams, number, string]) => {
-        const res = await postRevenue({
-            from: params.from,
-            code: code,
-            to: params.to,
-            limit_start: (page - 1) * PAGE_SIZE,
-            limit_page_length: PAGE_SIZE,
-            client_codes: params.client_codes,
-            sub_codes: params.sub_codes,
-        });
+        let res;
+        try {
+            res = await postRevenue({
+                from: params.from,
+                to: params.to,
+                limit_start: (page - 1) * PAGE_SIZE,
+                limit_page_length: PAGE_SIZE,
+                client_codes: params.client_codes,
+                sub_codes: params.sub_codes,
+            });
+        } catch (err: any) {
+            console.error("Error fetching revenue:", err);
+            const errorMsg = err?.message || err?.statusText || 'Failed to fetch revenue data';
+            const reason = typeof errorMsg === 'object' ? (errorMsg.message || JSON.stringify(errorMsg)) : String(errorMsg);
+            throw new Error(reason);
+        }
 
         const msg = res?.message || res;
 
@@ -182,7 +189,7 @@ export const RevenueProvider: React.FC<{ children: ReactNode }> = ({ children })
                     if (parsed.reason) reason = parsed.reason;
                 } catch (_) {}
             } else if (msg?.message) {
-                reason = msg.message;
+                reason = typeof msg.message === 'object' ? (msg.message.message || JSON.stringify(msg.message)) : String(msg.message);
             }
             throw new Error(reason);
         }
@@ -224,7 +231,6 @@ export const RevenueProvider: React.FC<{ children: ReactNode }> = ({ children })
         while (page <= totalPgs && all.length < MAX_RECORDS) {
             const res = await postRevenue({
                 from: params.from,
-                code: rootCode,
                 to: params.to,
                 limit_start: (page - 1) * EXPORT_PAGE_SIZE,
                 limit_page_length: EXPORT_PAGE_SIZE,
@@ -244,7 +250,7 @@ export const RevenueProvider: React.FC<{ children: ReactNode }> = ({ children })
             page++;
         }
         return all;
-    }, [isAuthenticated, postRevenue, rootCode]);
+    }, [isAuthenticated, postRevenue]);
 
     const clearRevenueData = useCallback(() => {
         setAppliedParams(DEFAULT_REVENUE_PARAMS);

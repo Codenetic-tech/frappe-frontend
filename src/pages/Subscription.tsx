@@ -93,31 +93,31 @@ const getDaysRemaining = (endDate: string | null): number | null => {
 
 const DaysRemainingBadge: React.FC<{ endDate: string | null }> = ({ endDate }) => {
     const days = getDaysRemaining(endDate);
-    if (days === null) return <span className="text-slate-400 text-xs">-</span>;
+    if (days === null) return <span className="text-slate-400 dark:text-slate-500 text-xs">-</span>;
 
     if (days > 7) {
         return (
-            <Badge className="bg-green-100 text-green-700 border-none font-semibold text-[10px] whitespace-nowrap px-2 py-0.5 rounded-full">
+            <Badge className="bg-green-100 dark:bg-green-950/20 text-green-700 dark:text-green-400 border-none font-semibold text-[10px] whitespace-nowrap px-2 py-0.5 rounded-full">
                 {days} days remaining
             </Badge>
         );
     }
     if (days > 0) {
         return (
-            <Badge className="bg-amber-100 text-amber-700 border-none font-semibold text-[10px] whitespace-nowrap px-2 py-0.5 rounded-full">
+            <Badge className="bg-amber-100 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border-none font-semibold text-[10px] whitespace-nowrap px-2 py-0.5 rounded-full">
                 {days} {days === 1 ? 'day' : 'days'} remaining
             </Badge>
         );
     }
     if (days === 0) {
         return (
-            <Badge className="bg-amber-100 text-amber-700 border-none font-semibold text-[10px] whitespace-nowrap px-2 py-0.5 rounded-full">
+            <Badge className="bg-amber-100 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border-none font-semibold text-[10px] whitespace-nowrap px-2 py-0.5 rounded-full">
                 Expires today
             </Badge>
         );
     }
     return (
-        <Badge className="bg-red-100 text-red-700 border-none font-semibold text-[10px] whitespace-nowrap px-2 py-0.5 rounded-full">
+        <Badge className="bg-red-100 dark:bg-red-950/20 text-red-700 dark:text-red-400 border-none font-semibold text-[10px] whitespace-nowrap px-2 py-0.5 rounded-full">
             Expired {Math.abs(days)} {Math.abs(days) === 1 ? 'day' : 'days'} ago
         </Badge>
     );
@@ -125,13 +125,13 @@ const DaysRemainingBadge: React.FC<{ endDate: string | null }> = ({ endDate }) =
 
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
     const styles: Record<string, string> = {
-        approved: 'bg-green-700 text-white',
-        pending: 'bg-amber-100 text-amber-700',
-        expired: 'bg-red-100 text-red-700',
-        rejected: 'bg-slate-100 text-slate-500',
+        approved: 'bg-green-700 dark:bg-green-600 text-white',
+        pending: 'bg-amber-100 dark:bg-amber-950/20 text-amber-750 dark:text-amber-400',
+        expired: 'bg-red-100 dark:bg-red-950/20 text-red-705 dark:text-red-400',
+        rejected: 'bg-slate-100 dark:bg-slate-800 text-slate-505 dark:text-slate-400',
     };
     const key = status?.toLowerCase() || '';
-    const style = styles[key] || 'bg-slate-100 text-slate-600';
+    const style = styles[key] || 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400';
     return (
         <Badge className={cn('capitalize font-bold px-2.5 py-0.5 rounded-full border-none text-[10px]', style)}>
             {status || 'Unknown'}
@@ -508,76 +508,76 @@ const Subscription: React.FC = () => {
             <div className="shrink-0 space-y-4">
                 {/* Stats Cards — driven by API summary */}
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
+                    <Card className="p-4 border-border dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[12px] font-bold text-slate-700 uppercase tracking-wider">Total</span>
-                            <div className="p-2 bg-purple-50 rounded-lg">
-                                <CreditCard className="w-4 h-4 text-purple-600" />
+                            <span className="text-[12px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider">Total</span>
+                            <div className="p-2 bg-purple-50 dark:bg-purple-950/30 rounded-lg">
+                                <CreditCard className="w-4 h-4 text-purple-600 dark:text-purple-450" />
                             </div>
                         </div>
                         {isLoading ? <Skeleton className="h-8 w-16" /> : (
-                            <p className="text-2xl font-bold text-slate-900">{totalCount}</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{totalCount}</p>
                         )}
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
+                    <Card className="p-4 border-border dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[12px] font-bold text-emerald-600 uppercase tracking-wider">Approved</span>
-                            <div className="p-2 bg-emerald-50 rounded-lg">
-                                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                            <span className="text-[12px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Approved</span>
+                            <div className="p-2 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                             </div>
                         </div>
                         {isLoading ? <Skeleton className="h-8 w-16" /> : (
-                            <p className="text-2xl font-bold text-slate-900">{summary.Approved}</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{summary.Approved}</p>
                         )}
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
+                    <Card className="p-4 border-border dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[12px] font-bold text-amber-600 uppercase tracking-wider">Pending</span>
-                            <div className="p-2 bg-amber-50 rounded-lg">
-                                <Clock className="w-4 h-4 text-amber-600" />
+                            <span className="text-[12px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Pending</span>
+                            <div className="p-2 bg-amber-50 dark:bg-amber-950/30 rounded-lg">
+                                <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                             </div>
                         </div>
                         {isLoading ? <Skeleton className="h-8 w-16" /> : (
-                            <p className="text-2xl font-bold text-slate-900">{summary.Pending}</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{summary.Pending}</p>
                         )}
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
+                    <Card className="p-4 border-border dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[12px] font-bold text-red-600 uppercase tracking-wider">Expired</span>
-                            <div className="p-2 bg-red-50 rounded-lg">
-                                <XCircle className="w-4 h-4 text-red-600" />
+                            <span className="text-[12px] font-bold text-red-600 dark:text-red-400 uppercase tracking-wider">Expired</span>
+                            <div className="p-2 bg-red-50 dark:bg-red-950/30 rounded-lg">
+                                <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
                             </div>
                         </div>
                         {isLoading ? <Skeleton className="h-8 w-16" /> : (
-                            <p className="text-2xl font-bold text-slate-900">{summary.Expired}</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{summary.Expired}</p>
                         )}
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
+                    <Card className="p-4 border-border dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[12px] font-bold text-slate-500 uppercase tracking-wider">Rejected</span>
-                            <div className="p-2 bg-slate-100 rounded-lg">
-                                <Ban className="w-4 h-4 text-slate-500" />
+                            <span className="text-[12px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Rejected</span>
+                            <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                                <Ban className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                             </div>
                         </div>
                         {isLoading ? <Skeleton className="h-8 w-16" /> : (
-                            <p className="text-2xl font-bold text-slate-900">{summary.Rejected}</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{summary.Rejected}</p>
                         )}
                     </Card>
                 </div>
 
                 {/* Filters Row */}
-                <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50/50 border border-slate-200 rounded-2xl backdrop-blur-sm relative z-20">
+                <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl backdrop-blur-sm relative z-20">
                     {/* Payment Date Range */}
                     <div className="w-[230px]">
                         <DateRangePicker
                             value={dateRange}
                             onChange={setDateRange}
                             placeholder="Payment Date Range"
-                            className="w-full bg-white border-slate-200 rounded-xl custom-date-picker h-10"
+                            className="w-full bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl custom-date-picker h-10"
                             appearance="default"
                             block
                         />
@@ -586,13 +586,13 @@ const Subscription: React.FC = () => {
                     {/* Status */}
                     <div className="w-[155px]">
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="bg-white border-slate-200 focus:ring-purple-500 rounded-xl h-10">
+                            <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-purple-500 rounded-xl h-10 text-slate-800 dark:text-slate-200">
                                 <div className="flex items-center gap-2">
-                                    <Filter className="w-3.5 h-3.5 text-slate-400" />
+                                    <Filter className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                                     <SelectValue placeholder="Status" />
                                 </div>
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                            <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 shadow-xl">
                                 <SelectItem value="ALL">All Statuses</SelectItem>
                                 <SelectItem value="Approved">Approved</SelectItem>
                                 <SelectItem value="Pending">Pending</SelectItem>
@@ -605,13 +605,13 @@ const Subscription: React.FC = () => {
                     {/* Tool Name */}
                     <div className="w-[155px]">
                         <Select value={toolFilter} onValueChange={setToolFilter}>
-                            <SelectTrigger className="bg-white border-slate-200 focus:ring-purple-500 rounded-xl h-10">
+                            <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-purple-500 rounded-xl h-10 text-slate-800 dark:text-slate-200">
                                 <div className="flex items-center gap-2">
-                                    <Filter className="w-3.5 h-3.5 text-slate-400" />
+                                    <Filter className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                                     <SelectValue placeholder="Tool" />
                                 </div>
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                            <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 shadow-xl">
                                 <SelectItem value="ALL">All Tools</SelectItem>
                                 <SelectItem value="Option 10">Option 10</SelectItem>
                                 <SelectItem value="Option Bulls">Option Bulls</SelectItem>
@@ -621,23 +621,23 @@ const Subscription: React.FC = () => {
 
                     {/* Client Code */}
                     <div className="relative w-[170px]">
-                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                         <Input
                             placeholder="Client code..."
                             value={clientCodeSearch}
                             onChange={(e) => setClientCodeSearch(e.target.value)}
-                            className="pl-9 bg-white border-slate-200 focus:ring-purple-500 rounded-xl h-10"
+                            className="pl-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-purple-500 rounded-xl h-10 text-slate-900 dark:text-slate-100"
                         />
                     </div>
 
                     {/* Created By */}
                     <div className="relative w-[160px]">
-                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                         <Input
                             placeholder="Created by..."
                             value={createdBySearch}
                             onChange={(e) => setCreatedBySearch(e.target.value)}
-                            className="pl-9 bg-white border-slate-200 focus:ring-purple-500 rounded-xl h-10"
+                            className="pl-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-purple-500 rounded-xl h-10 text-slate-900 dark:text-slate-100"
                         />
                     </div>
 
@@ -645,14 +645,14 @@ const Subscription: React.FC = () => {
                         onClick={handleRefresh}
                         disabled={isRefreshing || isLoading}
                         variant="outline"
-                        className="rounded-xl px-4 font-semibold gap-2 h-10 border-slate-200 bg-white hover:bg-slate-50 transition-all"
+                        className="rounded-xl px-4 font-semibold gap-2 h-10 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-850 dark:text-slate-200 transition-all"
                     >
                         <RefreshCcw className={cn("w-4 h-4", (isRefreshing || isLoading) && "animate-spin")} />
                     </Button>
 
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="rounded-xl h-10 border-slate-200 bg-white hover:bg-slate-50 gap-2">
+                            <Button variant="outline" className="rounded-xl h-10 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-850 dark:text-slate-200 gap-2">
                                 <Columns3 className="w-4 h-4" />
                                 Columns
                                 <ChevronDown className="w-3.5 h-3.5 opacity-50" />
@@ -688,17 +688,17 @@ const Subscription: React.FC = () => {
                     </DropdownMenu>
 
                     {/* Pagination */}
-                    <div className="flex items-center gap-2 ml-auto border-l pl-3 border-slate-200">
+                    <div className="flex items-center gap-2 ml-auto border-l pl-3 border-slate-200 dark:border-slate-800">
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                             disabled={currentPage === 1 || isLoading}
-                            className="h-9 w-9 p-0 rounded-xl border-slate-200 bg-white hover:bg-slate-50"
+                            className="h-9 w-9 p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-800 dark:text-slate-200"
                         >
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
-                        <div className="flex items-center gap-1.5 px-3 h-9 bg-white border border-slate-200 rounded-xl">
+                        <div className="flex items-center gap-1.5 px-3 h-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-slate-200">
                             <span className="text-sm font-bold text-purple-600">{currentPage}</span>
                             <span className="text-xs text-slate-400 font-bold">/</span>
                             <span className="text-xs text-slate-500 font-bold">{totalPages || 1}</span>
@@ -708,7 +708,7 @@ const Subscription: React.FC = () => {
                             size="sm"
                             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                             disabled={currentPage >= totalPages || totalPages === 0 || isLoading}
-                            className="h-9 w-9 p-0 rounded-xl border-slate-200 bg-white hover:bg-slate-50"
+                            className="h-9 w-9 p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-800 dark:text-slate-200"
                         >
                             <ChevronRight className="h-4 w-4" />
                         </Button>
@@ -717,26 +717,26 @@ const Subscription: React.FC = () => {
             </div>
 
             {error && (
-                <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-xs font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-xl text-red-600 dark:text-red-400 text-xs font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
                     <AlertCircle className="w-3.5 h-3.5" />
                     {error}
                 </div>
             )}
 
             {/* Table */}
-            <Card className="flex-1 min-h-0 flex flex-col border-none shadow-sm overflow-hidden bg-white rounded-2xl border border-slate-100">
+            <Card className="flex-1 min-h-0 flex flex-col border-none shadow-sm overflow-hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-805">
                 <ScrollArea className="flex-1">
                     <table className="w-full text-sm">
-                        <thead className="sticky top-0 bg-slate-50/90 backdrop-blur-md z-10">
-                            <tr className="border-b border-slate-100">
-                                <th className="text-left py-4 px-4 font-semibold text-slate-600 cursor-pointer select-none group/col whitespace-nowrap" onClick={() => handleSort('client_code')}>
+                        <thead className="sticky top-0 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md z-10">
+                            <tr className="border-b border-slate-100 dark:border-slate-800">
+                                <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col whitespace-nowrap" onClick={() => handleSort('client_code')}>
                                     <div className="flex items-center gap-2">
                                         Client Code
                                         <SortIcon col="client_code" />
                                     </div>
                                 </th>
                                 {columnVisibility.client_name && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 cursor-pointer select-none group/col whitespace-nowrap" onClick={() => handleSort('client_name')}>
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col whitespace-nowrap" onClick={() => handleSort('client_name')}>
                                         <div className="flex items-center gap-2">
                                             Client Name
                                             <SortIcon col="client_name" />
@@ -744,7 +744,7 @@ const Subscription: React.FC = () => {
                                     </th>
                                 )}
                                 {columnVisibility.tool_name && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 cursor-pointer select-none group/col whitespace-nowrap" onClick={() => handleSort('tool_name')}>
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col whitespace-nowrap" onClick={() => handleSort('tool_name')}>
                                         <div className="flex items-center gap-2">
                                             Tool Name
                                             <SortIcon col="tool_name" />
@@ -752,41 +752,41 @@ const Subscription: React.FC = () => {
                                     </th>
                                 )}
                                 {columnVisibility.amount && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 whitespace-nowrap">Amount</th>
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 whitespace-nowrap">Amount</th>
                                 )}
                                 {columnVisibility.incentive_amount && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 whitespace-nowrap">Incentive</th>
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 whitespace-nowrap">Incentive</th>
                                 )}
                                 {columnVisibility.start_date && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 whitespace-nowrap">Start Date</th>
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 whitespace-nowrap">Start Date</th>
                                 )}
                                 {columnVisibility.end_date && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 whitespace-nowrap">End Date</th>
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 whitespace-nowrap">End Date</th>
                                 )}
                                 {columnVisibility.days_remaining && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 whitespace-nowrap">
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 whitespace-nowrap">
                                         <div className="flex items-center gap-1.5">
-                                            <CalendarClock className="w-3.5 h-3.5 text-slate-400" />
+                                            <CalendarClock className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                                             Remaining
                                         </div>
                                     </th>
                                 )}
-                                <th className="text-left py-4 px-4 font-semibold text-slate-600 whitespace-nowrap">Status</th>
+                                <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 whitespace-nowrap">Status</th>
                                 {columnVisibility.payment_reference_number && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 whitespace-nowrap">Payment Ref</th>
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 whitespace-nowrap">Payment Ref</th>
                                 )}
                                 {columnVisibility.payment_date && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 whitespace-nowrap">Payment Date</th>
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 whitespace-nowrap">Payment Date</th>
                                 )}
                                 {columnVisibility.created_by && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 whitespace-nowrap">Created By</th>
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 whitespace-nowrap">Created By</th>
                                 )}
                                 {columnVisibility.trading_view_id && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 whitespace-nowrap">TV ID</th>
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 whitespace-nowrap">TV ID</th>
                                 )}
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-50">
+                        <tbody className="divide-y divide-slate-50 dark:divide-slate-800/40">
                             {isLoading ? (
                                 Array.from({ length: 10 }).map((_, i) => (
                                     <tr key={i}>
@@ -797,33 +797,33 @@ const Subscription: React.FC = () => {
                                 ))
                             ) : sortedData.length > 0 ? (
                                 sortedData.map((row, i) => (
-                                    <tr key={row.name || i} className="hover:bg-slate-50/50 transition-colors group">
-                                        <td className="py-4 px-4 font-semibold text-slate-900 leading-tight whitespace-nowrap">
+                                    <tr key={row.name || i} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/40 transition-colors group">
+                                        <td className="py-4 px-4 font-semibold text-slate-900 dark:text-slate-100 leading-tight whitespace-nowrap">
                                             {row.client_code || '-'}
                                         </td>
                                         {columnVisibility.client_name && (
-                                            <td className="py-4 px-4 text-slate-600">{row.client_name || '-'}</td>
+                                            <td className="py-4 px-4 text-slate-600 dark:text-slate-400">{row.client_name || '-'}</td>
                                         )}
                                         {columnVisibility.tool_name && (
-                                            <td className="py-4 px-4 text-slate-700 font-medium">{row.tool_name || '-'}</td>
+                                            <td className="py-4 px-4 text-slate-700 dark:text-slate-200 font-medium">{row.tool_name || '-'}</td>
                                         )}
                                         {columnVisibility.amount && (
-                                            <td className="py-4 px-4 text-slate-700 font-mono text-xs font-semibold">
+                                            <td className="py-4 px-4 text-slate-700 dark:text-slate-200 font-mono text-xs font-semibold">
                                                 {row.amount != null ? `₹${row.amount.toLocaleString('en-IN')}` : '-'}
                                             </td>
                                         )}
                                         {columnVisibility.incentive_amount && (
-                                            <td className="py-4 px-4 text-slate-500 font-mono text-xs">
+                                            <td className="py-4 px-4 text-slate-500 dark:text-slate-400 font-mono text-xs">
                                                 {row.incentive_amount != null ? `₹${row.incentive_amount.toLocaleString('en-IN')}` : '-'}
                                             </td>
                                         )}
                                         {columnVisibility.start_date && (
-                                            <td className="py-4 px-4 text-slate-500 font-mono text-xs whitespace-nowrap">
+                                            <td className="py-4 px-4 text-slate-500 dark:text-slate-400 font-mono text-xs whitespace-nowrap">
                                                 {row.start_date || '-'}
                                             </td>
                                         )}
                                         {columnVisibility.end_date && (
-                                            <td className="py-4 px-4 text-slate-500 font-mono text-xs whitespace-nowrap">
+                                            <td className="py-4 px-4 text-slate-500 dark:text-slate-400 font-mono text-xs whitespace-nowrap">
                                                 {row.end_date || '-'}
                                             </td>
                                         )}
@@ -836,26 +836,26 @@ const Subscription: React.FC = () => {
                                             <StatusBadge status={row.status} />
                                         </td>
                                         {columnVisibility.payment_reference_number && (
-                                            <td className="py-4 px-4 text-slate-500 font-mono text-xs">
+                                            <td className="py-4 px-4 text-slate-500 dark:text-slate-400 font-mono text-xs">
                                                 {row.payment_reference_number || '-'}
                                             </td>
                                         )}
                                         {columnVisibility.payment_date && (
-                                            <td className="py-4 px-4 text-slate-500 font-mono text-xs whitespace-nowrap">
+                                            <td className="py-4 px-4 text-slate-500 dark:text-slate-400 font-mono text-xs whitespace-nowrap">
                                                 {row.payment_date ? row.payment_date.split(' ')[0] : '-'}
                                             </td>
                                         )}
                                         {columnVisibility.created_by && (
-                                            <td className="py-4 px-4 font-semibold text-slate-900 leading-tight whitespace-nowrap">{row.created_user || '-'}</td>
+                                            <td className="py-4 px-4 font-semibold text-slate-900 dark:text-slate-100 leading-tight whitespace-nowrap">{row.created_user || '-'}</td>
                                         )}
                                         {columnVisibility.trading_view_id && (
-                                            <td className="py-4 px-4 text-slate-500 text-xs">{row.trading_view_id || '-'}</td>
+                                            <td className="py-4 px-4 text-slate-500 dark:text-slate-400 text-xs">{row.trading_view_id || '-'}</td>
                                         )}
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={visibleColumnCount} className="h-48 text-center text-slate-400">
+                                    <td colSpan={visibleColumnCount} className="h-48 text-center text-slate-400 dark:text-slate-650">
                                         <div className="flex flex-col items-center justify-center">
                                             <CreditCard className="w-10 h-10 mb-2 opacity-10" />
                                             <p className="text-sm font-medium">No subscriptions found</p>
@@ -867,14 +867,14 @@ const Subscription: React.FC = () => {
                     </table>
                 </ScrollArea>
 
-                <div className="shrink-0 py-2 px-4 border-t border-slate-100 bg-slate-50/50 flex justify-center">
-                    <p className="text-[11px] text-slate-500 font-medium">
+                <div className="shrink-0 py-2 px-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex justify-center">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
                         Showing{' '}
-                        <span className="text-slate-900 font-bold">{rangeStart}</span>
+                        <span className="text-slate-900 dark:text-slate-100 font-bold">{rangeStart}</span>
                         {' '}to{' '}
-                        <span className="text-slate-900 font-bold">{rangeEnd}</span>
+                        <span className="text-slate-900 dark:text-slate-100 font-bold">{rangeEnd}</span>
                         {' '}of{' '}
-                        <span className="text-slate-900 font-bold">{totalCount}</span>
+                        <span className="text-slate-900 dark:text-slate-100 font-bold">{totalCount}</span>
                         {' '}subscriptions
                     </p>
                 </div>

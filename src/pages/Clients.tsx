@@ -120,14 +120,14 @@ const CATEGORY_ORDER: Record<string, number> = {
 
 const getCategoryStyles = (category?: string) => {
     switch (category?.toUpperCase()) {
-        case 'ZONE': return 'bg-blue-100 text-blue-700 border-blue-200';
-        case 'REGION': return 'bg-indigo-100 text-indigo-700 border-indigo-200';
-        case 'BRANCH': return 'bg-slate-100 text-slate-700 border-slate-200';
-        case 'RM': return 'bg-purple-100 text-purple-700 border-purple-200';
-        case 'AP': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-        case 'U-AP': return 'bg-cyan-100 text-cyan-700 border-cyan-200';
-        case 'CLIENT': return 'bg-amber-100 text-amber-700 border-amber-200';
-        default: return 'bg-gray-100 text-gray-700 border-gray-200';
+        case 'ZONE': return 'bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-900/50';
+        case 'REGION': return 'bg-indigo-100 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900/50';
+        case 'BRANCH': return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-350 border-slate-200 dark:border-slate-700';
+        case 'RM': return 'bg-purple-100 dark:bg-purple-950/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-900/50';
+        case 'AP': return 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/50';
+        case 'U-AP': return 'bg-cyan-100 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-400 border-cyan-200 dark:border-cyan-900/50';
+        case 'CLIENT': return 'bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900/50';
+        default: return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400 border-gray-200 dark:border-gray-700';
     }
 };
 
@@ -596,7 +596,8 @@ const Clients: React.FC = () => {
             url: `${API_BASE_URL}/api/method/frappe.client.get_count`,
             body: { doctype: 'Gopocket Client', filters: totalFilters }
         },
-        postFetcher
+        postFetcher,
+        { revalidateOnFocus: false, revalidateOnReconnect: true }
     );
 
     const { data: activeCount = 0, error: activeCountErr, mutate: mutateActiveCount } = useSWR(
@@ -604,7 +605,8 @@ const Clients: React.FC = () => {
             url: `${API_BASE_URL}/api/method/frappe.client.get_count`,
             body: { doctype: 'Gopocket Client', filters: [...totalFilters, ['activation_status', '=', 'ACTIVE']] }
         },
-        postFetcher
+        postFetcher,
+        { revalidateOnFocus: false, revalidateOnReconnect: true }
     );
 
     const { data: closedCount = 0, error: closedCountErr, mutate: mutateClosedCount } = useSWR(
@@ -612,7 +614,8 @@ const Clients: React.FC = () => {
             url: `${API_BASE_URL}/api/method/frappe.client.get_count`,
             body: { doctype: 'Gopocket Client', filters: [...totalFilters, ['activation_status', '=', 'CLOSED']] }
         },
-        postFetcher
+        postFetcher,
+        { revalidateOnFocus: false, revalidateOnReconnect: true }
     );
 
     const { data: dormantCount = 0, error: dormantCountErr, mutate: mutateDormantCount } = useSWR(
@@ -620,7 +623,8 @@ const Clients: React.FC = () => {
             url: `${API_BASE_URL}/api/method/frappe.client.get_count`,
             body: { doctype: 'Gopocket Client', filters: [...totalFilters, ['activation_status', '=', 'DORMANT']] }
         },
-        postFetcher
+        postFetcher,
+        { revalidateOnFocus: false, revalidateOnReconnect: true }
     );
 
     const { data: directCount = 0, error: directCountErr, mutate: mutateDirectCount } = useSWR(
@@ -628,7 +632,8 @@ const Clients: React.FC = () => {
             url: `${API_BASE_URL}/api/method/frappe.client.get_count`,
             body: { doctype: 'Gopocket Client', filters: directFilters }
         },
-        postFetcher
+        postFetcher,
+        { revalidateOnFocus: false, revalidateOnReconnect: true }
     );
 
     const { data: indirectCount = 0, error: indirectCountErr, mutate: mutateIndirectCount } = useSWR(
@@ -636,7 +641,8 @@ const Clients: React.FC = () => {
             url: `${API_BASE_URL}/api/method/frappe.client.get_count`,
             body: { doctype: 'Gopocket Client', filters: indirectFilters }
         },
-        postFetcher
+        postFetcher,
+        { revalidateOnFocus: false, revalidateOnReconnect: true }
     );
 
     // List query via SWR
@@ -671,7 +677,8 @@ const Clients: React.FC = () => {
                 limit_page_length: limit
             }
         },
-        postFetcher
+        postFetcher,
+        { revalidateOnFocus: false, revalidateOnReconnect: true }
     );
 
     const statusCount = useMemo(() => ({
@@ -885,16 +892,16 @@ const Clients: React.FC = () => {
         const normalizedStatus = status.toUpperCase();
 
         const statusStyles: Record<string, string> = {
-            'ACTIVE': "bg-green-100 text-green-700 hover:bg-green-100 hover:text-green-700",
-            'REACTIVATED': "bg-purple-100 text-purple-700 hover:bg-purple-100 hover:text-purple-700",
-            'SUSPENDED': "bg-red-100 text-red-700 hover:bg-red-100 hover:text-red-700",
-            'CLOSED': "bg-red-100 text-red-700 hover:bg-red-100 hover:text-red-700",
-            'DORMANT': "bg-amber-100 text-amber-700 hover:bg-amber-100 hover:text-amber-700",
-            'INACTIVE': "bg-slate-100 text-slate-400 hover:bg-slate-100 hover:text-slate-400",
-            'NOT ENABLED': "bg-slate-100 text-slate-700 hover:bg-slate-100 hover:text-slate-700",
+            'ACTIVE': "bg-green-100 dark:bg-green-950/20 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-950/30 hover:text-green-700 dark:hover:text-green-300",
+            'REACTIVATED': "bg-purple-100 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-950/30 hover:text-purple-700 dark:hover:text-purple-300",
+            'SUSPENDED': "bg-red-100 dark:bg-red-950/20 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/30 hover:text-red-700 dark:hover:text-red-300",
+            'CLOSED': "bg-red-100 dark:bg-red-950/20 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/30 hover:text-red-700 dark:hover:text-red-300",
+            'DORMANT': "bg-amber-100 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/30 hover:text-amber-700 dark:hover:text-amber-300",
+            'INACTIVE': "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-400 dark:hover:text-slate-400",
+            'NOT ENABLED': "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-350 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-300",
         };
 
-        const currentStyle = statusStyles[normalizedStatus] || "bg-slate-50 text-slate-300";
+        const currentStyle = statusStyles[normalizedStatus] || "bg-slate-50 dark:bg-slate-850 text-slate-300 dark:text-slate-600";
 
         const displayText = normalizedStatus === 'INACTIVE' ? 'NOT ENABLED' : status;
 
@@ -918,115 +925,115 @@ const Clients: React.FC = () => {
             <div className="shrink-0 space-y-4">
                 {/* Status Summary Grid */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group relative overflow-hidden">
+                    <Card className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group relative overflow-hidden">
                         <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-purple-500 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[12px] font-bold text-slate-700 uppercase tracking-wider">Total</span>
-                            <div className="p-2 bg-purple-50 rounded-lg">
-                                <Users className="w-4 h-4 text-purple-600" />
+                            <span className="text-[12px] font-bold text-slate-705 dark:text-slate-300 uppercase tracking-wider">Total</span>
+                            <div className="p-2 bg-purple-50 dark:bg-purple-950/30 rounded-lg">
+                                <Users className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                             </div>
                         </div>
                         <div className="space-y-0.5">
                             {isLoading ? (
                                 <Skeleton className="h-8 w-16 mb-1" />
                             ) : (
-                                <p className="text-2xl font-bold text-slate-900">{totalCount}</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{totalCount}</p>
                             )}
                         </div>
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group relative overflow-hidden">
+                    <Card className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group relative overflow-hidden">
                         <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-green-500 to-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[12px] font-bold text-green-600 uppercase tracking-wider">Direct</span>
-                            <div className="p-2 bg-green-50 rounded-lg">
-                                <UserCheck className="w-4 h-4 text-green-600" />
+                            <span className="text-[12px] font-bold text-green-600 dark:text-green-405 uppercase tracking-wider">Direct</span>
+                            <div className="p-2 bg-green-50 dark:bg-green-950/30 rounded-lg">
+                                <UserCheck className="w-4 h-4 text-green-600 dark:text-green-400" />
                             </div>
                         </div>
                         <div className="space-y-0.5">
                             {isLoading ? (
                                 <Skeleton className="h-8 w-16 mb-1" />
                             ) : (
-                                <p className="text-2xl font-bold text-slate-900">{directCount}</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{directCount}</p>
                             )}
                         </div>
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group relative overflow-hidden">
+                    <Card className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group relative overflow-hidden">
                         <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[12px] font-bold text-blue-600 uppercase tracking-wider">Indirect</span>
-                            <div className="p-2 bg-blue-50 rounded-lg">
-                                <UserPlus className="w-4 h-4 text-blue-600" />
+                            <span className="text-[12px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Indirect</span>
+                            <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+                                <UserPlus className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                             </div>
                         </div>
                         <div className="space-y-0.5">
                             {isLoading ? (
                                 <Skeleton className="h-8 w-16 mb-1" />
                             ) : (
-                                <p className="text-2xl font-bold text-slate-900">{indirectCount}</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{indirectCount}</p>
                             )}
                         </div>
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group relative overflow-hidden">
+                    <Card className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group relative overflow-hidden">
                         <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[12px] font-bold text-emerald-600 uppercase tracking-wider">Active</span>
-                            <div className="p-2 bg-emerald-50 rounded-lg">
-                                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                            <span className="text-[12px] font-bold text-emerald-600 dark:text-emerald-405 uppercase tracking-wider">Active</span>
+                            <div className="p-2 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                             </div>
                         </div>
                         <div className="space-y-0.5">
                             {isLoading ? (
                                 <Skeleton className="h-8 w-16 mb-1" />
                             ) : (
-                                <p className="text-2xl font-bold text-slate-900">{statusCount.ACTIVE}</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{statusCount.ACTIVE}</p>
                             )}
                         </div>
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group relative overflow-hidden">
+                    <Card className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group relative overflow-hidden">
                         <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-red-500 to-rose-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[12px] font-bold text-red-600 uppercase tracking-wider">Closed</span>
-                            <div className="p-2 bg-red-50 rounded-lg">
-                                <AlertCircle className="w-4 h-4 text-red-600" />
+                            <span className="text-[12px] font-bold text-red-600 dark:text-red-405 uppercase tracking-wider">Closed</span>
+                            <div className="p-2 bg-red-50 dark:bg-red-950/30 rounded-lg">
+                                <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
                             </div>
                         </div>
                         <div className="space-y-0.5">
                             {isLoading ? (
                                 <Skeleton className="h-8 w-16 mb-1" />
                             ) : (
-                                <p className="text-2xl font-bold text-slate-900">{statusCount.CLOSED}</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{statusCount.CLOSED}</p>
                             )}
                         </div>
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group relative overflow-hidden">
+                    <Card className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group relative overflow-hidden">
                         <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-amber-500 to-orange-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[12px] font-bold text-amber-600 uppercase tracking-wider">Dormant</span>
-                            <div className="p-2 bg-amber-50 rounded-lg">
-                                <Clock className="w-4 h-4 text-amber-600" />
+                            <span className="text-[12px] font-bold text-amber-600 dark:text-amber-405 uppercase tracking-wider">Dormant</span>
+                            <div className="p-2 bg-amber-50 dark:bg-amber-950/30 rounded-lg">
+                                <Clock className="w-4 h-4 text-amber-600 dark:text-amber-405" />
                             </div>
                         </div>
                         <div className="space-y-0.5">
                             {isLoading ? (
                                 <Skeleton className="h-8 w-16 mb-1" />
                             ) : (
-                                <p className="text-2xl font-bold text-slate-900">{statusCount.DORMANT}</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{statusCount.DORMANT}</p>
                             )}
                         </div>
                     </Card>
                 </div>
 
                 {/* Filters Row */}
-                <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50/50 border border-slate-200 rounded-2xl backdrop-blur-sm relative z-20">
+                <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl backdrop-blur-sm relative z-20">
                     {/* Advanced Filters */}
                     <Popover open={openFilterPanel} onOpenChange={handleFilterPanelOpen}>
                         <PopoverTrigger asChild>
-                            <Button variant="outline" className="rounded-xl h-10 border-slate-200 bg-white hover:bg-slate-50 gap-2">
+                            <Button variant="outline" className="rounded-xl h-10 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-250 gap-2">
                                 <Filter className="w-4 h-4 text-slate-500" />
                                 {advancedFilters.length > 0 && (
                                     <span className="bg-purple-600 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center shrink-0">
@@ -1035,10 +1042,10 @@ const Clients: React.FC = () => {
                                 )}
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent align="start" side="bottom" className="w-[480px] p-3 rounded-2xl border-slate-200 shadow-xl z-50">
+                        <PopoverContent align="start" side="bottom" className="w-[480px] p-3 rounded-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-750 dark:text-slate-200 shadow-xl z-50">
                             <div className="flex items-center justify-between mb-2">
-                                <p className="text-xs font-bold text-slate-800">Advanced Filters</p>
-                                <span className="text-[9px] text-slate-400 font-medium">Use % as wildcard for "like"</span>
+                                <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Advanced Filters</p>
+                                <span className="text-[9px] text-slate-400 dark:text-slate-500 font-medium">Use % as wildcard for "like"</span>
                             </div>
 
                             <div className="space-y-1.5 max-h-[300px] overflow-y-auto no-scrollbar">
@@ -1053,7 +1060,7 @@ const Clients: React.FC = () => {
                                                 <Button
                                                     variant="outline"
                                                     role="combobox"
-                                                    className="w-[150px] justify-between h-8 text-xs font-normal border-slate-200 shrink-0"
+                                                    className="w-[150px] justify-between h-8 text-xs font-normal border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 shrink-0"
                                                 >
                                                     <span className="truncate">
                                                         {filter.field
@@ -1063,11 +1070,11 @@ const Clients: React.FC = () => {
                                                     <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
                                                 </Button>
                                             </PopoverTrigger>
-                                            <PopoverContent className="w-[170px] p-0 rounded-xl border-slate-200 shadow-xl z-[60]" side="bottom" align="start">
-                                                <Command>
-                                                    <CommandInput placeholder="Search field..." className="h-8 text-xs" />
+                                            <PopoverContent className="w-[170px] p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xl z-[60]" side="bottom" align="start">
+                                                <Command className="bg-white dark:bg-slate-900">
+                                                    <CommandInput placeholder="Search field..." className="h-8 text-xs text-foreground bg-transparent" />
                                                     <CommandList>
-                                                        <CommandEmpty className="py-2 text-center text-xs text-slate-500">No field found.</CommandEmpty>
+                                                        <CommandEmpty className="py-2 text-center text-xs text-slate-500 dark:text-slate-400">No field found.</CommandEmpty>
                                                         <CommandGroup>
                                                             {GOPOCKET_CLIENT_FILTER_FIELDS.map((field) => (
                                                                 <CommandItem
@@ -1079,7 +1086,7 @@ const Clients: React.FC = () => {
                                                                         updateDraftFilter(filter.id, { field: field.value, operator: defaultOp, value: defaultVal });
                                                                         setFieldComboOpen(prev => ({ ...prev, [filter.id]: false }));
                                                                     }}
-                                                                    className="text-xs"
+                                                                    className="text-xs focus:bg-slate-100 dark:focus:bg-slate-800 cursor-pointer"
                                                                 >
                                                                     <Check className={cn('mr-2 h-3 w-3', filter.field === field.value ? 'opacity-100' : 'opacity-0')} />
                                                                     {field.label}
@@ -1100,10 +1107,10 @@ const Clients: React.FC = () => {
                                                     updateDraftFilter(filter.id, { operator: val, value: newVal });
                                                 }}
                                             >
-                                                <SelectTrigger className="h-8 text-xs w-[95px] border-slate-200 shrink-0">
+                                                <SelectTrigger className="h-8 text-xs w-[95px] border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-205 shrink-0">
                                                     <SelectValue placeholder="Operator" />
                                                 </SelectTrigger>
-                                                <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                                                <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 shadow-xl">
                                                     {getOperatorsForType(getFieldType(filter.field)).map((op: string) => (
                                                         <SelectItem key={op} value={op} className="text-xs">
                                                             {OPERATOR_LABELS[op] ?? op}
@@ -1120,10 +1127,10 @@ const Clients: React.FC = () => {
                                                     value={typeof filter.value === 'string' ? filter.value : ''}
                                                     onValueChange={(val) => updateDraftFilter(filter.id, { value: val })}
                                                 >
-                                                    <SelectTrigger className="flex-1 h-8 text-xs border-slate-200">
+                                                    <SelectTrigger className="flex-1 h-8 text-xs border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">
                                                         <SelectValue placeholder="Select option..." />
                                                     </SelectTrigger>
-                                                    <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                                                    <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 shadow-xl">
                                                         {getFieldOptions(filter.field).map((opt: string) => (
                                                             <SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>
                                                         ))}
@@ -1135,8 +1142,8 @@ const Clients: React.FC = () => {
                                                         <Button
                                                             variant="outline"
                                                             className={cn(
-                                                                'flex-1 h-8 text-xs font-normal border-slate-200 justify-start gap-1.5 min-w-0 truncate',
-                                                                !(Array.isArray(filter.value) && filter.value[0]) && 'text-slate-400'
+                                                                'flex-1 h-8 text-xs font-normal border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 justify-start gap-1.5 min-w-0 truncate',
+                                                                !(Array.isArray(filter.value) && filter.value[0]) && 'text-slate-400 dark:text-slate-500'
                                                             )}
                                                         >
                                                             <CalendarIcon className="h-3 w-3 shrink-0 text-slate-400" />
@@ -1149,7 +1156,7 @@ const Clients: React.FC = () => {
                                                             </span>
                                                         </Button>
                                                     </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0 rounded-xl border-slate-200 shadow-xl z-[60]" align="start">
+                                                    <PopoverContent className="w-auto p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl z-[60]" align="start">
                                                         <Calendar
                                                             mode="range"
                                                             selected={{
@@ -1177,10 +1184,10 @@ const Clients: React.FC = () => {
                                                     value={typeof filter.value === 'string' ? filter.value : ''}
                                                     onValueChange={(val) => updateDraftFilter(filter.id, { value: val })}
                                                 >
-                                                    <SelectTrigger className="flex-1 h-8 text-xs border-slate-200">
+                                                    <SelectTrigger className="flex-1 h-8 text-xs border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">
                                                         <SelectValue placeholder="Select period..." />
                                                     </SelectTrigger>
-                                                    <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                                                    <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-850 dark:text-slate-200 shadow-xl">
                                                         <SelectItem value="today" className="text-xs">Today</SelectItem>
                                                         <SelectItem value="yesterday" className="text-xs">Yesterday</SelectItem>
                                                         <SelectItem value="last week" className="text-xs">Last Week</SelectItem>
@@ -1199,7 +1206,7 @@ const Clients: React.FC = () => {
                                                     placeholder="Value"
                                                     value={typeof filter.value === 'string' ? filter.value : ''}
                                                     onChange={(e) => updateDraftFilter(filter.id, { value: e.target.value })}
-                                                    className="flex-1 h-8 text-xs border-slate-200 rounded-lg"
+                                                    className="flex-1 h-8 text-xs border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-lg"
                                                 />
                                             )
                                         )}
@@ -1208,7 +1215,7 @@ const Clients: React.FC = () => {
                                             type="button"
                                             variant="ghost"
                                             size="icon"
-                                            className="h-8 w-8 text-slate-400 hover:text-red-500 shrink-0"
+                                            className="h-8 w-8 text-slate-400 dark:text-slate-500 hover:text-red-500 shrink-0"
                                             onClick={() => removeDraftFilter(filter.id)}
                                         >
                                             <X className="h-4 w-4" />
@@ -1217,13 +1224,13 @@ const Clients: React.FC = () => {
                                 ))}
                             </div>
 
-                            <div className="flex items-center justify-between pt-2 mt-2 border-t border-t-slate-100">
+                            <div className="flex items-center justify-between pt-2 mt-2 border-t border-t-slate-100 dark:border-slate-800">
                                 <Button
                                     type="button"
                                     variant="outline"
                                     size="sm"
                                     onClick={addDraftFilter}
-                                    className="h-8 text-xs gap-1 hover:bg-slate-50 border-slate-200"
+                                    className="h-8 text-xs gap-1 hover:bg-slate-50 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200"
                                 >
                                     <Plus className="w-3.5 h-3.5" /> Add Condition
                                 </Button>
@@ -1233,7 +1240,7 @@ const Clients: React.FC = () => {
                                         variant="ghost"
                                         size="sm"
                                         onClick={clearAdvancedFilters}
-                                        className="h-8 text-xs text-slate-500 hover:text-slate-800"
+                                        className="h-8 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
                                     >
                                         Clear All
                                     </Button>
@@ -1255,20 +1262,20 @@ const Clients: React.FC = () => {
                             value={dateRange}
                             onChange={setDateRange}
                             placeholder="Account Opened Range"
-                            className="w-full bg-white border-slate-200 focus:ring-purple-500 rounded-xl custom-date-picker h-10"
+                            className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-purple-500 rounded-xl custom-date-picker h-10"
                             appearance="default"
                             block
                         />
                     </div>
                     <div className="w-[180px]">
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="bg-white border-slate-200 focus:ring-purple-500 rounded-xl h-10">
+                            <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-250 focus:ring-purple-500 rounded-xl h-10">
                                 <div className="flex items-center gap-2">
-                                    <Filter className="w-3.5 h-3.5 text-slate-400" />
+                                    <Filter className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                                     <SelectValue placeholder="Status" />
                                 </div>
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                            <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-xl">
                                 <SelectItem value="ALL">All Statuses</SelectItem>
                                 <SelectItem value="ACTIVE">Active</SelectItem>
                                 <SelectItem value="CLOSED">Closed</SelectItem>
@@ -1278,13 +1285,13 @@ const Clients: React.FC = () => {
                     </div>
                     <div className="w-[180px]">
                         <Select value={tradeDoneFilter} onValueChange={setTradeDoneFilter}>
-                            <SelectTrigger className="bg-white border-slate-200 focus:ring-purple-500 rounded-xl h-10">
+                            <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-250 focus:ring-purple-500 rounded-xl h-10">
                                 <div className="flex items-center gap-2">
-                                    <Filter className="w-3.5 h-3.5 text-slate-400" />
+                                    <Filter className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                                     <SelectValue placeholder="Trade Done" />
                                 </div>
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                            <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-xl">
                                 <SelectItem value="ALL">All Trade Status</SelectItem>
                                 <SelectItem value="TRUE">Trade Done</SelectItem>
                                 <SelectItem value="FALSE">No Trade</SelectItem>
@@ -1300,10 +1307,10 @@ const Clients: React.FC = () => {
                                     variant="outline"
                                     role="combobox"
                                     aria-expanded={openParentBox}
-                                    className="w-full justify-between bg-white border-slate-200 focus:ring-purple-500 rounded-xl h-10 px-3 font-normal"
+                                    className="w-full justify-between bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-250 focus:ring-purple-500 rounded-xl h-10 px-3 font-normal"
                                 >
                                     <div className="flex items-center gap-2 truncate">
-                                        <Users className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                        <Users className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
                                         <span className="truncate">
                                             {parentFilter === "ALL"
                                                 ? "Select Parent"
@@ -1313,16 +1320,16 @@ const Clients: React.FC = () => {
                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-[300px] p-0 rounded-xl border-slate-200 shadow-xl">
-                                <Command shouldFilter={false}>
+                            <PopoverContent className="w-[300px] p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl">
+                                <Command shouldFilter={false} className="bg-white dark:bg-slate-900">
                                     <CommandInput
                                         placeholder="Search parent..."
-                                        className="h-9"
+                                        className="h-9 text-foreground bg-transparent"
                                         value={parentSearch}
                                         onValueChange={setParentSearch}
                                     />
                                     <CommandList>
-                                        <CommandEmpty>No parent found.</CommandEmpty>
+                                        <CommandEmpty className="py-2 text-center text-xs text-slate-500 dark:text-slate-400">No parent found.</CommandEmpty>
                                         <CommandGroup>
                                             {!parentSearch && (
                                                 <CommandItem
@@ -1331,10 +1338,10 @@ const Clients: React.FC = () => {
                                                         setParentFilter("ALL");
                                                         setOpenParentBox(false);
                                                     }}
-                                                    className="flex items-center justify-between"
+                                                    className="flex items-center justify-between focus:bg-slate-105 dark:focus:bg-slate-800 cursor-pointer"
                                                 >
                                                     <span>All Parents</span>
-                                                    {parentFilter === "ALL" && <Check className="h-4 w-4 text-purple-600" />}
+                                                    {parentFilter === "ALL" && <Check className="h-4 w-4 text-purple-600 dark:text-purple-400" />}
                                                 </CommandItem>
                                             )}
                                             {visibleParentOptions.map((opt) => (
@@ -1345,7 +1352,7 @@ const Clients: React.FC = () => {
                                                         setParentFilter(opt.name === parentFilter ? "ALL" : opt.name);
                                                         setOpenParentBox(false);
                                                     }}
-                                                    className="flex items-center justify-between gap-2"
+                                                    className="flex items-center justify-between gap-2 focus:bg-slate-105 dark:focus:bg-slate-800 cursor-pointer"
                                                 >
                                                     <span className="truncate text-sm">
                                                         {opt.category === 'RM' || opt.org_type === 'RM'
@@ -1364,7 +1371,7 @@ const Clients: React.FC = () => {
                                                                 {opt.category}
                                                             </Badge>
                                                         )}
-                                                        {parentFilter === opt.name && <Check className="h-3.5 w-3.5 text-purple-600" />}
+                                                        {parentFilter === opt.name && <Check className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />}
                                                     </div>
                                                 </CommandItem>
                                             ))}
@@ -1376,19 +1383,19 @@ const Clients: React.FC = () => {
                     </div>
 
                     <div className="relative flex-1 min-w-[240px]">
-                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                         <Input
                             placeholder="Search Client Code"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-9 bg-white border-slate-200 focus:ring-purple-500 rounded-xl h-10"
+                            className="pl-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 focus:ring-purple-500 rounded-xl h-10"
                         />
                     </div>
                     <Button
                         onClick={handleRefresh}
                         disabled={isRefreshing || isLoading || isExporting}
                         variant="outline"
-                        className="rounded-xl px-4 font-semibold gap-2 h-10 border-slate-200 bg-white hover:bg-slate-50 transition-all"
+                        className="rounded-xl px-4 font-semibold gap-2 h-10 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
                     >
                         <RefreshCcw className={cn("w-4 h-4", (isRefreshing || isLoading) && "animate-spin")} />
                     </Button>
@@ -1398,7 +1405,7 @@ const Clients: React.FC = () => {
                             onClick={handleExport}
                             disabled={isExporting || isLoading || isRefreshing}
                             variant="outline"
-                            className="rounded-xl px-4 font-semibold gap-2 h-10 border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-all shadow-sm"
+                            className="rounded-xl px-4 font-semibold gap-2 h-10 border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 hover:border-emerald-300 transition-all shadow-sm"
                         >
                             {isExporting ? (
                                 <>
@@ -1418,13 +1425,13 @@ const Clients: React.FC = () => {
 
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="rounded-xl h-10 border-slate-200 bg-white hover:bg-slate-50 gap-2">
+                            <Button variant="outline" className="rounded-xl h-10 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-250 hover:bg-slate-50 dark:hover:bg-slate-800 gap-2">
                                 <Columns3 className="w-4 h-4" />
                                 Columns
                                 <ChevronDown className="w-3.5 h-3.5 opacity-50" />
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                             <DropdownMenuGroup>
                                 {[
                                     { id: 'mobile', label: 'Mobile' },
@@ -1442,7 +1449,7 @@ const Clients: React.FC = () => {
                                 ].map((col) => (
                                     <DropdownMenuCheckboxItem
                                         key={col.id}
-                                        className="capitalize"
+                                        className="capitalize cursor-pointer"
                                         checked={columnVisibility[col.id]}
                                         onCheckedChange={(checked) =>
                                             setColumnVisibility(prev => ({ ...prev, [col.id]: checked }))
@@ -1460,33 +1467,33 @@ const Clients: React.FC = () => {
                             type="button"
                             variant="ghost"
                             onClick={handleResetFilters}
-                            className="text-slate-500 hover:text-slate-900 font-semibold px-3 py-2 rounded-xl transition-colors hover:bg-slate-50"
+                            className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 font-semibold px-3 py-2 rounded-xl transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
                         >
                             Reset
                         </Button>
                     )}
 
-                    <div className="flex items-center gap-2 ml-auto border-l pl-3 border-slate-200">
+                    <div className="flex items-center gap-2 ml-auto border-l pl-3 border-slate-200 dark:border-slate-800">
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                             disabled={currentPage === 1 || isLoading}
-                            className="h-9 w-9 p-0 rounded-xl border-slate-200 bg-white hover:bg-slate-50"
+                            className="h-9 w-9 p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-205"
                         >
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
-                        <div className="flex items-center gap-1.5 px-3 h-9 bg-white border border-slate-200 rounded-xl">
-                            <span className="text-sm font-bold text-purple-600">{currentPage}</span>
+                        <div className="flex items-center gap-1.5 px-3 h-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-foreground">
+                            <span className="text-sm font-bold text-purple-600 dark:text-purple-405">{currentPage}</span>
                             <span className="text-xs text-slate-400 font-bold">/</span>
-                            <span className="text-xs text-slate-500 font-bold">{totalPages || 1}</span>
+                            <span className="text-xs text-slate-500 dark:text-slate-400 font-bold">{totalPages || 1}</span>
                         </div>
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                             disabled={currentPage === totalPages || totalPages === 0 || isLoading}
-                            className="h-9 w-9 p-0 rounded-xl border-slate-200 bg-white hover:bg-slate-50"
+                            className="h-9 w-9 p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-205"
                         >
                             <ChevronRight className="h-4 w-4" />
                         </Button>
@@ -1503,81 +1510,81 @@ const Clients: React.FC = () => {
 
             {/* Table Section */}
             <Card className={cn(
-                "border-none shadow-sm bg-white rounded-2xl border border-slate-100 flex flex-col",
+                "border-none shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col",
                 scrollWholePage ? "" : "flex-1 min-h-0 overflow-hidden"
             )}>
                 <TableWrapper scrollWholePage={scrollWholePage}>
                     <table className="w-full text-sm">
-                        <thead className="sticky top-0 bg-slate-50/90 backdrop-blur-md z-10">
-                            <tr className="border-b border-slate-100">
-                                <th className="text-left py-4 px-4 font-semibold text-slate-600 cursor-pointer select-none group/col" onClick={() => handleSort('client_code')}>
+                        <thead className="sticky top-0 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md z-10">
+                            <tr className="border-b border-slate-100 dark:border-slate-800">
+                                <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('client_code')}>
                                     <div className="flex items-center gap-2">
                                         Client Code
                                         {sortConfig?.key === 'client_code' ? (
-                                            sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600" /> : <ChevronDown className="w-4 h-4 text-purple-600" />
-                                        ) : <ArrowUpDown className="w-3 h-3 text-slate-300 group-hover/col:text-slate-400" />}
+                                            sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600 dark:text-purple-400" /> : <ChevronDown className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                                        ) : <ArrowUpDown className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover/col:text-slate-400" />}
                                     </div>
                                 </th>
-                                {columnVisibility.mobile && <th className="text-left py-4 px-4 font-semibold text-slate-600">Mobile</th>}
+                                {columnVisibility.mobile && <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400">Mobile</th>}
                                 {columnVisibility.client_name && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 cursor-pointer select-none group/col" onClick={() => handleSort('client_name')}>
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('client_name')}>
                                         <div className="flex items-center gap-2">
                                             Client Name
                                             {sortConfig?.key === 'client_name' ? (
-                                                sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600" /> : <ChevronDown className="w-4 h-4 text-purple-600" />
-                                            ) : <ArrowUpDown className="w-3 h-3 text-slate-300 group-hover/col:text-slate-400" />}
+                                                sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600 dark:text-purple-400" /> : <ChevronDown className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                                            ) : <ArrowUpDown className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover/col:text-slate-400" />}
                                         </div>
                                     </th>
                                 )}
                                 {columnVisibility.opened_date && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 cursor-pointer select-none group/col" onClick={() => handleSort('account_opened_date')}>
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('account_opened_date')}>
                                         <div className="flex items-center gap-2">
                                             Opened Date
                                             {sortConfig?.key === 'account_opened_date' ? (
-                                                sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600" /> : <ChevronDown className="w-4 h-4 text-purple-600" />
-                                            ) : <ArrowUpDown className="w-3 h-3 text-slate-300 group-hover/col:text-slate-400" />}
+                                                sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600 dark:text-purple-400" /> : <ChevronDown className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                                            ) : <ArrowUpDown className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover/col:text-slate-400" />}
                                         </div>
                                     </th>
                                 )}
-                                {columnVisibility.trade_done && <th className="text-left py-4 px-4 font-semibold text-slate-600">First Trade</th>}
+                                {columnVisibility.trade_done && <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400">First Trade</th>}
                                 {columnVisibility.last_trade && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 cursor-pointer select-none group/col" onClick={() => handleSort('last_traded_day')}>
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('last_traded_day')}>
                                         <div className="flex items-center gap-2">
                                             Last Trade Date
                                             {sortConfig?.key === 'last_traded_day' ? (
-                                                sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600" /> : <ChevronDown className="w-4 h-4 text-purple-600" />
-                                            ) : <ArrowUpDown className="w-3 h-3 text-slate-300 group-hover/col:text-slate-400" />}
+                                                sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600 dark:text-purple-400" /> : <ChevronDown className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                                            ) : <ArrowUpDown className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover/col:text-slate-400" />}
                                         </div>
                                     </th>
                                 )}
                                 {columnVisibility.parent && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 cursor-pointer select-none group/col" onClick={() => handleSort('parent1')}>
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('parent1')}>
                                         <div className="flex items-center gap-2">
                                             Parent
                                             {sortConfig?.key === 'parent1' ? (
-                                                sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600" /> : <ChevronDown className="w-4 h-4 text-purple-600" />
-                                            ) : <ArrowUpDown className="w-3 h-3 text-slate-300 group-hover/col:text-slate-400" />}
+                                                sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600 dark:text-purple-400" /> : <ChevronDown className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                                            ) : <ArrowUpDown className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover/col:text-slate-400" />}
                                         </div>
                                     </th>
                                 )}
-                                {columnVisibility.nse && <th className="text-center py-4 px-4 font-semibold text-slate-600">NSE</th>}
-                                {columnVisibility.bse && <th className="text-center py-4 px-4 font-semibold text-slate-600">BSE</th>}
-                                {columnVisibility.mcx && <th className="text-center py-4 px-4 font-semibold text-slate-600">MCX</th>}
-                                {columnVisibility.nfo && <th className="text-center py-4 px-4 font-semibold text-slate-600">NFO</th>}
-                                {columnVisibility.bfo && <th className="text-center py-4 px-4 font-semibold text-slate-600">BFO</th>}
+                                {columnVisibility.nse && <th className="text-center py-4 px-4 font-semibold text-slate-600 dark:text-slate-400">NSE</th>}
+                                {columnVisibility.bse && <th className="text-center py-4 px-4 font-semibold text-slate-600 dark:text-slate-400">BSE</th>}
+                                {columnVisibility.mcx && <th className="text-center py-4 px-4 font-semibold text-slate-600 dark:text-slate-400">MCX</th>}
+                                {columnVisibility.nfo && <th className="text-center py-4 px-4 font-semibold text-slate-600 dark:text-slate-400">NFO</th>}
+                                {columnVisibility.bfo && <th className="text-center py-4 px-4 font-semibold text-slate-600 dark:text-slate-400">BFO</th>}
                                 {columnVisibility.status && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 cursor-pointer select-none group/col" onClick={() => handleSort('activation_status')}>
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('activation_status')}>
                                         <div className="flex items-center gap-2">
                                             Status
                                             {sortConfig?.key === 'activation_status' ? (
-                                                sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600" /> : <ChevronDown className="w-4 h-4 text-purple-600" />
-                                            ) : <ArrowUpDown className="w-3 h-3 text-slate-300 group-hover/col:text-slate-400" />}
+                                                sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600 dark:text-purple-400" /> : <ChevronDown className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                                            ) : <ArrowUpDown className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover/col:text-slate-400" />}
                                         </div>
                                     </th>
                                 )}
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-50">
+                        <tbody className="divide-y divide-slate-50 dark:divide-slate-800/40">
                             {isLoading ? (
                                 Array.from({ length: 10 }).map((_, i) => (
                                     <tr key={i}>
@@ -1590,18 +1597,18 @@ const Clients: React.FC = () => {
                                 sortedData.map((row: ClientItem, index: number) => (
                                     <tr
                                         key={index}
-                                        className="hover:bg-slate-50/50 transition-colors cursor-pointer group"
+                                        className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group"
                                     >
-                                        <td className="py-4 px-4 font-semibold text-slate-900 leading-tight">
+                                        <td className="py-4 px-4 font-semibold text-slate-900 dark:text-slate-100 leading-tight">
                                             <button
                                                 onClick={() => navigate(`/clients/${row.client_code}`)}
-                                                className="hover:text-purple-600 transition-colors text-left focus:outline-none"
+                                                className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors text-left focus:outline-none bg-transparent"
                                             >
                                                 {formatValue(row.client_code)}
                                             </button>
                                         </td>
                                         {columnVisibility.mobile && (
-                                            <td className="py-4 px-4 font-semibold text-slate-900 leading-tight">
+                                            <td className="py-4 px-4 font-semibold text-slate-900 dark:text-slate-100 leading-tight">
                                                 <div className="flex items-center gap-2">
                                                     {row.mobile_number}
                                                     <button
@@ -1611,7 +1618,7 @@ const Clients: React.FC = () => {
                                                                 detail: { clientCode: row.mobile_number }
                                                             }));
                                                         }}
-                                                        className="p-1 hover:bg-purple-50 rounded-md text-purple-700 hover:text-purple-600 transition-all group/kyc"
+                                                        className="p-1 hover:bg-purple-50 dark:hover:bg-purple-950/40 rounded-md text-purple-700 dark:text-purple-400 hover:text-purple-650 dark:hover:text-purple-300 transition-all group/kyc bg-transparent"
                                                         title="Search in KYC Tracker"
                                                     >
                                                         <ExternalLink className="w-3.5 h-3.5" />
@@ -1619,23 +1626,23 @@ const Clients: React.FC = () => {
                                                 </div>
                                             </td>
                                         )}
-                                        {columnVisibility.client_name && <td className="py-4 px-4 text-slate-500">{formatValue(row.client_name)}</td>}
-                                        {columnVisibility.opened_date && <td className="py-4 px-4 text-slate-500 font-mono text-xs">{formatValue(row.account_opened_date)}</td>}
+                                        {columnVisibility.client_name && <td className="py-4 px-4 text-slate-500 dark:text-slate-400">{formatValue(row.client_name)}</td>}
+                                        {columnVisibility.opened_date && <td className="py-4 px-4 text-slate-500 dark:text-slate-400 font-mono text-xs">{formatValue(row.account_opened_date)}</td>}
                                         {columnVisibility.trade_done && (
                                             <td className="py-4 px-4">
                                                 <Badge
                                                     className={cn(
                                                         "capitalize font-bold px-2.5 py-0.5 rounded-full border-none text-[10px]",
-                                                        row.trade_done === 'TRUE' ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                                                        row.trade_done === 'TRUE' ? "bg-green-100 dark:bg-green-950/20 text-green-700 dark:text-green-400" : "bg-red-100 dark:bg-red-950/20 text-red-700 dark:text-red-400"
                                                     )}
                                                 >
                                                     {row.trade_done || 'FALSE'}
                                                 </Badge>
                                             </td>
                                         )}
-                                        {columnVisibility.last_trade && <td className="py-4 px-4 text-slate-500 font-mono text-xs">{formatValue(row.last_traded_day)}</td>}
+                                        {columnVisibility.last_trade && <td className="py-4 px-4 text-slate-500 dark:text-slate-400 font-mono text-xs">{formatValue(row.last_traded_day)}</td>}
                                         {columnVisibility.parent && (
-                                            <td className="py-4 px-4 text-slate-500">
+                                            <td className="py-4 px-4 text-slate-500 dark:text-slate-400">
                                                 {row.parent1 ? (userCodeMap.get(row.parent1) || row.parent1) : '-'}
                                             </td>
                                         )}
@@ -1649,9 +1656,9 @@ const Clients: React.FC = () => {
                                                 <Badge
                                                     className={cn(
                                                         "capitalize font-bold px-2.5 py-0.5 rounded-full border-none text-[10px]",
-                                                        row.activation_status === 'ACTIVE' ? "bg-green-700 text-white hover:bg-green-700 hover:text-white" :
-                                                            row.activation_status === 'CLOSED' ? "bg-red-700 text-white hover:bg-red-700 hover:text-white" :
-                                                                "bg-amber-700 text-white hover:bg-amber-700 hover:text-white"
+                                                        row.activation_status === 'ACTIVE' ? "bg-green-700 dark:bg-green-600 text-white hover:bg-green-700 hover:text-white" :
+                                                            row.activation_status === 'CLOSED' ? "bg-red-700 dark:bg-red-600 text-white hover:bg-red-700 hover:text-white" :
+                                                                "bg-amber-700 dark:bg-amber-600 text-white hover:bg-amber-700 hover:text-white"
                                                     )}
                                                 >
                                                     {row.activation_status || 'UNKNOWN'}
@@ -1662,7 +1669,7 @@ const Clients: React.FC = () => {
                                 ))
                             ) : !isLoading && (
                                 <tr>
-                                    <td colSpan={visibleColumnCount} className="h-48 text-center text-slate-400">
+                                    <td colSpan={visibleColumnCount} className="h-48 text-center text-slate-400 dark:text-slate-500">
                                         <div className="flex flex-col items-center justify-center">
                                             <Users className="w-10 h-10 mb-2 opacity-10" />
                                             <p className="text-sm font-medium">No results found matching your filters</p>
@@ -1675,9 +1682,9 @@ const Clients: React.FC = () => {
                 </TableWrapper>
 
                 {/* Status Info Footer */}
-                <div className="shrink-0 py-2 px-4 border-t border-slate-100 bg-slate-50/50 flex justify-center">
-                    <p className="text-[11px] text-slate-500 font-medium">
-                        Showing <span className="text-slate-900 font-bold">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> to <span className="text-slate-900 font-bold">{Math.min(currentPage * ITEMS_PER_PAGE, totalCount)}</span> of <span className="text-slate-900 font-bold">{totalCount}</span> clients
+                <div className="shrink-0 py-2 px-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex justify-center">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                        Showing <span className="text-slate-900 dark:text-slate-100 font-bold">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> to <span className="text-slate-900 dark:text-slate-100 font-bold">{Math.min(currentPage * ITEMS_PER_PAGE, totalCount)}</span> of <span className="text-slate-900 dark:text-slate-100 font-bold">{totalCount}</span> clients
                     </p>
                 </div>
             </Card>

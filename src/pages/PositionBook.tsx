@@ -76,17 +76,17 @@ const PositionBook = () => {
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-card border border-border rounded-2xl p-4">
               <p className="text-xs text-muted-foreground mb-1.5">Today's P&L</p>
-              <p className="text-xl font-bold text-success">+₹{todayPnl.toLocaleString("en-IN")}</p>
+              <p className="text-xl font-bold text-success dark:text-emerald-400">+₹{todayPnl.toLocaleString("en-IN")}</p>
               <p className="text-xs text-muted-foreground mt-1">Unrealised</p>
             </div>
             <div className="bg-card border border-border rounded-2xl p-4">
               <p className="text-xs text-muted-foreground mb-1.5">In Profit</p>
-              <p className="text-xl font-bold text-success">{profitCount}</p>
+              <p className="text-xl font-bold text-success dark:text-emerald-400">{profitCount}</p>
               <p className="text-xs text-muted-foreground mt-1">stocks</p>
             </div>
             <div className="bg-card border border-border rounded-2xl p-4">
               <p className="text-xs text-muted-foreground mb-1.5">In Loss</p>
-              <p className="text-xl font-bold text-destructive">{lossCount}</p>
+              <p className="text-xl font-bold text-destructive dark:text-red-405">{lossCount}</p>
               <p className="text-xs text-muted-foreground mt-1">stocks</p>
             </div>
           </div>
@@ -94,10 +94,10 @@ const PositionBook = () => {
 
         {/* Positions table */}
         <div className="space-y-3">
-          <h3 className="text-base font-semibold">Open Positions</h3>
+          <h3 className="text-base font-semibold text-foreground dark:text-slate-100">Open Positions</h3>
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-xs text-muted-foreground border-b border-border">
+              <tr className="text-xs text-muted-foreground dark:text-slate-400 border-b border-border dark:border-slate-800">
                 <th className="text-left py-2.5 font-medium">Stock</th>
                 <th className="text-left py-2.5 font-medium">Qty</th>
                 <th className="text-left py-2.5 font-medium">Avg Price</th>
@@ -110,10 +110,10 @@ const PositionBook = () => {
             </thead>
             <tbody>
               {positions.map((pos) => (
-                <tr key={pos.ticker} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
+                <tr key={pos.ticker} className="border-b border-border dark:border-slate-800 last:border-0 hover:bg-muted/30 dark:hover:bg-slate-850/40 transition-colors cursor-pointer">
                   <td className="py-3.5">
                     <div className="flex items-center gap-2.5">
-                      <div className="h-8 w-8 bg-black rounded-full flex items-center justify-center text-white text-sm">
+                      <div className="h-8 w-8 bg-black dark:bg-slate-800 rounded-full flex items-center justify-center text-white dark:text-slate-200 text-sm">
                         {pos.icon === "₹" ? pos.icon :
                           pos.icon === "Landmark" ? <Landmark className="h-4 w-4" /> :
                             pos.icon === "Monitor" ? <Monitor className="h-4 w-4" /> :
@@ -125,33 +125,33 @@ const PositionBook = () => {
                         }
                       </div>
                       <div>
-                        <p className="font-medium text-sm">{pos.stock}</p>
-                        <p className="text-[11px] text-muted-foreground">{pos.ticker}</p>
+                        <p className="font-medium text-sm text-foreground dark:text-slate-100">{pos.stock}</p>
+                        <p className="text-[11px] text-muted-foreground dark:text-slate-400">{pos.ticker}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="py-3.5 text-sm">{pos.qty}</td>
-                  <td className="py-3.5 text-sm">{pos.avgPrice}</td>
-                  <td className="py-3.5 text-sm font-medium">{pos.ltp}</td>
-                  <td className="py-3.5 text-sm">{pos.currentValue}</td>
+                  <td className="py-3.5 text-sm text-foreground dark:text-slate-200">{pos.qty}</td>
+                  <td className="py-3.5 text-sm text-foreground dark:text-slate-200">{pos.avgPrice}</td>
+                  <td className="py-3.5 text-sm font-medium text-foreground dark:text-slate-100">{pos.ltp}</td>
+                  <td className="py-3.5 text-sm text-foreground dark:text-slate-200">{pos.currentValue}</td>
                   <td className="py-3.5">
                     <div>
-                      <p className={`text-sm font-semibold ${pos.isProfit ? "text-success" : "text-destructive"}`}>
+                      <p className={`text-sm font-semibold ${pos.isProfit ? "text-success dark:text-emerald-400" : "text-destructive dark:text-red-405"}`}>
                         {pos.pnl}
                       </p>
-                      <p className={`text-[11px] ${pos.isProfit ? "text-success/70" : "text-destructive/70"}`}>
+                      <p className={`text-[11px] ${pos.isProfit ? "text-success/70 dark:text-emerald-400/70" : "text-destructive/70 dark:text-red-405/70"}`}>
                         {pos.pnlPercent}
                       </p>
                     </div>
                   </td>
                   <td className="py-3.5">
-                    <span className={`inline-flex items-center gap-0.5 text-xs font-medium ${pos.isDayProfit ? "text-success" : "text-destructive"}`}>
+                    <span className={`inline-flex items-center gap-0.5 text-xs font-medium ${pos.isDayProfit ? "text-success dark:text-emerald-400" : "text-destructive dark:text-red-405"}`}>
                       {pos.isDayProfit ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
                       {pos.dayChangePercent}
                     </span>
                   </td>
                   <td className="py-3.5">
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    <ChevronRight className="h-4 w-4 text-muted-foreground dark:text-slate-500" />
                   </td>
                 </tr>
               ))}

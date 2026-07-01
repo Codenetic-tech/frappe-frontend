@@ -1,21 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useFrappePostCall } from 'frappe-react-sdk';
 import {
   AlertCircle,
   Wallet,
-  Download,
   Search,
-  Calendar as CalendarIcon,
-  ChevronLeft,
-  ChevronRight,
-  TrendingUp,
-  TrendingDown
+  ShieldX,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DateRangePicker } from 'rsuite';
 import 'rsuite/DateRangePicker/styles/index.css';
 import { cn } from '@/lib/utils';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface ClientLedgerTabProps {
   clientCode: string;
@@ -32,9 +26,14 @@ interface LedgerEntry {
   "DrCr": string | Record<string, any>;
 }
 
-const ClientLedgerTab: React.FC<ClientLedgerTabProps> = ({ clientCode, refreshKey }) => {
-  const { logout, user } = useAuth();
+const formatDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
+const ClientLedgerTab: React.FC<ClientLedgerTabProps> = ({ clientCode, refreshKey }) => {
   // Default range: last 1 month
   const [dateRange, setDateRange] = useState<[Date, Date]>(() => {
     const to = new Date();
@@ -44,54 +43,55 @@ const ClientLedgerTab: React.FC<ClientLedgerTabProps> = ({ clientCode, refreshKe
   });
 
   const [ledgerData, setLedgerData] = useState<LedgerEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [accessDenied, setAccessDenied] = useState(false);
+
+  const { call, loading, error: callError } = useFrappePostCall<{
+    message: {
+      status: 'success' | 'error';
+      message?: string;
+      data?: { table: LedgerEntry[] };
+    };
+  }>('gopocket.revenue.get_client_ledger');
 
   const fetchLedger = useCallback(async () => {
-    if (!user) return;
-    setIsLoading(true);
-    setError(null);
+    setErrorMsg(null);
+    setAccessDenied(false);
 
     try {
-      const formatDate = (date: Date) => {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-      };
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-
-      const response = await fetch(`${API_BASE_URL}/api/method/rms.clientdetails.get_client_ledger`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          client_code: clientCode,
-          from: formatDate(dateRange[0]),
-          to: formatDate(dateRange[1])
-        }),
+      const res = await call({
+        client_code: clientCode,
+        from: formatDate(dateRange[0]),
+        to: formatDate(dateRange[1]),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch Ledger data');
-      }
+      const msg = res?.message;
 
-      const data = await response.json();
-
-      if (data.message?.status === 'success' && data.message?.data?.table) {
-        setLedgerData(data.message.data.table);
-      } else if (data.message?.status === 'success' && !data.message?.data?.table) {
+      if (msg?.status === 'success') {
+        setLedgerData(msg.data?.table ?? []);
+      } else if (msg?.status === 'error') {
+        const errText = msg.message ?? 'Failed to fetch ledger data.';
+        if (errText.toLowerCase().includes('access denied') || errText.toLowerCase().includes('hierarchy')) {
+          setAccessDenied(true);
+        } else {
+          setErrorMsg(errText);
+        }
         setLedgerData([]);
       } else {
-        throw new Error(data.message?.reason || 'Failed to fetch Ledger data');
+        setErrorMsg('Unexpected response from server.');
+        setLedgerData([]);
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred while fetching ledger.');
-    } finally {
-      setIsLoading(false);
+      // useFrappePostCall throws on HTTP errors (403, 500, etc.)
+      const httpStatus = err?.httpStatus ?? err?.status;
+      if (httpStatus === 403 || err?.message?.toLowerCase().includes('forbidden') || err?.message?.toLowerCase().includes('access denied')) {
+        setAccessDenied(true);
+      } else {
+        setErrorMsg(err?.message ?? 'An error occurred while fetching ledger.');
+      }
+      setLedgerData([]);
     }
-  }, [clientCode, dateRange, logout, user]);
+  }, [clientCode, dateRange, call]);
 
   useEffect(() => {
     fetchLedger();
@@ -109,6 +109,9 @@ const ClientLedgerTab: React.FC<ClientLedgerTabProps> = ({ clientCode, refreshKe
     if (val === undefined || val === null) return '-';
     return val;
   };
+
+  const isError = !!callError || !!errorMsg;
+  const displayError = errorMsg ?? callError?.message ?? 'Failed to load ledger data.';
 
   return (
     <div className="space-y-6 w-full animate-in fade-in duration-500">
@@ -132,7 +135,7 @@ const ClientLedgerTab: React.FC<ClientLedgerTabProps> = ({ clientCode, refreshKe
                 size="sm"
                 className="rounded-xl h-10 border-slate-200 bg-white hover:bg-slate-50 gap-2 font-semibold"
                 onClick={fetchLedger}
-                disabled={isLoading}
+                disabled={loading}
               >
                 <Search size={16} />
                 Search
@@ -142,18 +145,28 @@ const ClientLedgerTab: React.FC<ClientLedgerTabProps> = ({ clientCode, refreshKe
         </div>
       </div>
 
-      {isLoading ? (
+      {loading ? (
         <div className="flex flex-col items-center justify-center py-20 min-h-[400px]">
           <div className="w-10 h-10 border-4 border-slate-200 border-t-purple-600 rounded-full animate-spin mb-4" />
           <p className="text-sm text-slate-500 font-medium italic">Loading ledger records...</p>
         </div>
-      ) : error ? (
+      ) : accessDenied ? (
+        <div className="flex flex-col items-center justify-center py-20 min-h-[400px] text-center">
+          <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mb-4">
+            <ShieldX size={32} />
+          </div>
+          <h3 className="text-lg font-bold text-slate-900 mb-1">Access Denied</h3>
+          <p className="text-sm text-slate-500 max-w-sm mx-auto">
+            This client is not within your hierarchy. You don't have permission to view their ledger.
+          </p>
+        </div>
+      ) : isError ? (
         <div className="flex flex-col items-center justify-center py-20 min-h-[400px] text-center">
           <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
             <AlertCircle size={32} />
           </div>
           <h3 className="text-lg font-bold text-slate-900 mb-1">Failed to Load Ledger</h3>
-          <p className="text-sm text-slate-500 max-w-sm mx-auto">{error}</p>
+          <p className="text-sm text-slate-500 max-w-sm mx-auto">{displayError}</p>
           <Button onClick={fetchLedger} variant="outline" className="mt-6 rounded-xl border-slate-200">
             Try Again
           </Button>

@@ -37,6 +37,34 @@ export const useOrgTree = () => {
 export const OrgTreeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const { isAuthenticated } = useAuth();
 
+    // Cache the parsed sessionStorage value in state so it has a stable reference
+    const [orgTreeData, setOrgTreeData] = useState<OrgTreeNode[] | null>(() => {
+        try {
+            const stored = sessionStorage.getItem('orgTreeData');
+            return stored ? JSON.parse(stored) : null;
+        } catch (e) {
+            console.error('Failed to read initial orgTreeData from sessionStorage:', e);
+            return null;
+        }
+    });
+
+    // Stable query options to prevent unnecessary useFrappeGetDocList trigger
+    const docListOptions = useMemo(() => ({
+        fields: [
+            'name',
+            'parent_crm_heirarchy',
+            'is_group',
+            'code',
+            'org_code',
+            'org_type',
+            'org_name',
+            'parent_org_name',
+            'name1'
+        ],
+        limit: 100000,
+        orderBy: { field: 'org_name', order: 'asc' as const }
+    }), []);
+
     const {
         data: rawTreeData,
         error: sdkError,
@@ -44,57 +72,35 @@ export const OrgTreeProvider: React.FC<{ children: ReactNode }> = ({ children })
         mutate,
     } = useFrappeGetDocList<any>(
         'CRM Heirarchy',
-        {
-            fields: [
-                'name',
-                'parent_crm_heirarchy',
-                'is_group',
-                'code',
-                'org_code',
-                'org_type',
-                'org_name',
-                'parent_org_name',
-                'name1'
-            ],
-            limit: 100000,
-            orderBy: { field: 'org_name', order: 'asc' }
-        },
+        docListOptions,
         isAuthenticated ? undefined : null
     );
 
-    // Parse and map CRM Hierarchy nodes to the OrgTreeNode structure for compatibility
-    const orgTreeData = useMemo(() => {
-        if (!rawTreeData) {
-            // Fallback to session storage if loading or undefined
+    // Sync state when raw data is successfully fetched
+    useEffect(() => {
+        if (rawTreeData) {
+            const mappedData = rawTreeData.map((node: any) => ({
+                name: node.name || node.org_code,
+                parent_crm_heirarchy: node.parent_crm_heirarchy || null,
+                is_group: node.is_group ?? 0,
+                category: node.org_type || null,
+                org_type: node.org_type || null,
+                org_name: node.org_name || null,
+                code: node.code || null,
+                org_code: node.org_code || null,
+                parent_org_name: node.parent_org_name || null,
+                name1: node.name1 || null,
+            }));
+
             try {
-                const stored = sessionStorage.getItem('orgTreeData');
-                return stored ? JSON.parse(stored) : null;
+                sessionStorage.setItem('orgTreeData', JSON.stringify(mappedData));
+                sessionStorage.setItem('orgTreeCount', mappedData.length.toString());
             } catch (e) {
-                console.error('Failed to read orgTreeData from sessionStorage:', e);
-                return null;
+                console.warn('Failed to save orgTreeData to sessionStorage (quota exceeded):', e);
             }
-        }
 
-        const mappedData = rawTreeData.map((node: any) => ({
-            name: node.name || node.org_code,
-            parent_crm_heirarchy: node.parent_crm_heirarchy || null,
-            is_group: node.is_group ?? 0,
-            category: node.org_type || null,
-            org_type: node.org_type || null,
-            org_name: node.org_name || null,
-            code: node.code || null,
-            org_code: node.org_code || null,
-            parent_org_name: node.parent_org_name || null,
-            name1: node.name1 || null,
-        }));
-
-        try {
-            sessionStorage.setItem('orgTreeData', JSON.stringify(mappedData));
-            sessionStorage.setItem('orgTreeCount', mappedData.length.toString());
-        } catch (e) {
-            console.warn('Failed to save orgTreeData to sessionStorage (quota exceeded):', e);
+            setOrgTreeData(mappedData);
         }
-        return mappedData;
     }, [rawTreeData]);
 
     const count = useMemo(() => {

@@ -3,6 +3,8 @@ import Navbar from "../dashboard/Navbar";
 import Watchlist from "./Watchlist";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { TemplateCustomizer } from "./TemplateCustomizer";
+
 import { AppSidebar } from "./AppSidebar";
 import BottomNav from "./BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
@@ -73,14 +75,14 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 
     return (
         <SidebarProvider open={isSidebarExpanded} onOpenChange={handleSidebarOpenChange}>
-            <div className="flex h-screen w-full bg-slate-100 overflow-hidden">
+            <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
                 {/* Full Height Sidebar */}
                 {isSidebarEnabled && <AppSidebar />}
 
-                <SidebarInset className="flex flex-col flex-1 overflow-hidden h-full">
+                <SidebarInset className="flex flex-col flex-1 overflow-hidden h-full bg-background">
                     {/* Top Header inside main area */}
                     {isHeaderEnabled && (
-                        <header className="bg-white shadow-sm shrink-0 h-16 flex items-center">
+                        <header className="bg-card text-card-foreground border-b border-border shrink-0 h-16 flex items-center">
                             <Navbar />
                         </header>
                     )}
@@ -94,7 +96,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
                             </aside> */}
 
                             {/* Dashboard Content (70% - expands to fill) */}
-                            <main className="flex-1 h-full bg-white rounded-xl shadow-sm overflow-hidden flex flex-col">
+                            <main className="flex-1 h-full bg-card text-card-foreground border border-border/30 rounded-xl shadow-sm overflow-hidden flex flex-col">
                                 {scrollWholePage ? (
                                     <ScrollArea className="flex-1 h-full w-full">
                                         {children}
@@ -110,6 +112,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
                     <BottomNav />
                 </SidebarInset>
             </div>
+            <TemplateCustomizer />
         </SidebarProvider>
     );
 };

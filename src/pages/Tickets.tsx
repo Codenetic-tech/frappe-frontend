@@ -356,11 +356,11 @@ const Tickets: React.FC = () => {
 
     const getPriorityColor = (priority: string) => {
         switch (priority?.toUpperCase()) {
-            case 'URGENT': return 'bg-red-100 text-red-700 border-red-200';
-            case 'HIGH': return 'bg-orange-100 text-orange-700 border-orange-200';
-            case 'MEDIUM': return 'bg-blue-100 text-blue-700 border-blue-200';
-            case 'LOW': return 'bg-slate-100 text-slate-600 border-slate-200';
-            default: return 'bg-slate-50 text-slate-500 border-slate-100';
+            case 'URGENT': return 'bg-red-100 dark:bg-red-950/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900/30';
+            case 'HIGH': return 'bg-orange-100 dark:bg-orange-950/20 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-900/30';
+            case 'MEDIUM': return 'bg-blue-100 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-900/30';
+            case 'LOW': return 'bg-slate-105 dark:bg-slate-800 text-slate-600 dark:text-slate-350 border-slate-202 dark:border-slate-700';
+            default: return 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-100 dark:border-slate-750';
         }
     };
 
@@ -434,11 +434,11 @@ const Tickets: React.FC = () => {
 
     const getStatusBadgeStyles = (status: string) => {
         switch (status?.toUpperCase()) {
-            case 'OPEN': return 'bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100/80 transition-colors';
-            case 'IN PROGRESS': return 'bg-purple-50 text-purple-700 border-purple-100 hover:bg-purple-100/80 transition-colors';
-            case 'RESOLVED': return 'bg-green-50 text-green-700 border-green-100 hover:bg-green-100/80 transition-colors';
-            case 'CLOSED': return 'bg-slate-100 text-slate-600 border-slate-200 shadow-sm opacity-70 hover:opacity-100 transition-all';
-            default: return 'bg-slate-50 text-slate-500 border-slate-100 hover:bg-slate-100/80 transition-colors';
+            case 'OPEN': return 'bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border-blue-100 dark:border-blue-900/20 hover:bg-blue-100/80 dark:hover:bg-blue-955/30 transition-colors';
+            case 'IN PROGRESS': return 'bg-purple-50 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400 border-purple-100 dark:border-purple-900/20 hover:bg-purple-100/80 dark:hover:bg-purple-955/30 transition-colors';
+            case 'RESOLVED': return 'bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400 border-green-100 dark:border-green-900/20 hover:bg-green-100/80 dark:hover:bg-green-955/30 transition-colors';
+            case 'CLOSED': return 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-405 border-slate-202 dark:border-slate-700 shadow-sm opacity-70 hover:opacity-100 transition-all';
+            default: return 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-100 dark:border-slate-750 hover:bg-slate-100/80 transition-colors';
         }
     };
 
@@ -483,7 +483,7 @@ const Tickets: React.FC = () => {
                     onClick={() => {
                         navigate(`/ticketing/${row.getValue('ticket_id')}`);
                     }}
-                    className="font-bold text-purple-600 hover:text-purple-800 hover:underline transition-colors"
+                    className="font-bold text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 hover:underline transition-colors"
                 >
                     {row.getValue('ticket_id')}
                 </button>
@@ -499,7 +499,7 @@ const Tickets: React.FC = () => {
             ),
             cell: ({ row }) => (
                 <div className="flex flex-col max-w-[300px]">
-                    <span className="font-semibold text-slate-800 line-clamp-1">{row.original.subject}</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200 line-clamp-1">{row.original.subject}</span>
                 </div>
             ),
         },
@@ -531,7 +531,7 @@ const Tickets: React.FC = () => {
                             {status}
                         </Badge>
                         {breached && (
-                            <div className="flex items-center gap-1 text-[9px] font-bold text-red-500 uppercase tracking-tighter ml-1">
+                            <div className="flex items-center gap-1 text-[9px] font-bold text-red-500 dark:text-red-400 uppercase tracking-tighter ml-1">
                                 <AlertTriangle size={10} strokeWidth={3} />
                                 SLA Breached
                             </div>
@@ -549,13 +549,13 @@ const Tickets: React.FC = () => {
                 return (
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <span className="text-slate-700 font-semibold text-sm leading-tight cursor-default">
+                            <span className="text-slate-700 dark:text-slate-300 font-semibold text-sm leading-tight cursor-default">
                                 {requester}
                             </span>
                         </TooltipTrigger>
                         <TooltipContent
                             side="top"
-                            className="bg-slate-900 text-white border-slate-800 rounded-xl px-4 py-3 shadow-2xl max-w-xs"
+                            className="bg-slate-900 dark:bg-slate-950 text-white dark:text-slate-200 border border-slate-800 dark:border-slate-850 rounded-xl px-4 py-3 shadow-2xl max-w-xs"
                         >
                             <div className="space-y-1.5">
                                 <p className="text-xs font-bold text-white">{orgNode?.name1 || requester}</p>
@@ -577,13 +577,13 @@ const Tickets: React.FC = () => {
                 return (
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <span className="text-slate-700 font-semibold text-sm leading-tight cursor-default">
+                            <span className="text-slate-700 dark:text-slate-300 font-semibold text-sm leading-tight cursor-default">
                                 {assignedTo}
                             </span>
                         </TooltipTrigger>
                         <TooltipContent
                             side="top"
-                            className="bg-slate-900 text-white border-slate-800 rounded-xl px-4 py-3 shadow-2xl max-w-xs"
+                            className="bg-slate-900 dark:bg-slate-955 text-white dark:text-slate-205 border border-slate-800 dark:border-slate-850 rounded-xl px-4 py-3 shadow-2xl max-w-xs"
                         >
                             <div className="space-y-1.5">
                                 <p className="text-xs font-bold text-white">{orgNode?.name1 || assignedTo}</p>
@@ -601,18 +601,18 @@ const Tickets: React.FC = () => {
             header: 'Resolved By',
             cell: ({ row }) => {
                 const resolvedBy = row.getValue('resolved_by') as string;
-                if (!resolvedBy) return <span className="text-slate-400">-</span>;
+                if (!resolvedBy) return <span className="text-slate-400 dark:text-slate-500">-</span>;
                 const orgNode = orgTreeData?.find(n => n.name === resolvedBy);
                 return (
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <span className="text-slate-700 font-semibold text-sm leading-tight cursor-default">
+                            <span className="text-slate-700 dark:text-slate-300 font-semibold text-sm leading-tight cursor-default">
                                 {resolvedBy}
                             </span>
                         </TooltipTrigger>
                         <TooltipContent
                             side="top"
-                            className="bg-slate-900 text-white border-slate-800 rounded-xl px-4 py-3 shadow-2xl max-w-xs"
+                            className="bg-slate-900 dark:bg-slate-955 text-white dark:text-slate-205 border border-slate-800 dark:border-slate-855 rounded-xl px-4 py-3 shadow-2xl max-w-xs"
                         >
                             <div className="space-y-1.5">
                                 <p className="text-xs font-bold text-white">{orgNode?.name1 || resolvedBy}</p>
@@ -634,7 +634,7 @@ const Tickets: React.FC = () => {
                 </Button>
             ),
             cell: ({ row }) => (
-                <div className="flex items-center gap-2 text-slate-500 whitespace-nowrap">
+                <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 whitespace-nowrap">
                     <Clock className="w-3.5 h-3.5 opacity-40" />
                     <span className="font-mono text-xs">{formatTicketDate(row.getValue('created'))}</span>
                 </div>
@@ -649,7 +649,7 @@ const Tickets: React.FC = () => {
                 </Button>
             ),
             cell: ({ row }) => (
-                <div className="flex items-center gap-2 text-slate-400 whitespace-nowrap">
+                <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500 whitespace-nowrap">
                     <Timer className="w-3.5 h-3.5 opacity-30" />
                     <span className="font-mono text-xs">{formatTicketDate(row.getValue('modified'))}</span>
                 </div>
@@ -667,7 +667,7 @@ const Tickets: React.FC = () => {
                                 "w-3.5 h-3.5",
                                 star <= (row.getValue('rating') as number)
                                     ? "text-amber-400 fill-amber-400"
-                                    : "text-slate-200 fill-slate-200"
+                                    : "text-slate-200 dark:text-slate-800 fill-slate-200 dark:fill-slate-800"
                             )}
                         />
                     ))}
@@ -687,7 +687,7 @@ const Tickets: React.FC = () => {
                                 <MoreHorizontal className="h-4 w-4" />
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48 rounded-xl border-slate-200 shadow-xl">
+                        <DropdownMenuContent align="end" className="w-48 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuItem
                                 className="cursor-pointer"
@@ -768,11 +768,11 @@ const Tickets: React.FC = () => {
             <div className="shrink-0 space-y-4">
                 {/* Status Summary Grid */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
+                    <Card className="p-4 border-border dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[12px] font-bold text-slate-700 uppercase tracking-wider">Total</span>
-                            <div className="p-2 bg-purple-50 rounded-lg">
-                                <Ticket className="w-4 h-4 text-purple-600" />
+                            <span className="text-[12px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider">Total</span>
+                            <div className="p-2 bg-purple-50 dark:bg-purple-950/30 rounded-lg">
+                                <Ticket className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                             </div>
 
                         </div>
@@ -780,9 +780,9 @@ const Tickets: React.FC = () => {
                             {isLoading ? (
                                 <Skeleton className="h-8 w-16 mb-1" />
                             ) : (
-                                <p className="text-2xl font-bold text-slate-900">{statusCount.Total}</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{statusCount.Total}</p>
                             )}
-                            {/* <p className="text-[10px] text-slate-500 font-medium">All Tickets</p> */}
+                            {/* <p className="text-[10px] text-slate-505 font-medium">All Tickets</p> */}
                         </div>
                     </Card>
 
@@ -792,10 +792,10 @@ const Tickets: React.FC = () => {
                         { label: 'Resolved', key: 'Resolved', color: 'green', sub: 'Completed' },
                         { label: 'Closed', key: 'Closed', color: 'slate', sub: 'Archive' },
                     ].map((item) => (
-                        <Card key={item.key} className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
+                        <Card key={item.key} className="p-4 border-border dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
                             <div className="flex items-center justify-between mb-2">
-                                <span className={cn("text-[12px] font-bold uppercase tracking-wider", `text-${item.color}-600`)}>{item.label}</span>
-                                <div className={cn("p-2 rounded-lg", `bg-${item.color}-50`)}>
+                                <span className={cn("text-[12px] font-bold uppercase tracking-wider", `text-${item.color}-600 dark:text-${item.color}-400`)}>{item.label}</span>
+                                <div className={cn("p-2 rounded-lg", `bg-${item.color}-50 dark:bg-${item.color}-950/20`)}>
                                     {getStatusIcon(item.key)}
                                 </div>
                             </div>
@@ -814,26 +814,26 @@ const Tickets: React.FC = () => {
                 </div>
 
                 {/* Filters & Actions Row */}
-                <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50/50 border border-slate-200 rounded-2xl backdrop-blur-sm relative z-20">
+                <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl backdrop-blur-sm relative z-20">
                     <div className="w-[240px]">
                         <DateRangePicker
                             value={dateRange}
                             onChange={setDateRange}
                             placeholder="Created Date Range"
-                            className="w-full bg-white border-slate-200 focus:ring-purple-500 rounded-xl custom-date-picker h-10"
+                            className="w-full bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-purple-500 rounded-xl custom-date-picker h-10"
                             appearance="default"
                             block
                         />
                     </div>
                     <div className="w-[160px]">
                         <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                            <SelectTrigger className="bg-white border-slate-200 focus:ring-purple-500 rounded-xl h-10">
+                            <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-purple-500 rounded-xl h-10 text-slate-800 dark:text-slate-200">
                                 <div className="flex items-center gap-2">
-                                    <Filter className="w-3.5 h-3.5 text-slate-400" />
+                                    <Filter className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                                     <SelectValue placeholder="Priority" />
                                 </div>
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                            <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 shadow-xl">
                                 <SelectItem value="ALL">All Priorities</SelectItem>
                                 <SelectItem value="URGENT">Urgent</SelectItem>
                                 <SelectItem value="HIGH">High</SelectItem>
@@ -844,13 +844,13 @@ const Tickets: React.FC = () => {
                     </div>
                     <div className="w-[160px]">
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="bg-white border-slate-200 focus:ring-purple-500 rounded-xl h-10">
+                            <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-purple-500 rounded-xl h-10 text-slate-800 dark:text-slate-200">
                                 <div className="flex items-center gap-2">
-                                    <Filter className="w-3.5 h-3.5 text-slate-400" />
+                                    <Filter className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                                     <SelectValue placeholder="Status" />
                                 </div>
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                            <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 shadow-xl">
                                 <SelectItem value="ALL">All Statuses</SelectItem>
                                 <SelectItem value="OPEN">Open</SelectItem>
                                 <SelectItem value="IN PROGRESS">In Progress</SelectItem>
@@ -860,21 +860,21 @@ const Tickets: React.FC = () => {
                         </Select>
                     </div>
                     <div className="relative w-[180px]">
-                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                         <Input
                             placeholder="Search ID..."
                             value={idSearchQuery}
                             onChange={(e) => setIdSearchQuery(e.target.value)}
-                            className="pl-9 bg-white border-slate-200 focus:ring-purple-500 rounded-xl h-10"
+                            className="pl-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-purple-500 rounded-xl h-10 text-slate-900 dark:text-slate-100"
                         />
                     </div>
                     <div className="relative flex-1 min-w-[200px]">
-                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                         <Input
                             placeholder="Search Tickets..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-9 bg-white border-slate-200 focus:ring-purple-500 rounded-xl h-10"
+                            className="pl-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-purple-500 rounded-xl h-10 text-slate-900 dark:text-slate-100"
                         />
                     </div>
 
@@ -882,12 +882,12 @@ const Tickets: React.FC = () => {
 
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="outline" className="rounded-xl border-slate-200 bg-white h-10 gap-2">
-                                    <Columns3 className="w-4 h-4 text-slate-400" />
+                                <Button variant="outline" className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-800 dark:text-slate-200 h-10 gap-2">
+                                    <Columns3 className="w-4 h-4 text-slate-400 dark:text-slate-500" />
                                     Columns
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48 rounded-xl border-slate-200 shadow-xl">
+                            <DropdownMenuContent align="end" className="w-48 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl">
                                 <DropdownMenuLabel>Toggle Columns</DropdownMenuLabel>
                                 <DropdownMenuSeparator />
                                 {table
@@ -914,7 +914,7 @@ const Tickets: React.FC = () => {
                             onClick={handleRefresh}
                             disabled={isRefreshing || isLoading}
                             variant="outline"
-                            className="rounded-xl px-4 font-semibold gap-2 h-10 border-slate-200 bg-white hover:bg-slate-50 transition-all"
+                            className="rounded-xl px-4 font-semibold gap-2 h-10 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-800 dark:text-slate-200 transition-all"
                         >
                             <RefreshCcw className={cn("w-4 h-4", (isRefreshing || isLoading) && "animate-spin")} />
                         </Button>
@@ -925,7 +925,7 @@ const Tickets: React.FC = () => {
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        className="h-10 rounded-xl gap-2 border-purple-200 text-purple-700 bg-purple-50 hover:bg-purple-100 animate-in zoom-in-95 duration-200"
+                                        className="h-10 rounded-xl gap-2 border-purple-200 dark:border-purple-900/40 text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/20 hover:bg-purple-100 dark:hover:bg-purple-900/40 animate-in zoom-in-95 duration-200"
                                         disabled={isAssigning}
                                     >
                                         <Users className="w-4 h-4" />
@@ -933,11 +933,11 @@ const Tickets: React.FC = () => {
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent
-                                    className="w-[210px] p-0 rounded-2xl border-slate-200 shadow-xl overflow-hidden"
+                                    className="w-[210px] p-0 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden bg-white dark:bg-slate-900"
                                     align="start"
                                     onWheel={(e) => e.stopPropagation()}
                                 >
-                                    <Command className="border-none overflow-visible">
+                                    <Command className="border-none overflow-visible bg-white dark:bg-slate-900">
                                         <CommandInput placeholder="Search department or branch..." className="h-11" />
                                         <CommandList className="max-h-[220px] overflow-y-auto pointer-events-auto p-1">
                                             <CommandEmpty>No recipient found.</CommandEmpty>
@@ -950,12 +950,12 @@ const Tickets: React.FC = () => {
                                                             onSelect={(currentValue) => {
                                                                 handleBulkAssign(currentValue);
                                                             }}
-                                                            className="cursor-pointer py-2.5 rounded-lg mx-1"
+                                                            className="cursor-pointer py-2.5 rounded-lg mx-1 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
                                                         >
                                                             <div className="flex items-center justify-between w-full">
                                                                 <div className="flex flex-col">
-                                                                    <span className="font-bold text-slate-700">{branch.name}</span>
-                                                                    <span className="text-[10px] text-slate-400 font-mono">{branch.name1}</span>
+                                                                    <span className="font-bold text-slate-700 dark:text-slate-300">{branch.name}</span>
+                                                                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">{branch.name1}</span>
                                                                 </div>
                                                             </div>
                                                         </CommandItem>
@@ -971,12 +971,12 @@ const Tickets: React.FC = () => {
                                                             onSelect={(currentValue) => {
                                                                 handleBulkAssign(currentValue);
                                                             }}
-                                                            className="cursor-pointer py-2.5 rounded-lg mx-1"
+                                                            className="cursor-pointer py-2.5 rounded-lg mx-1 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
                                                         >
                                                             <div className="flex items-center justify-between w-full">
                                                                 <div className="flex flex-col">
-                                                                    <span className="font-semibold text-slate-600">{branch.name}</span>
-                                                                    <span className="text-[10px] text-slate-400 font-mono">{branch.name1}</span>
+                                                                    <span className="font-semibold text-slate-600 dark:text-slate-400">{branch.name}</span>
+                                                                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">{branch.name1}</span>
                                                                 </div>
                                                             </div>
                                                         </CommandItem>
@@ -990,17 +990,17 @@ const Tickets: React.FC = () => {
                         )}
                     </div>
 
-                    <div className="flex items-center gap-2 ml-auto border-l pl-3 border-slate-200">
+                    <div className="flex items-center gap-2 ml-auto border-l pl-3 border-slate-200 dark:border-slate-800">
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                             disabled={currentPage === 1 || isLoading}
-                            className="h-9 w-9 p-0 rounded-xl border-slate-200 bg-white hover:bg-slate-50"
+                            className="h-9 w-9 p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-800 dark:text-slate-200"
                         >
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
-                        <div className="flex items-center gap-1.5 px-3 h-9 bg-white border border-slate-200 rounded-xl">
+                        <div className="flex items-center gap-1.5 px-3 h-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-slate-200">
                             <span className="text-sm font-bold text-purple-600">{currentPage}</span>
                             <span className="text-xs text-slate-400 font-bold">/</span>
                             <span className="text-xs text-slate-500 font-bold">{totalPages || 1}</span>
@@ -1010,7 +1010,7 @@ const Tickets: React.FC = () => {
                             size="sm"
                             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                             disabled={currentPage === totalPages || totalPages === 0 || isLoading}
-                            className="h-9 w-9 p-0 rounded-xl border-slate-200 bg-white hover:bg-slate-50"
+                            className="h-9 w-9 p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-850 dark:text-slate-200"
                         >
                             <ChevronRight className="h-4 w-4" />
                         </Button>
@@ -1019,21 +1019,21 @@ const Tickets: React.FC = () => {
             </div>
 
             {error && (
-                <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-xs font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-xl text-red-600 dark:text-red-400 text-xs font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
                     <AlertCircle className="w-3.5 h-3.5" />
                     {error}
                 </div>
             )}
 
             {/* Table Section */}
-            <Card className="flex-1 min-h-0 flex flex-col border-none shadow-sm overflow-hidden bg-white rounded-2xl border border-slate-100">
+            <Card className="flex-1 min-h-0 flex flex-col border-none shadow-sm overflow-hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
                 <ScrollArea className="flex-1">
                     <Table>
-                        <TableHeader className="bg-slate-50/90 backdrop-blur-md sticky top-0 z-10">
+                        <TableHeader className="bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md sticky top-0 z-10">
                             {table.getHeaderGroups().map((headerGroup) => (
-                                <TableRow key={headerGroup.id} className="hover:bg-transparent border-b border-slate-100">
+                                <TableRow key={headerGroup.id} className="hover:bg-transparent border-b border-slate-100 dark:border-slate-800">
                                     {headerGroup.headers.map((header) => (
-                                        <TableHead key={header.id} className="h-12 px-4 text-slate-600 font-semibold">
+                                        <TableHead key={header.id} className="h-12 px-4 text-slate-600 dark:text-slate-405 font-semibold">
                                             {header.isPlaceholder
                                                 ? null
                                                 : flexRender(
@@ -1048,7 +1048,7 @@ const Tickets: React.FC = () => {
                         <TableBody>
                             {isLoading ? (
                                 Array.from({ length: 12 }).map((_, i) => (
-                                    <TableRow key={i} className="hover:bg-transparent border-b border-slate-50">
+                                    <TableRow key={i} className="hover:bg-transparent border-b border-slate-50 dark:border-slate-800/40">
                                         <TableCell className="py-3 px-4"><Skeleton className="h-4 w-4 rounded" /></TableCell>
                                         <TableCell className="py-3 px-4"><Skeleton className="h-4 w-20" /></TableCell>
                                         <TableCell className="py-3 px-4"><Skeleton className="h-4 w-40" /></TableCell>
@@ -1068,7 +1068,7 @@ const Tickets: React.FC = () => {
                                     <TableRow
                                         key={row.id}
                                         data-state={row.getIsSelected() && "selected"}
-                                        className="hover:bg-slate-50/50 transition-colors border-slate-50 group cursor-default"
+                                        className="hover:bg-slate-50/50 dark:hover:bg-slate-850/40 transition-colors border-slate-50 dark:border-slate-850 group cursor-default"
                                     >
                                         {row.getVisibleCells().map((cell) => (
                                             <TableCell key={cell.id} className="py-3 px-4">
@@ -1081,11 +1081,11 @@ const Tickets: React.FC = () => {
                                 <TableRow>
                                     <TableCell colSpan={columns.length} className="h-48 text-center">
                                         <div className="flex flex-col items-center justify-center">
-                                            <div className="p-4 bg-slate-50 rounded-full mb-3">
+                                            <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-full mb-3 text-slate-600 dark:text-slate-400">
                                                 <Ticket className="w-10 h-10 opacity-10" />
                                             </div>
-                                            <p className="text-sm font-bold text-slate-600">No tickets found</p>
-                                            <p className="text-xs text-slate-400 mt-1">Try adjusting your filters to find what you are looking for.</p>
+                                            <p className="text-sm font-bold text-slate-600 dark:text-slate-350">No tickets found</p>
+                                            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Try adjusting your filters to find what you are looking for.</p>
                                         </div>
                                     </TableCell>
                                 </TableRow>
@@ -1095,9 +1095,9 @@ const Tickets: React.FC = () => {
                     <ScrollBar orientation="horizontal" />
                 </ScrollArea>
                 {/* Status Info Footer */}
-                <div className="shrink-0 py-2 px-6 border-t border-slate-100 bg-slate-50/50 flex justify-center items-center">
-                    <p className="text-[11px] text-slate-500 font-medium tracking-tight">
-                        Showing <span className="text-slate-900 font-bold">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> to <span className="text-slate-900 font-bold">{Math.min(currentPage * ITEMS_PER_PAGE, count)}</span> of <span className="text-slate-900 font-bold">{count}</span> reported tickets
+                <div className="shrink-0 py-2 px-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex justify-center items-center">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium tracking-tight">
+                        Showing <span className="text-slate-900 dark:text-slate-100 font-bold">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> to <span className="text-slate-900 dark:text-slate-100 font-bold">{Math.min(currentPage * ITEMS_PER_PAGE, count)}</span> of <span className="text-slate-900 dark:text-slate-100 font-bold">{count}</span> reported tickets
                     </p>
                 </div>
             </Card>

@@ -23,7 +23,7 @@ import {
   ArrowRight,
   MessageSquare
 } from 'lucide-react';
-import { LeadItem } from '@/contexts/LeadContext';
+import { LeadItem } from '@/pages/Leads';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -111,17 +111,17 @@ const LeadFormTab: React.FC<LeadFormTabProps> = ({ lead, leadId, onLeadUpdate })
 
   const CompactField = ({ icon: Icon, label, value, editValue, onChange, type = 'text', placeholder, options, span = 1, disabled = false }: any) => (
     <div className={cn("space-y-1.5", span === 2 ? "md:col-span-2" : "")}>
-      <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+      <Label className="text-[11px] font-bold text-slate-500 dark:text-slate-450 uppercase tracking-wider flex items-center gap-1.5">
         {Icon && <Icon className="w-3 h-3" />}
         {label}
       </Label>
       {isEditing ? (
         options ? (
           <Select value={String(editValue ?? value ?? '')} onValueChange={onChange} disabled={disabled}>
-            <SelectTrigger className="h-10 rounded-xl bg-white border-slate-200">
+            <SelectTrigger className="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
               <SelectValue placeholder={placeholder} />
             </SelectTrigger>
-            <SelectContent className="rounded-xl">
+            <SelectContent className="rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200">
               {options.map((opt: any) => (
                 <SelectItem key={opt.value || opt} value={opt.value || opt} className="rounded-lg">
                   {opt.label || opt}
@@ -135,7 +135,7 @@ const LeadFormTab: React.FC<LeadFormTabProps> = ({ lead, leadId, onLeadUpdate })
             onChange={(e) => onChange(e.target.value)}
             rows={3}
             placeholder={placeholder}
-            className="resize-none rounded-xl bg-white border-slate-200"
+            className="resize-none rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100"
             disabled={disabled}
           />
         ) : (
@@ -144,13 +144,13 @@ const LeadFormTab: React.FC<LeadFormTabProps> = ({ lead, leadId, onLeadUpdate })
             value={String(editValue ?? value ?? '')}
             onChange={(e) => onChange(type === 'number' ? Number(e.target.value) : e.target.value)}
             placeholder={placeholder}
-            className="h-10 rounded-xl bg-white border-slate-200"
+            className="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100"
             disabled={disabled}
           />
         )
       ) : (
-        <div className="px-4 py-2.5 rounded-xl bg-slate-50/80 border border-slate-100 text-sm font-semibold text-slate-700 min-h-[42px] flex items-center shadow-sm">
-          {value || <span className="text-slate-400 font-medium italic">Not specified</span>}
+        <div className="px-4 py-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/80 text-sm font-semibold text-slate-700 dark:text-slate-350 min-h-[42px] flex items-center shadow-sm">
+          {value || <span className="text-slate-400 dark:text-slate-500 font-medium italic">Not specified</span>}
         </div>
       )}
     </div>
@@ -160,13 +160,13 @@ const LeadFormTab: React.FC<LeadFormTabProps> = ({ lead, leadId, onLeadUpdate })
     <div className="p-6 space-y-8 ">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-purple-100 rounded-2xl shadow-sm text-purple-600">
+          <div className="p-3 bg-purple-100 dark:bg-purple-950/40 rounded-2xl shadow-sm text-purple-600 dark:text-purple-400">
             <Users className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-slate-900">{lead.lead_name}</h2>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">{lead.lead_name}</h2>
             <div className="flex items-center gap-2 mt-1">
-              <Badge variant="outline" className="px-3 py-1 rounded-full bg-slate-50 text-slate-600 font-bold text-[10px] uppercase tracking-wider">{lead.industry}</Badge>
+              <Badge variant="outline" className="px-3 py-1 rounded-full bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-350 border-slate-200 dark:border-slate-700 font-bold text-[10px] uppercase tracking-wider">{lead.industry}</Badge>
               {lead.validity_date && <LeadTimer validityDate={lead.validity_date} />}
             </div>
           </div>
@@ -174,29 +174,29 @@ const LeadFormTab: React.FC<LeadFormTabProps> = ({ lead, leadId, onLeadUpdate })
         <div className="flex gap-2">
           {isEditing ? (
             <>
-              <Button onClick={updateLead} disabled={updating} className="rounded-xl bg-purple-600 hover:bg-purple-700 h-10 px-6 font-bold uppercase tracking-wider shadow-md shadow-purple-100">
+              <Button onClick={updateLead} disabled={updating} className="rounded-xl bg-purple-600 hover:bg-purple-700 text-white h-10 px-6 font-bold uppercase tracking-wider shadow-md shadow-purple-100/10">
                 {updating ? <RefreshCw className="animate-spin h-4 w-4 mr-2" /> : <Save size={16} className="mr-2" />}
                 {updating ? 'Saving...' : 'Save Changes'}
               </Button>
-              <Button variant="outline" onClick={handleEditToggle} className="rounded-xl h-10 px-6 font-bold uppercase tracking-wider border-slate-200">
+              <Button variant="outline" onClick={handleEditToggle} className="rounded-xl h-10 px-6 font-bold uppercase tracking-wider border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-250 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800">
                 <X size={16} className="mr-2" /> Cancel
               </Button>
             </>
           ) : (
-            <Button onClick={handleEditToggle} className="rounded-xl bg-purple-600 hover:bg-purple-700 h-10 px-6 font-bold uppercase tracking-wider shadow-md shadow-purple-100">
+            <Button onClick={handleEditToggle} className="rounded-xl bg-purple-600 hover:bg-purple-700 text-white h-10 px-6 font-bold uppercase tracking-wider shadow-md shadow-purple-100/10">
               <Edit3 size={16} className="mr-2" /> Edit Details
             </Button>
           )}
         </div>
       </div>
 
-      <Separator className="bg-slate-100" />
+      <Separator className="bg-slate-100 dark:bg-slate-800" />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card className="border-slate-100 shadow-sm rounded-3xl overflow-hidden">
-          <CardHeader className="bg-slate-50/50 pb-4">
-            <CardTitle className="text-xs font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
-              <User className="w-4 h-4 text-purple-500" />
+        <Card className="border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm rounded-3xl overflow-hidden">
+          <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 pb-4">
+            <CardTitle className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-2">
+              <User className="w-4 h-4 text-purple-500 dark:text-purple-400" />
               General Info
             </CardTitle>
           </CardHeader>
@@ -214,10 +214,10 @@ const LeadFormTab: React.FC<LeadFormTabProps> = ({ lead, leadId, onLeadUpdate })
           </CardContent>
         </Card>
 
-        <Card className="border-slate-100 shadow-sm rounded-3xl overflow-hidden">
-          <CardHeader className="bg-slate-50/50 pb-4">
-            <CardTitle className="text-xs font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
-              <Target className="w-4 h-4 text-purple-500" />
+        <Card className="border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm rounded-3xl overflow-hidden">
+          <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 pb-4">
+            <CardTitle className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-2">
+              <Target className="w-4 h-4 text-purple-500 dark:text-purple-400" />
               Source & Acquisition
             </CardTitle>
           </CardHeader>
@@ -234,14 +234,14 @@ const LeadFormTab: React.FC<LeadFormTabProps> = ({ lead, leadId, onLeadUpdate })
         </Card>
       </div>
 
-      <Card className="border-slate-100 shadow-sm rounded-3xl overflow-hidden">
-        <CardHeader className="bg-slate-50/50 pb-4 cursor-pointer" onClick={() => toggleSection('trading')}>
+      <Card className="border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm rounded-3xl overflow-hidden">
+        <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 pb-4 cursor-pointer" onClick={() => toggleSection('trading')}>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-xs font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-purple-500" />
+            <CardTitle className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-purple-500 dark:text-purple-400" />
               Trading Profiling
             </CardTitle>
-            {expandedSections.trading ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+            {expandedSections.trading ? <ChevronUp className="w-4 h-4 text-slate-400 dark:text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-400 dark:text-slate-500" />}
           </div>
         </CardHeader>
         {expandedSections.trading && (
@@ -252,8 +252,8 @@ const LeadFormTab: React.FC<LeadFormTabProps> = ({ lead, leadId, onLeadUpdate })
               <CompactField label="Employees" value={lead.no_of_employees} editValue={editedLead.no_of_employees} onChange={(val: number) => handleFieldChange("no_of_employees", val)} type="number" />
               <CompactField label="Trade Done" value={lead.tradedone} editValue={editedLead.tradedone} onChange={(val: string) => handleFieldChange("tradedone", val)} />
             </div>
-            <div className="mt-8 pt-6 border-t border-slate-100">
-              <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-4 block">Segement Access</Label>
+            <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
+              <Label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4 block">Segement Access</Label>
               <div className="flex flex-wrap gap-2.5">
                 {[
                   { key: 'nse_cm', label: 'NSE CM' },
@@ -263,7 +263,7 @@ const LeadFormTab: React.FC<LeadFormTabProps> = ({ lead, leadId, onLeadUpdate })
                   { key: 'nse_fo', label: 'NSE FO' },
                   { key: 'bse_cm', label: 'BSE CM' }
                 ].map((seg) => (
-                  <Badge key={seg.key} variant={lead[seg.key as keyof LeadItem] ? "default" : "outline"} className={cn("px-4 py-1.5 rounded-xl text-[10px] font-bold uppercase transition-all", lead[seg.key as keyof LeadItem] ? "bg-purple-600 border-purple-600 shadow-sm" : "border-slate-200 text-slate-400")}>
+                  <Badge key={seg.key} variant={lead[seg.key as keyof LeadItem] ? "default" : "outline"} className={cn("px-4 py-1.5 rounded-xl text-[10px] font-bold uppercase transition-all", lead[seg.key as keyof LeadItem] ? "bg-purple-600 border-purple-600 text-white shadow-sm" : "border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-900")}>
                     {seg.label}
                   </Badge>
                 ))}
@@ -273,14 +273,14 @@ const LeadFormTab: React.FC<LeadFormTabProps> = ({ lead, leadId, onLeadUpdate })
         )}
       </Card>
 
-      <Card className="border-slate-100 shadow-sm rounded-3xl overflow-hidden">
-        <CardHeader className="bg-slate-50/50 pb-4 cursor-pointer" onClick={() => toggleSection('additional')}>
+      <Card className="border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm rounded-3xl overflow-hidden">
+        <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 pb-4 cursor-pointer" onClick={() => toggleSection('additional')}>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-xs font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
-              <FileText className="w-4 h-4 text-purple-500" />
+            <CardTitle className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-450 flex items-center gap-2">
+              <FileText className="w-4 h-4 text-purple-500 dark:text-purple-400" />
               Additional Details
             </CardTitle>
-            {expandedSections.additional ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+            {expandedSections.additional ? <ChevronUp className="w-4 h-4 text-slate-400 dark:text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-400 dark:text-slate-500" />}
           </div>
         </CardHeader>
         {expandedSections.additional && (

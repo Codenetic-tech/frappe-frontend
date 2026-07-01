@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   ChevronRight, TrendingUp, TrendingDown, PieChart,
@@ -6,6 +6,7 @@ import {
   Building2, Globe, PackageOpen, AlertCircle, AlertTriangle
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import useSWR from 'swr';
 
 interface ClientHoldingsTabProps {
   clientCode: string;
@@ -14,11 +15,26 @@ interface ClientHoldingsTabProps {
 
 interface ApiHolding {
   name: string;
-  nse_tsym?: string;
-  bse_tsym?: string;
-  npoadqty?: string;
+  actid: string;
   upload_prc?: string;
   close_prc?: string;
+  actual_closing_price?: number;
+  npoadqty?: string;
+  total_qty?: number;
+  hold_qty?: string;
+  benqty?: string;
+  usedqty?: string;
+  sell_amt?: string;
+  trdqty?: string;
+  prod?: string;
+  nse_tsym?: string;
+  bse_tsym?: string;
+  isin?: string;
+  interop_key?: string;
+  interop_exch?: string;
+  invested_amount?: number;
+  current_value?: number;
+  mtm?: number;
 }
 
 interface ParsedHolding {
@@ -45,101 +61,121 @@ const sectorColors: Record<string, string> = {
   Others: "bg-muted-foreground",
 };
 
-// Helper to assign pseudo-data to API holding so it matches Holdings.tsx perfectly
+const postFetcher = async (payload: { url: string; body: Record<string, any> }) => {
+  const response = await fetch(payload.url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload.body)
+  });
+  if (!response.ok) {
+    let errData;
+    try { errData = await response.json(); } catch (e) { errData = { message: response.statusText || 'Fetch failed' }; }
+    const error: any = new Error(errData.message || 'Fetch failed');
+    error.status = response.status;
+    error.info = errData;
+    throw error;
+  }
+  const data = await response.json();
+  return data.message;
+};
+
 const enrichStockMetadata = (ticker: string) => {
   const upper = ticker.toUpperCase();
-  if (upper.includes('RELIANCE') || upper.includes('ADANI') || upper.includes('POWER')) return { icon: "Zap", sector: "Energy" };
-  if (upper.includes('HDFC') || upper.includes('SBI') || upper.includes('BANK')) return { icon: "Landmark", sector: "Banking" };
-  if (upper.includes('TCS') || upper.includes('INFY') || upper.includes('WIPRO')) return { icon: "Monitor", sector: "IT" };
-  if (upper.includes('ITC') || upper.includes('TATA') || upper.includes('RENUKA')) return { icon: "Leaf", sector: "FMCG" };
+  if (upper.includes('RELIANCE') || upper.includes('ADANI') || upper.includes('POWER') || upper.includes('NTPC') || upper.includes('ONGC')) return { icon: "Zap", sector: "Energy" };
+  if (upper.includes('HDFC') || upper.includes('SBI') || upper.includes('BANK') || upper.includes('ICICI') || upper.includes('AXIS') || upper.includes('KOTAK')) return { icon: "Landmark", sector: "Banking" };
+  if (upper.includes('TCS') || upper.includes('INFY') || upper.includes('WIPRO') || upper.includes('HCL') || upper.includes('TECHM')) return { icon: "Monitor", sector: "IT" };
+  if (upper.includes('ITC') || upper.includes('HINDUNILVR') || upper.includes('NESTLE') || upper.includes('BRITANNIA') || upper.includes('DABUR')) return { icon: "Leaf", sector: "FMCG" };
+  if (upper.includes('TATA') || upper.includes('M&M') || upper.includes('MARUTI') || upper.includes('EICHER') || upper.includes('HEROMOTOCO')) return { icon: "Building2", sector: "Auto" };
+  if (upper.includes('SUNPHARMA') || upper.includes('DRREDDY') || upper.includes('CIPLA') || upper.includes('DIVISLAB')) return { icon: "Globe", sector: "Pharma" };
   return { icon: "Hexagon", sector: "Others" };
 };
 
 const ClientHoldingsTab: React.FC<ClientHoldingsTabProps> = ({ clientCode, refreshKey }) => {
-  const { logout, user } = useAuth();
-  const [holdings, setHoldings] = useState<ParsedHolding[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
+  const { data: holdingsData = [], error: listError, isLoading, mutate } = useSWR<any[]>(
+    clientCode ? {
+      url: `${API_BASE_URL}/api/method/frappe.client.get_list`,
+      body: {
+        doctype: 'Holdings',
+        fields: [
+          'name', 'actid', 'upload_prc', 'close_prc', 'npoadqty', 'hold_qty', 'benqty',
+          'usedqty', 'sell_amt', 'trdqty', 'prod', 'nse_tsym', 'bse_tsym', 'isin',
+          'interop_key', 'interop_exch', 'actual_closing_price', 'invested_amount',
+          'current_value', 'mtm', 'total_qty'
+        ],
+        filters: [['actid', '=', clientCode]],
+        limit_page_length: 1000
+      }
+    } : null,
+    postFetcher,
+    { revalidateOnFocus: false, revalidateOnReconnect: true }
+  );
 
   useEffect(() => {
-    let isMounted = true;
+    if (refreshKey !== undefined) {
+      mutate();
+    }
+  }, [refreshKey, mutate]);
 
-    const fetchHoldings = async () => {
-      if (!user) return;
-      setIsLoading(true);
-      setError(null);
-
+  const error = useMemo(() => {
+    if (!listError) return null;
+    const info = listError.info || {};
+    const exception = info.exception || "";
+    const exc_type = info.exc_type || "";
+    const _server_messages = info._server_messages || "";
+    const message = info.message || listError.message || "";
+    const is403 = listError.status === 403;
+    const isPermissionError = exception.includes('PermissionError') ||
+                              exc_type === 'PermissionError' ||
+                              _server_messages.includes('PermissionError') ||
+                              _server_messages.includes('Insufficient Permission') ||
+                              message.includes('PermissionError') ||
+                              message.includes('Insufficient Permission');
+    if (is403 || isPermissionError) {
       try {
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-        const response = await fetch(`${API_BASE_URL}/api/method/rms.clientdetails.holdings`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ client_code: clientCode }),
-          mode: 'cors',
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch Holdings');
-        }
-
-        const data = await response.json();
-
-        if (data.message?.status === 'Ok' && Array.isArray(data.message?.data)) {
-          const holdData = data.message.data[0]?.holdings || [];
-
-          const parsed: ParsedHolding[] = holdData.map((h: ApiHolding) => {
-            const rawTicker = h.nse_tsym || h.bse_tsym || h.name || "UNKNOWN";
-            const ticker = rawTicker.replace('-EQ', '');
-            const stock = ticker.substring(0, 15);
-
-            const meta = enrichStockMetadata(ticker);
-            const qty = Math.abs(parseFloat(h.npoadqty || "0"));
-            const avgPrice = Math.abs(parseFloat(h.upload_prc || "0"));
-
-            let ltp = parseFloat(h.close_prc || "0");
-            if (ltp > 0 && ltp > avgPrice * 10) ltp = ltp / 100;
-
-            const invested = qty * avgPrice;
-            const current = qty * ltp;
-            const pnl = current - invested;
-            const pnlPercent = invested > 0 ? (pnl / invested) * 100 : 0;
-
-            return {
-              stock,
-              ticker,
-              icon: meta.icon,
-              sector: meta.sector,
-              qty,
-              avgPrice,
-              ltp,
-              invested,
-              current,
-              pnl,
-              pnlPercent
-            };
-          }).filter((h: ParsedHolding) => h.qty > 0 || h.invested > 0);
-
-          if (isMounted) {
-            setHoldings(parsed);
-            setIsLoading(false);
+        if (_server_messages) {
+          const parsedMsgs = JSON.parse(_server_messages);
+          if (Array.isArray(parsedMsgs) && parsedMsgs[0]?.message) {
+            return parsedMsgs[0].message.replace(/<[^>]*>/g, '');
           }
-        } else {
-          throw new Error('Invalid data format received');
         }
-      } catch (err: any) {
-        if (isMounted) {
-          setError(err.message || 'An error occurred while fetching holdings.');
-          setIsLoading(false);
-        }
-      }
-    };
+      } catch (e) {}
+      return message || "Insufficient Permission for Holdings";
+    }
+    return message || 'An error occurred while fetching holdings.';
+  }, [listError]);
 
-    fetchHoldings();
-
-    return () => { isMounted = false; };
-  }, [clientCode, logout, user, refreshKey]);
+  const holdings = useMemo(() => {
+    if (!holdingsData || !Array.isArray(holdingsData)) return [];
+    return holdingsData.map((h: any) => {
+      const rawTicker = h.nse_tsym || h.bse_tsym || h.isin || h.name || "UNKNOWN";
+      const ticker = rawTicker.replace('-EQ', '').replace('-BE', '');
+      const stock = ticker.substring(0, 15);
+      const meta = enrichStockMetadata(ticker);
+      const avgPrice = Math.abs(parseFloat(h.upload_prc || "0"));
+      const ltp = parseFloat(h.actual_closing_price || h.close_prc || "0");
+      const qty = parseFloat(h.total_qty ?? h.npoadqty ?? "0");
+      const invested = parseFloat(h.invested_amount ?? "0");
+      const current = parseFloat(h.current_value ?? "0");
+      const pnl = parseFloat(h.mtm ?? "0");
+      const pnlPercent = invested > 0 ? (pnl / invested) * 100 : 0;
+      return {
+        stock,
+        ticker,
+        icon: meta.icon,
+        sector: meta.sector,
+        qty,
+        avgPrice,
+        ltp,
+        invested,
+        current,
+        pnl,
+        pnlPercent
+      };
+    }).filter((h: ParsedHolding) => h.qty > 0 || h.invested > 0);
+  }, [holdingsData]);
 
   if (isLoading) {
     return (

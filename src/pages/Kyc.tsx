@@ -98,14 +98,14 @@ const CATEGORY_ORDER: Record<string, number> = {
 
 const getCategoryStyles = (category?: string) => {
     switch (category?.toUpperCase()) {
-        case 'ZONE': return 'bg-blue-100 text-blue-700 border-blue-200';
-        case 'REGION': return 'bg-indigo-100 text-indigo-700 border-indigo-200';
-        case 'BRANCH': return 'bg-slate-100 text-slate-700 border-slate-200';
-        case 'RM': return 'bg-purple-100 text-purple-700 border-purple-200';
-        case 'AP': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-        case 'U-AP': return 'bg-cyan-100 text-cyan-700 border-cyan-200';
-        case 'CLIENT': return 'bg-amber-100 text-amber-700 border-amber-200';
-        default: return 'bg-gray-100 text-gray-700 border-gray-200';
+        case 'ZONE': return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/30';
+        case 'REGION': return 'bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-950/20 dark:text-indigo-400 dark:border-indigo-900/30';
+        case 'BRANCH': return 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-350 dark:border-slate-700';
+        case 'RM': return 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950/20 dark:text-purple-400 dark:border-purple-900/30';
+        case 'AP': return 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30';
+        case 'U-AP': return 'bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-950/20 dark:text-cyan-400 dark:border-cyan-900/30';
+        case 'CLIENT': return 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/30';
+        default: return 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
     }
 };
 
@@ -775,90 +775,90 @@ const Kyc: React.FC = () => {
             <div className="shrink-0 space-y-4">
                 {/* Status Summary Grid */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
+                    <Card className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[12px] font-bold text-slate-700 uppercase tracking-wider">Total</span>
-                            <div className="p-2 bg-purple-50 rounded-lg">
-                                <FileText className="w-4 h-4 text-purple-600" />
+                            <span className="text-[12px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Total</span>
+                            <div className="p-2 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
+                                <FileText className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                             </div>
                         </div>
                         <div className="space-y-0.5">
                             {isLoading ? (
                                 <Skeleton className="h-8 w-16 mb-1" />
                             ) : (
-                                <p className="text-2xl font-bold text-slate-900">{count}</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{count}</p>
                             )}
                         </div>
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
+                    <Card className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[12px] font-bold text-green-600 uppercase tracking-wider">Approved</span>
-                            <div className="p-2 bg-green-50 rounded-lg">
-                                <CheckCircle2 className="w-4 h-4 text-green-600" />
+                            <span className="text-[12px] font-bold text-green-600 dark:text-green-455 uppercase tracking-wider">Approved</span>
+                            <div className="p-2 bg-green-50 dark:bg-green-950/20 rounded-lg">
+                                <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
                             </div>
                         </div>
                         <div className="space-y-0.5">
                             {isLoading ? (
                                 <Skeleton className="h-8 w-12 mb-1" />
                             ) : (
-                                <p className="text-2xl font-bold text-slate-900">{statusCount['APPROVED']}</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{statusCount['APPROVED']}</p>
                             )}
                         </div>
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
+                    <Card className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[12px] font-bold text-purple-600 uppercase tracking-wider">Opened</span>
-                            <div className="p-2 bg-purple-50 rounded-lg">
-                                <ShieldCheck className="w-4 h-4 text-purple-600" />
+                            <span className="text-[12px] font-bold text-purple-600 dark:text-purple-455 uppercase tracking-wider">Opened</span>
+                            <div className="p-2 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
+                                <ShieldCheck className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                             </div>
                         </div>
                         <div className="space-y-0.5">
                             {isLoading ? (
                                 <Skeleton className="h-8 w-12 mb-1" />
                             ) : (
-                                <p className="text-2xl font-bold text-slate-900">{statusCount['ACCOUNT OPENED']}</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{statusCount['ACCOUNT OPENED']}</p>
                             )}
                         </div>
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
+                    <Card className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[12px] font-bold text-violet-600 uppercase tracking-wider">Pending</span>
-                            <div className="p-2 bg-violet-50 rounded-lg">
-                                <UserCheck className="w-4 h-4 text-violet-600" />
+                            <span className="text-[12px] font-bold text-violet-600 dark:text-violet-455 uppercase tracking-wider">Pending</span>
+                            <div className="p-2 bg-violet-50 dark:bg-violet-950/20 rounded-lg">
+                                <UserCheck className="w-4 h-4 text-violet-600 dark:text-violet-400" />
                             </div>
                         </div>
                         <div className="space-y-0.5">
                             {isLoading ? (
                                 <Skeleton className="h-8 w-12 mb-1" />
                             ) : (
-                                <p className="text-2xl font-bold text-slate-900">{statusCount['PENDING FOR APPROVAL']}</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{statusCount['PENDING FOR APPROVAL']}</p>
                             )}
                         </div>
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
+                    <Card className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[12px] font-bold text-amber-600 uppercase tracking-wider">Progress</span>
-                            <div className="p-2 bg-amber-50 rounded-lg">
-                                <Clock className="w-4 h-4 text-amber-600" />
+                            <span className="text-[12px] font-bold text-amber-600 dark:text-amber-455 uppercase tracking-wider">Progress</span>
+                            <div className="p-2 bg-amber-50 dark:bg-amber-950/20 rounded-lg">
+                                <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                             </div>
                         </div>
                         <div className="space-y-0.5">
                             {isLoading ? (
                                 <Skeleton className="h-8 w-12 mb-1" />
                             ) : (
-                                <p className="text-2xl font-bold text-slate-900">{statusCount['IN PROGRESS']}</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{statusCount['IN PROGRESS']}</p>
                             )}
                         </div>
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
+                    <Card className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[12px] font-bold text-red-600 uppercase tracking-wider">Rejected</span>
-                            <div className="p-2 bg-red-50 rounded-lg">
+                            <span className="text-[12px] font-bold text-red-600 dark:text-red-455 uppercase tracking-wider">Rejected</span>
+                            <div className="p-2 bg-red-50 dark:bg-red-950/20 rounded-lg">
                                 <AlertCircle className="w-4 h-4 text-red-600" />
                             </div>
                         </div>
@@ -866,19 +866,19 @@ const Kyc: React.FC = () => {
                             {isLoading ? (
                                 <Skeleton className="h-8 w-12 mb-1" />
                             ) : (
-                                <p className="text-2xl font-bold text-slate-900">{statusCount['REJECTED']}</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{statusCount['REJECTED']}</p>
                             )}
                         </div>
                     </Card>
                 </div>
 
                 {/* Filters Row */}
-                <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50/50 border border-slate-200 rounded-2xl backdrop-blur-sm relative z-20">
+                <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl backdrop-blur-sm relative z-20">
                     {/* Advanced Filters */}
                     <Popover open={openFilterPanel} onOpenChange={handleFilterPanelOpen}>
                         <PopoverTrigger asChild>
-                            <Button variant="outline" className="rounded-xl h-10 border-slate-200 bg-white hover:bg-slate-50 gap-2">
-                                <Filter className="w-4 h-4 text-slate-500" />
+                            <Button variant="outline" className="rounded-xl h-10 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 gap-2 text-slate-700 dark:text-slate-250">
+                                <Filter className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                                 {advancedFilters.length > 0 && (
                                     <span className="bg-purple-600 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center shrink-0">
                                         {advancedFilters.length}
@@ -886,10 +886,10 @@ const Kyc: React.FC = () => {
                                 )}
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent align="start" side="bottom" className="w-[480px] p-3 rounded-2xl border-slate-200 shadow-xl z-50">
+                        <PopoverContent align="start" side="bottom" className="w-[480px] p-3 rounded-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl z-50 text-slate-850 dark:text-slate-200">
                             <div className="flex items-center justify-between mb-2">
-                                <p className="text-xs font-bold text-slate-800">Advanced Filters</p>
-                                <span className="text-[9px] text-slate-400 font-medium">Use % as wildcard for "like"</span>
+                                <p className="text-xs font-bold text-slate-800 dark:text-slate-100">Advanced Filters</p>
+                                <span className="text-[9px] text-slate-400 dark:text-slate-500 font-medium">Use % as wildcard for "like"</span>
                             </div>
 
                             <div className="space-y-1.5 max-h-[300px] overflow-y-auto no-scrollbar">
@@ -904,7 +904,7 @@ const Kyc: React.FC = () => {
                                                 <Button
                                                     variant="outline"
                                                     role="combobox"
-                                                    className="w-[150px] justify-between h-8 text-xs font-normal border-slate-200 shrink-0"
+                                                    className="w-[150px] justify-between h-8 text-xs font-normal border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 shrink-0"
                                                 >
                                                     <span className="truncate">
                                                         {filter.field
@@ -914,8 +914,8 @@ const Kyc: React.FC = () => {
                                                     <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
                                                 </Button>
                                             </PopoverTrigger>
-                                            <PopoverContent className="w-[170px] p-0 rounded-xl border-slate-200 shadow-xl z-[60]" side="bottom" align="start">
-                                                <Command>
+                                            <PopoverContent className="w-[170px] p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl z-[60]" side="bottom" align="start">
+                                                <Command className="bg-white dark:bg-slate-900">
                                                     <CommandInput placeholder="Search field..." className="h-8 text-xs" />
                                                     <CommandList>
                                                         <CommandEmpty className="py-2 text-center text-xs text-slate-500">No field found.</CommandEmpty>
@@ -951,10 +951,10 @@ const Kyc: React.FC = () => {
                                                     updateDraftFilter(filter.id, { operator: val, value: newVal });
                                                 }}
                                             >
-                                                <SelectTrigger className="h-8 text-xs w-[95px] border-slate-200 shrink-0">
+                                                <SelectTrigger className="h-8 text-xs w-[95px] border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shrink-0">
                                                     <SelectValue placeholder="Operator" />
                                                 </SelectTrigger>
-                                                <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                                                <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xl">
                                                     {getOperatorsForType(getFieldType(filter.field)).map((op: string) => (
                                                         <SelectItem key={op} value={op} className="text-xs">
                                                             {OPERATOR_LABELS[op] ?? op}
@@ -972,11 +972,11 @@ const Kyc: React.FC = () => {
                                                         <Button
                                                             variant="outline"
                                                             className={cn(
-                                                                'flex-1 h-8 text-xs font-normal border-slate-200 justify-start gap-1.5 min-w-0 truncate',
-                                                                !(Array.isArray(filter.value) && filter.value[0]) && 'text-slate-400'
+                                                                'flex-1 h-8 text-xs font-normal border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-805 dark:text-slate-200 justify-start gap-1.5 min-w-0 truncate',
+                                                                !(Array.isArray(filter.value) && filter.value[0]) && 'text-slate-400 dark:text-slate-500'
                                                             )}
                                                         >
-                                                            <CalendarIcon className="h-3 w-3 shrink-0 text-slate-400" />
+                                                            <CalendarIcon className="h-3 w-3 shrink-0 text-slate-400 dark:text-slate-550" />
                                                             <span className="truncate">
                                                                 {Array.isArray(filter.value) && filter.value[0]
                                                                     ? filter.value[1]
@@ -986,7 +986,7 @@ const Kyc: React.FC = () => {
                                                             </span>
                                                         </Button>
                                                     </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0 rounded-xl border-slate-200 shadow-xl z-[60]" align="start">
+                                                    <PopoverContent className="w-auto p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl z-[60]" align="start">
                                                         <CalendarIcon className="h-3 w-3 shrink-0 text-slate-400" />
                                                     </PopoverContent>
                                                 </Popover>
@@ -995,10 +995,10 @@ const Kyc: React.FC = () => {
                                                     value={typeof filter.value === 'string' ? filter.value : ''}
                                                     onValueChange={(val) => updateDraftFilter(filter.id, { value: val })}
                                                 >
-                                                    <SelectTrigger className="flex-1 h-8 text-xs border-slate-200">
+                                                    <SelectTrigger className="flex-1 h-8 text-xs border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">
                                                         <SelectValue placeholder="Select period..." />
                                                     </SelectTrigger>
-                                                    <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                                                    <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xl">
                                                         <SelectItem value="today" className="text-xs">Today</SelectItem>
                                                         <SelectItem value="yesterday" className="text-xs">Yesterday</SelectItem>
                                                         <SelectItem value="last week" className="text-xs">Last Week</SelectItem>
@@ -1016,10 +1016,10 @@ const Kyc: React.FC = () => {
                                                     value={typeof filter.value === 'string' ? filter.value : ''}
                                                     onValueChange={(val) => updateDraftFilter(filter.id, { value: val })}
                                                 >
-                                                    <SelectTrigger className="flex-1 h-8 text-xs border-slate-200">
+                                                    <SelectTrigger className="flex-1 h-8 text-xs border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">
                                                         <SelectValue placeholder="Select option..." />
                                                     </SelectTrigger>
-                                                    <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                                                    <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xl">
                                                         {getFieldOptions(filter.field).map((opt) => (
                                                             <SelectItem key={opt} value={opt} className="text-xs">
                                                                 {opt}
@@ -1033,7 +1033,7 @@ const Kyc: React.FC = () => {
                                                     placeholder="Value"
                                                     value={typeof filter.value === 'string' ? filter.value : ''}
                                                     onChange={(e) => updateDraftFilter(filter.id, { value: e.target.value })}
-                                                    className="flex-1 h-8 text-xs border-slate-200 rounded-lg"
+                                                    className="flex-1 h-8 text-xs border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/20 text-slate-800 dark:text-slate-105 rounded-lg"
                                                 />
                                             )
                                         )}
@@ -1042,7 +1042,7 @@ const Kyc: React.FC = () => {
                                             type="button"
                                             variant="ghost"
                                             size="icon"
-                                            className="h-8 w-8 text-slate-400 hover:text-red-500 shrink-0"
+                                            className="h-8 w-8 text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 shrink-0"
                                             onClick={() => removeDraftFilter(filter.id)}
                                         >
                                             <X className="h-4 w-4" />
@@ -1051,13 +1051,13 @@ const Kyc: React.FC = () => {
                                 ))}
                             </div>
 
-                            <div className="flex items-center justify-between pt-2 mt-2 border-t border-slate-100">
+                            <div className="flex items-center justify-between pt-2 mt-2 border-t border-slate-100 dark:border-slate-800">
                                 <Button
                                     type="button"
                                     variant="outline"
                                     size="sm"
                                     onClick={addDraftFilter}
-                                    className="h-8 text-xs gap-1 hover:bg-slate-50 border-slate-200"
+                                    className="h-8 text-xs gap-1 hover:bg-slate-50 dark:hover:bg-slate-850 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300"
                                 >
                                     <Plus className="w-3.5 h-3.5" /> Add Condition
                                 </Button>
@@ -1067,7 +1067,7 @@ const Kyc: React.FC = () => {
                                         variant="ghost"
                                         size="sm"
                                         onClick={clearAdvancedFilters}
-                                        className="h-8 text-xs text-slate-500 hover:text-slate-800"
+                                        className="h-8 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
                                     >
                                         Clear All
                                     </Button>
@@ -1075,7 +1075,7 @@ const Kyc: React.FC = () => {
                                         type="button"
                                         size="sm"
                                         onClick={applyAdvancedFilters}
-                                        className="h-8 text-xs bg-purple-600 hover:bg-purple-700 text-white rounded-lg px-3"
+                                        className="h-8 text-xs bg-purple-600 hover:bg-purple-700 text-white rounded-lg px-3 border-none"
                                     >
                                         Apply Filters
                                     </Button>
@@ -1089,7 +1089,7 @@ const Kyc: React.FC = () => {
                             value={dateRange}
                             onChange={setDateRange}
                             placeholder="Modified Date Range"
-                            className="w-full bg-white border-slate-200 focus:ring-purple-500 rounded-xl custom-date-picker h-10"
+                            className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-purple-500 rounded-xl custom-date-picker h-10"
                             appearance="default"
                             block
                         />
@@ -1097,13 +1097,13 @@ const Kyc: React.FC = () => {
 
                     <div className="w-[200px]">
                         <Select value={stageFilter} onValueChange={setStageFilter}>
-                            <SelectTrigger className="bg-white border-slate-200 focus:ring-purple-500 rounded-xl h-10">
+                            <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 focus:ring-purple-500 rounded-xl h-10">
                                 <div className="flex items-center gap-2">
                                     <Layers className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                                     <SelectValue placeholder="KYC Stage" />
                                 </div>
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-slate-200 shadow-xl max-h-[300px] overflow-y-auto">
+                            <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl max-h-[300px] overflow-y-auto">
                                 <SelectItem value="ALL">All Stages</SelectItem>
                                 {['MOBILE OTP', 'EMAIL OTP', 'PASSWORD SETUP', 'KRA DOB', 'PAN NAME', 'PAN CONFIRM', 'AADHAR', 'PROFILE', 'BANK ENTRY', 'SEGMENT SELECTION', 'PAYMENT', 'NOMINEE', 'INCOME PROOF', 'SIGNATURE', 'IPV', 'PDF DOWNLOAD', 'ESIGN GENERATED', 'END PAGE'].map((stage) => (
                                     <SelectItem key={stage} value={stage}>
@@ -1115,13 +1115,13 @@ const Kyc: React.FC = () => {
                     </div>
                     <div className="w-[180px]">
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="bg-white border-slate-200 focus:ring-purple-500 rounded-xl h-10">
+                            <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 focus:ring-purple-500 rounded-xl h-10">
                                 <div className="flex items-center gap-2">
                                     <Filter className="w-3.5 h-3.5 text-slate-400" />
                                     <SelectValue placeholder="Status" />
                                 </div>
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                            <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl">
                                 <SelectItem value="ALL">All Statuses</SelectItem>
                                 <SelectItem value="IN PROGRESS">In Progress</SelectItem>
                                 <SelectItem value="PENDING FOR APPROVAL">Pending Approval</SelectItem>
@@ -1140,7 +1140,7 @@ const Kyc: React.FC = () => {
                                     variant="outline"
                                     role="combobox"
                                     aria-expanded={openReferBox}
-                                    className="w-full justify-between bg-white border-slate-200 focus:ring-purple-500 rounded-xl h-10 px-3 font-normal"
+                                    className="w-full justify-between bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-850 focus:ring-purple-500 rounded-xl h-10 px-3 font-normal"
                                 >
                                     <div className="flex items-center gap-2 truncate">
                                         <Users className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -1148,19 +1148,19 @@ const Kyc: React.FC = () => {
                                             {referFilter === "ALL"
                                                 ? "Select Refer"
                                                 : (referOptions.find((opt) => opt.name === referFilter) as any)?.code ||
-                                                  (referOptions.find((opt) => opt.name === referFilter) as any)?.org_code ||
-                                                  (referOptions.find((opt) => opt.name === referFilter) as any)?.name ||
-                                                  referFilter}
+                                                (referOptions.find((opt) => opt.name === referFilter) as any)?.org_code ||
+                                                (referOptions.find((opt) => opt.name === referFilter) as any)?.name ||
+                                                referFilter}
                                         </span>
                                     </div>
                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-[220px] p-0 rounded-xl border-slate-200 shadow-xl">
-                                <Command shouldFilter={false}>
+                            <PopoverContent className="w-[220px] p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl">
+                                <Command shouldFilter={false} className="bg-white dark:bg-slate-900">
                                     <CommandInput
                                         placeholder="Search refer..."
-                                        className="h-9"
+                                        className="h-9 text-slate-800 dark:text-slate-100"
                                         value={referSearch}
                                         onValueChange={setReferSearch}
                                     />
@@ -1174,10 +1174,10 @@ const Kyc: React.FC = () => {
                                                         setReferFilter("ALL");
                                                         setOpenReferBox(false);
                                                     }}
-                                                    className="flex items-center justify-between"
+                                                    className="flex items-center justify-between text-slate-700 dark:text-slate-300"
                                                 >
                                                     <span>All Refers</span>
-                                                    {referFilter === "ALL" && <Check className="h-4 w-4 text-purple-600" />}
+                                                    {referFilter === "ALL" && <Check className="h-4 w-4 text-purple-600 dark:text-purple-400" />}
                                                 </CommandItem>
                                             )}
                                             {visibleReferOptions.map((opt) => (
@@ -1188,11 +1188,11 @@ const Kyc: React.FC = () => {
                                                         setReferFilter(opt.name === referFilter ? "ALL" : opt.name);
                                                         setOpenReferBox(false);
                                                     }}
-                                                    className="flex items-center justify-between gap-2"
+                                                    className="flex items-center justify-between gap-2 text-slate-700 dark:text-slate-300"
                                                 >
                                                     <span className="truncate text-sm">
-                                                         {(opt as any).code || (opt as any).org_code || opt.name}
-                                                     </span>
+                                                        {(opt as any).code || (opt as any).org_code || opt.name}
+                                                    </span>
                                                     <div className="flex items-center gap-1 shrink-0">
                                                         {opt.category && (
                                                             <Badge
@@ -1205,7 +1205,7 @@ const Kyc: React.FC = () => {
                                                                 {opt.category}
                                                             </Badge>
                                                         )}
-                                                        {referFilter === opt.name && <Check className="h-3.5 w-3.5 text-purple-600" />}
+                                                        {referFilter === opt.name && <Check className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />}
                                                     </div>
                                                 </CommandItem>
                                             ))}
@@ -1217,29 +1217,29 @@ const Kyc: React.FC = () => {
                     </div>
 
                     <div className="relative flex-1 min-w-[240px]">
-                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                         <Input
                             placeholder="Search App ID, UCC or Mobile..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-9 bg-white border-slate-200 focus:ring-purple-500 rounded-xl h-10"
+                            className="pl-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 focus:ring-purple-500 rounded-xl h-10"
                         />
                     </div>
                     <Button
                         onClick={handleRefresh}
                         disabled={isRefreshing || isLoading || isExporting}
                         variant="outline"
-                        className="rounded-xl px-4 font-semibold gap-2 h-10 border-slate-200 bg-white hover:bg-slate-50 transition-all"
+                        className="rounded-xl px-4 font-semibold gap-2 h-10 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-250 hover:bg-slate-50 dark:hover:bg-slate-850 transition-all"
                     >
                         <RefreshCcw className={cn("w-4 h-4", (isRefreshing || isLoading) && "animate-spin")} />
                     </Button>
 
                     {(user?.user_code === 'HO' || user?.user_code === 'DRCT' || user?.user_code === 'Business' || user?.user_code === 'RMRL' || user?.category === 'admin') && (
                         <Button
-                            onClick={handleExport}
-                            disabled={isExporting || isLoading || isRefreshing}
-                            variant="outline"
-                            className="rounded-xl px-4 font-semibold gap-2 h-10 border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-all shadow-sm"
+                             onClick={handleExport}
+                             disabled={isExporting || isLoading || isRefreshing}
+                             variant="outline"
+                             className="rounded-xl px-4 font-semibold gap-2 h-10 border-emerald-250 dark:border-emerald-950 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-105 dark:hover:bg-emerald-900/30 hover:border-emerald-300 dark:hover:border-emerald-800 transition-all shadow-sm"
                         >
                             {isExporting ? (
                                 <>
@@ -1257,17 +1257,17 @@ const Kyc: React.FC = () => {
                         </Button>
                     )}
 
-                    <div className="flex items-center gap-2 ml-auto border-l pl-3 border-slate-200">
+                    <div className="flex items-center gap-2 ml-auto border-l pl-3 border-slate-200 dark:border-slate-800">
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                             disabled={currentPage === 1 || isLoading}
-                            className="h-9 w-9 p-0 rounded-xl border-slate-200 bg-white hover:bg-slate-50"
+                            className="h-9 w-9 p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-250 hover:bg-slate-50 dark:hover:bg-slate-850"
                         >
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
-                        <div className="flex items-center gap-1.5 px-3 h-9 bg-white border border-slate-200 rounded-xl">
+                        <div className="flex items-center gap-1.5 px-3 h-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-xl">
                             <span className="text-sm font-bold text-purple-600">{currentPage}</span>
                             <span className="text-xs text-slate-400 font-bold">/</span>
                             <span className="text-xs text-slate-500 font-bold">{totalPages || 1}</span>
@@ -1277,7 +1277,7 @@ const Kyc: React.FC = () => {
                             size="sm"
                             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                             disabled={currentPage === totalPages || totalPages === 0 || isLoading}
-                            className="h-9 w-9 p-0 rounded-xl border-slate-200 bg-white hover:bg-slate-50"
+                            className="h-9 w-9 p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-250 hover:bg-slate-50 dark:hover:bg-slate-850"
                         >
                             <ChevronRight className="h-4 w-4" />
                         </Button>
@@ -1286,79 +1286,77 @@ const Kyc: React.FC = () => {
             </div>
 
             {error && (
-                <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-xs font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 text-red-600 dark:text-red-400 text-xs font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
                     <AlertCircle className="w-3.5 h-3.5" />
                     {error}
                 </div>
-            )}
-
-            {/* Table Section */}
-            <Card className="flex-1 min-h-0 flex flex-col border-none shadow-sm overflow-hidden bg-white rounded-2xl border border-slate-100">
+            )}            {/* Table Section */}
+            <Card className="flex-1 min-h-0 flex flex-col border-none shadow-sm overflow-hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
                 <ScrollArea className="flex-1">
                     <table className="w-full text-sm">
-                        <thead className="sticky top-0 bg-slate-50/90 backdrop-blur-md z-10">
-                            <tr className="border-b border-slate-100">
-                                <th className="text-left py-3 px-4 font-semibold text-slate-600 cursor-pointer select-none group/col" onClick={() => handleSort('application_id')}>
+                        <thead className="sticky top-0 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md z-10">
+                            <tr className="border-b border-slate-100 dark:border-slate-800">
+                                <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('application_id')}>
                                     <div className="flex items-center gap-2">
                                         App ID
                                         {sortConfig?.key === 'application_id' ? (
                                             sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600" /> : <ChevronDown className="w-4 h-4 text-purple-600" />
-                                        ) : <ArrowUpDown className="w-3 h-3 text-slate-300 group-hover/col:text-slate-400" />}
+                                        ) : <ArrowUpDown className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover/col:text-slate-450" />}
                                     </div>
                                 </th>
-                                <th className="text-left py-3 px-4 font-semibold text-slate-600">Number</th>
-                                <th className="text-left py-3 px-4 font-semibold text-slate-600 cursor-pointer select-none group/col" onClick={() => handleSort('ucc')}>
+                                <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400">Number</th>
+                                <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('ucc')}>
                                     <div className="flex items-center gap-2">
                                         UCC
                                         {sortConfig?.key === 'ucc' ? (
                                             sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600" /> : <ChevronDown className="w-4 h-4 text-purple-600" />
-                                        ) : <ArrowUpDown className="w-3 h-3 text-slate-300 group-hover/col:text-slate-400" />}
+                                        ) : <ArrowUpDown className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover/col:text-slate-450" />}
                                     </div>
                                 </th>
-                                <th className="text-left py-3 px-4 font-semibold text-slate-600 cursor-pointer select-none group/col" onClick={() => handleSort('user_name')}>
+                                <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('user_name')}>
                                     <div className="flex items-center gap-2">
                                         User Name
                                         {sortConfig?.key === 'user_name' ? (
                                             sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600" /> : <ChevronDown className="w-4 h-4 text-purple-600" />
-                                        ) : <ArrowUpDown className="w-3 h-3 text-slate-300 group-hover/col:text-slate-400" />}
+                                        ) : <ArrowUpDown className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover/col:text-slate-450" />}
                                     </div>
                                 </th>
-                                <th className="text-left py-3 px-4 font-semibold text-slate-600">Refer</th>
-                                <th className="text-left py-3 px-4 font-semibold text-slate-600">Stage</th>
-                                <th className="text-left py-3 px-4 font-semibold text-slate-600">Status</th>
-                                <th className="text-center py-3 px-4 font-semibold text-slate-600">Ready</th>
+                                <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400">Refer</th>
+                                <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400">Stage</th>
+                                <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400">Status</th>
+                                <th className="text-center py-3 px-4 font-semibold text-slate-655 dark:text-slate-400">Ready</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-50">
+                        <tbody className="divide-y divide-slate-50 dark:divide-slate-800/40">
                             {isLoading ? (
                                 Array.from({ length: 10 }).map((_, i) => (
-                                    <tr key={i} className="border-b border-slate-50">
-                                        <td className="py-3 px-4"><Skeleton className="h-4 w-20" /></td>
-                                        <td className="py-3 px-4"><Skeleton className="h-4 w-24" /></td>
-                                        <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
-                                        <td className="py-3 px-4"><Skeleton className="h-4 w-32" /></td>
-                                        <td className="py-3 px-4"><Skeleton className="h-4 w-24" /></td>
-                                        <td className="py-3 px-4"><Skeleton className="h-4 w-28" /></td>
-                                        <td className="py-3 px-4"><Skeleton className="h-5 w-20 rounded-full" /></td>
-                                        <td className="py-3 px-4 text-center"><Skeleton className="w-2 h-2 rounded-full mx-auto" /></td>
+                                    <tr key={i} className="border-b border-slate-50 dark:border-slate-800/45">
+                                        <td className="py-3 px-4"><Skeleton className="h-4 w-20 bg-slate-200 dark:bg-slate-800" /></td>
+                                        <td className="py-3 px-4"><Skeleton className="h-4 w-24 bg-slate-200 dark:bg-slate-800" /></td>
+                                        <td className="py-3 px-4"><Skeleton className="h-4 w-16 bg-slate-200 dark:bg-slate-800" /></td>
+                                        <td className="py-3 px-4"><Skeleton className="h-4 w-32 bg-slate-200 dark:bg-slate-800" /></td>
+                                        <td className="py-3 px-4"><Skeleton className="h-4 w-24 bg-slate-200 dark:bg-slate-800" /></td>
+                                        <td className="py-3 px-4"><Skeleton className="h-4 w-28 bg-slate-200 dark:bg-slate-800" /></td>
+                                        <td className="py-3 px-4"><Skeleton className="h-5 w-20 rounded-full bg-slate-200 dark:bg-slate-800" /></td>
+                                        <td className="py-3 px-4 text-center"><Skeleton className="w-2 h-2 rounded-full mx-auto bg-slate-200 dark:bg-slate-800" /></td>
                                     </tr>
                                 ))
                             ) : kycData && kycData.length > 0 ? (
                                 kycData.map((row: any, index: number) => (
                                     <tr
                                         key={index}
-                                        className="hover:bg-slate-50/50 transition-colors cursor-pointer group"
+                                        className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group"
                                         onClick={() => setSelectedAppId(row.name || row.application_id)}
                                     >
-                                        <td className="py-3 px-4 font-medium text-slate-900">{formatValue(row.application_id)}</td>
-                                        <td className="py-3 px-4 font-medium text-slate-900">
+                                        <td className="py-3 px-4 font-medium text-slate-900 dark:text-slate-100">{formatValue(row.application_id)}</td>
+                                        <td className="py-3 px-4 font-medium text-slate-900 dark:text-slate-100">
                                             {row.mobile_number}
                                         </td>
-                                        <td className="py-3 px-4 font-mono text-xs text-slate-600">{row.ucc || '-'}</td>
-                                        <td className="py-3 px-4 text-slate-700">{formatValue(row.user_name)}</td>
-                                        <td className="py-3 px-4 text-slate-700">{row.refer ? (referCodeMap.get(row.refer) || row.refer) : '-'}</td>
+                                        <td className="py-3 px-4 font-mono text-xs text-slate-600 dark:text-slate-400">{row.ucc || '-'}</td>
+                                        <td className="py-3 px-4 text-slate-700 dark:text-slate-300">{formatValue(row.user_name)}</td>
+                                        <td className="py-3 px-4 text-slate-700 dark:text-slate-300">{row.refer ? (referCodeMap.get(row.refer) || row.refer) : '-'}</td>
                                         <td className="py-3 px-4">
-                                            <Badge variant="outline" className="text-purple-600 bg-purple-50 border-purple-100 py-0.5 text-[10px]">
+                                            <Badge variant="outline" className="text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/20 border-purple-100 dark:border-purple-900/30 py-0.5 text-[10px]">
                                                 {row.kyc_stage === 'END PAGE' ? 'ESIGN COMPLETED' : formatValue(row.kyc_stage)}
                                             </Badge>
                                         </td>
@@ -1366,10 +1364,10 @@ const Kyc: React.FC = () => {
                                             <Badge
                                                 className={cn(
                                                     "capitalize font-bold px-2.5 py-0.5 rounded-full border-none text-[10px]",
-                                                    row.application_status === 'ACCOUNT OPENED' || row.application_status === 'APPROVED' ? "bg-green-100 text-green-700 hover:bg-green-100 hover:text-green-700" :
-                                                        row.application_status === 'REJECTED' ? "bg-red-100 text-red-700 hover:bg-red-100 hover:text-red-700" :
-                                                            row.application_status === 'PENDING FOR APPROVAL' ? "bg-purple-100 text-purple-700 hover:bg-purple-100 hover:text-purple-700" :
-                                                                "bg-amber-100 text-amber-700 hover:bg-amber-100 hover:text-amber-700"
+                                                    row.application_status === 'ACCOUNT OPENED' || row.application_status === 'APPROVED' ? "bg-green-100 dark:bg-green-950/20 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-950/30 hover:text-green-700 dark:hover:text-green-400" :
+                                                        row.application_status === 'REJECTED' ? "bg-red-100 dark:bg-red-950/20 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/30 hover:text-red-700 dark:hover:text-red-400" :
+                                                            row.application_status === 'PENDING FOR APPROVAL' ? "bg-purple-100 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-950/30 hover:text-purple-700 dark:hover:text-purple-400" :
+                                                                "bg-amber-100 dark:bg-amber-950/20 text-amber-705 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/30 hover:text-amber-707 dark:hover:text-amber-400"
                                                 )}
                                             >
                                                 {row.application_status || 'IN PROGRESS'}
@@ -1387,11 +1385,11 @@ const Kyc: React.FC = () => {
                                 <tr>
                                     <td colSpan={9} className="h-72 text-center">
                                         <div className="flex flex-col items-center justify-center animate-in fade-in zoom-in duration-500">
-                                            <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center mb-4 border border-slate-100/50 shadow-sm">
-                                                <FileText className="w-10 h-10 text-slate-200" />
+                                            <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-3xl flex items-center justify-center mb-4 border border-slate-100/50 dark:border-slate-800 shadow-sm">
+                                                <FileText className="w-10 h-10 text-slate-200 dark:text-slate-700" />
                                             </div>
-                                            <h3 className="text-lg font-bold text-slate-900 mb-1">No KYC Data Found</h3>
-                                            <p className="text-sm text-slate-500 max-w-[280px] mx-auto mb-6">
+                                            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-1">No KYC Data Found</h3>
+                                            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-[280px] mx-auto mb-6">
                                                 We couldn't find any applications matching your current filters or search criteria.
                                             </p>
                                             <Button
@@ -1405,7 +1403,7 @@ const Kyc: React.FC = () => {
                                                     setDateRange(null);
                                                     setAdvancedFilters([]);
                                                 }}
-                                                className="rounded-xl px-6 border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold h-10 transition-all hover:scale-105 active:scale-95"
+                                                className="rounded-xl px-6 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 font-semibold h-10 transition-all hover:scale-105 active:scale-95"
                                             >
                                                 Clear All Filters
                                             </Button>
@@ -1418,25 +1416,25 @@ const Kyc: React.FC = () => {
                 </ScrollArea>
 
                 {/* Status Info Footer */}
-                <div className="shrink-0 py-2 px-4 border-t border-slate-100 bg-slate-50/50 flex justify-center">
-                    <p className="text-[11px] text-slate-500 font-medium">
-                        Showing <span className="text-slate-900 font-bold">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> to <span className="text-slate-900 font-bold">{Math.min(currentPage * ITEMS_PER_PAGE, count)}</span> of <span className="text-slate-900 font-bold">{count}</span> applications
+                <div className="shrink-0 py-2 px-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex justify-center">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                        Showing <span className="text-slate-900 dark:text-slate-105 font-bold">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> to <span className="text-slate-900 dark:text-slate-105 font-bold">{Math.min(currentPage * ITEMS_PER_PAGE, count)}</span> of <span className="text-slate-900 dark:text-slate-105 font-bold">{count}</span> applications
                     </p>
                 </div>
             </Card>
 
             {/* Timeline Sheet */}
             <Sheet open={!!selectedAppId} onOpenChange={(open) => !open && setSelectedAppId(null)}>
-                <SheetContent side="right" className="w-full sm:max-w-md border-l-0 p-0 overflow-hidden flex flex-col bg-white">
-                    <SheetHeader className="p-6 border-b bg-slate-50/50">
+                <SheetContent side="right" className="w-full sm:max-w-md border-l-0 p-0 overflow-hidden flex flex-col bg-white dark:bg-slate-900">
+                    <SheetHeader className="p-6 border-b border-slate-150 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-purple-600 flex items-center justify-center shadow-lg shadow-purple-200 border-2 border-white">
+                            <div className="w-12 h-12 rounded-2xl bg-purple-600 flex items-center justify-center shadow-lg shadow-purple-200/20 border-2 border-white dark:border-slate-800">
                                 <Clock className="w-6 h-6 text-white" />
                             </div>
                             <div>
-                                <SheetTitle className="text-xl font-bold text-slate-900">Application Timeline</SheetTitle>
-                                <SheetDescription className="text-slate-500 font-medium">
-                                    ID: <span className="text-purple-600 font-bold">{selectedAppId}</span>
+                                <SheetTitle className="text-xl font-bold text-slate-900 dark:text-slate-100">Application Timeline</SheetTitle>
+                                <SheetDescription className="text-slate-505 dark:text-slate-400 font-medium">
+                                    ID: <span className="text-purple-600 dark:text-purple-400 font-bold">{selectedAppId}</span>
                                 </SheetDescription>
                             </div>
                         </div>
@@ -1449,10 +1447,10 @@ const Kyc: React.FC = () => {
                                 <Skeleton className="h-8 w-full" />
                             </div>
                         ) : docError ? (
-                            <div className="flex flex-col items-center justify-center h-[60vh] text-red-500 gap-2 p-4 text-center">
-                                <AlertCircle className="w-12 h-12 text-red-500 mb-2" />
+                            <div className="flex flex-col items-center justify-center h-[60vh] text-red-500 dark:text-red-400 gap-2 p-4 text-center">
+                                <AlertCircle className="w-12 h-12 text-red-500 dark:text-red-405 mb-2" />
                                 <p className="font-bold text-sm">Error Loading Timeline</p>
-                                <p className="text-xs text-slate-500">{(docError as any).message || 'There was an error while fetching the documents.'}</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">{(docError as any).message || 'There was an error while fetching the documents.'}</p>
                             </div>
                         ) : selectedAppId ? (
                             <KycTimeline

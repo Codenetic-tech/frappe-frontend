@@ -108,3 +108,119 @@ html {
 .rs-picker-menu, .rs-picker-popup {
   z-index: 1000 !important;
 }
+
+/* RSuite Dark Mode Overrides */
+.dark .rs-picker-menu,
+.dark .rs-picker-popup {
+  background-color: #1e1e24 !important;
+  border-color: #2b2b36 !important;
+  color: #e2e8f0 !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .rs-calendar-table-header-row {
+  color: #94a3b8 !important;
+}
+
+.dark .rs-calendar-table-cell-content {
+  color: #e2e8f0 !important;
+}
+
+.dark .rs-calendar-table-cell-is-today .rs-calendar-table-cell-content {
+  border: 1px solid #696cff !important;
+  border-radius: 4px;
+}
+
+.dark .rs-calendar-table-cell-selected .rs-calendar-table-cell-content {
+  background-color: #696cff !important;
+  color: #ffffff !important;
+}
+
+.dark .rs-calendar-table-cell-in-range .rs-calendar-table-cell-content {
+  background-color: rgba(105, 108, 255, 0.25) !important;
+  color: #e2e8f0 !important;
+}
+
+.dark .rs-calendar-header-title {
+  color: #e2e8f0 !important;
+}
+
+.dark .rs-calendar-header-backward,
+.dark .rs-calendar-header-forward {
+  color: #94a3b8 !important;
+}
+
+.dark .rs-calendar-header-backward:hover,
+.dark .rs-calendar-header-forward:hover {
+  color: #696cff !important;
+  background-color: rgba(105, 108, 255, 0.1) !important;
+}
+
+.dark .rs-picker-toolbar {
+  border-top: 1px solid #2b2b36 !important;
+  background-color: #1a1a20 !important;
+}
+
+.dark .rs-btn-primary {
+  background-color: #696cff !important;
+  color: #ffffff !important;
+}
+
+.dark .rs-btn-primary:hover {
+  background-color: #5f62f3 !important;
+}
+
+.dark .rs-btn-link {
+  color: #696cff !important;
+}
+
+.dark .rs-btn-link:hover {
+  color: #5f62f3 !important;
+}
+
+.dark .rs-picker-toggle,
+.dark .rs-picker-toggle *,
+.dark .rs-picker-toggle.rs-btn,
+.dark .rs-picker-toggle.rs-btn-default,
+.dark .rs-picker-toggle.rs-btn-subtle,
+.dark .rs-picker-toggle-textbox,
+.dark .rs-picker-toggle-textbox *,
+html.dark .rs-picker-toggle,
+html.dark .rs-picker-toggle.rs-btn,
+html.dark .rs-picker-toggle.rs-btn-default {
+  background-color: #1c1c21 !important;
+  background: #1c1c21 !important;
+  border-color: #2b2b36 !important;
+  color: #e2e8f0 !important;
+}
+
+.dark .rs-picker-default .rs-picker-toggle:hover,
+.dark .rs-picker-toggle:hover,
+.dark .rs-picker-toggle.rs-btn:hover,
+.dark .rs-picker-toggle.rs-btn-default:hover,
+html.dark .rs-picker-toggle:hover {
+  border-color: #696cff !important;
+  background-color: #22222b !important;
+  background: #22222b !important;
+}
+
+.dark .rs-picker-toggle-placeholder,
+.dark .rs-picker-toggle-textbox,
+.dark .rs-picker-toggle-value,
+.dark .rs-picker-toggle .rs-picker-toggle-placeholder,
+html.dark .rs-picker-toggle-placeholder,
+html.dark .rs-picker-toggle-value {
+  color: #64748b !important;
+}
+
+/* RSuite Global CSS Variables for Dark Mode */
+.dark {
+  --rs-bg-card: #1c1c21;
+  --rs-bg-overlay: #1e1e24;
+  --rs-border-primary: #2b2b36;
+  --rs-text-primary: #e2e8f0;
+  --rs-text-secondary: #94a3b8;
+  --rs-text-placeholder: #64748b;
+  --rs-state-hover-bg: rgba(105, 108, 255, 0.1);
+  --rs-state-active-bg: #696cff;
+}

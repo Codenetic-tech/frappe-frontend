@@ -26,7 +26,7 @@ import {
 import { format } from "date-fns";
 import { CalendarIcon, Loader2, Search, User } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useLead } from '@/contexts/LeadContext';
+import { useFrappeGetDocList } from 'frappe-react-sdk';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface TaskModalProps {
@@ -38,7 +38,11 @@ interface TaskModalProps {
 }
 
 export const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSubmit, loading, userEmail }) => {
-    const { leadsData } = useLead();
+    const { data: leadsData } = useFrappeGetDocList<any>('CRM Lead', {
+        fields: ['name', 'lead_name'],
+        limit: 100,
+        orderBy: { field: 'modified', order: 'desc' }
+    });
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [priority, setPriority] = useState('Medium');

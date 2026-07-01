@@ -416,16 +416,16 @@ const Comments: React.FC = () => {
     // Styling helpers for comment types
     const getTypeColor = (type: string) => {
         switch (type) {
-            case 'Comment': return 'bg-blue-100 text-blue-800 border-blue-200';
-            case 'Like': return 'bg-pink-100 text-pink-800 border-pink-200';
-            case 'Workflow': return 'bg-amber-100 text-amber-800 border-amber-200';
-            case 'Created': return 'bg-green-100 text-green-800 border-green-200';
-            case 'Submitted': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-            case 'Cancelled': return 'bg-red-100 text-red-800 border-red-200';
-            case 'Deleted': return 'bg-rose-100 text-rose-800 border-rose-200';
-            case 'Attachment': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
-            case 'Shared': return 'bg-purple-100 text-purple-800 border-purple-200';
-            default: return 'bg-slate-100 text-slate-800 border-slate-200';
+            case 'Comment': return 'bg-blue-100 dark:bg-blue-950/20 text-blue-800 dark:text-blue-400 border-blue-200 dark:border-blue-900/30';
+            case 'Like': return 'bg-pink-100 dark:bg-pink-950/20 text-pink-800 dark:text-pink-400 border-pink-200 dark:border-pink-900/30';
+            case 'Workflow': return 'bg-amber-100 dark:bg-amber-950/20 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-900/30';
+            case 'Created': return 'bg-green-100 dark:bg-green-950/20 text-green-800 dark:text-green-400 border-green-200 dark:border-green-900/30';
+            case 'Submitted': return 'bg-emerald-100 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/30';
+            case 'Cancelled': return 'bg-red-100 dark:bg-red-950/20 text-red-800 dark:text-red-400 border-red-200 dark:border-red-900/30';
+            case 'Deleted': return 'bg-rose-100 dark:bg-rose-950/20 text-rose-800 dark:text-rose-400 border-rose-200 dark:border-rose-900/30';
+            case 'Attachment': return 'bg-indigo-100 dark:bg-indigo-950/20 text-indigo-800 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900/30';
+            case 'Shared': return 'bg-purple-100 dark:bg-purple-950/20 text-purple-800 dark:text-purple-400 border-purple-200 dark:border-purple-900/30';
+            default: return 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-350 border-slate-200 dark:border-slate-700';
         }
     };
 
@@ -437,7 +437,7 @@ const Comments: React.FC = () => {
                 <Button
                     variant="ghost"
                     onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-                    className="-ml-4 hover:bg-transparent text-slate-600 font-semibold"
+                    className="-ml-4 hover:bg-transparent text-slate-600 dark:text-slate-400 font-semibold"
                 >
                     Comment ID
                     <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -448,7 +448,7 @@ const Comments: React.FC = () => {
                 return (
                     <button
                         onClick={() => handleRowClick(name)}
-                        className="font-semibold text-purple-600 hover:underline hover:text-purple-700 transition-colors text-left focus:outline-none"
+                        className="font-semibold text-purple-600 dark:text-purple-400 hover:underline hover:text-purple-700 dark:hover:text-purple-300 transition-colors text-left focus:outline-none bg-transparent"
                     >
                         {name}
                     </button>
@@ -478,8 +478,8 @@ const Comments: React.FC = () => {
                 const email = row.original.comment_email as string;
                 return (
                     <div className="flex flex-col">
-                        <span className="font-semibold text-slate-900 leading-tight">{author || 'System'}</span>
-                        {email && <span className="text-[11px] text-slate-400 font-medium">{email}</span>}
+                        <span className="font-semibold text-slate-900 dark:text-slate-100 leading-tight">{author || 'System'}</span>
+                        {email && <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">{email}</span>}
                     </div>
                 );
             },
@@ -492,8 +492,8 @@ const Comments: React.FC = () => {
                 const subject = row.original.subject as string;
                 return (
                     <div className="max-w-xs md:max-w-md truncate flex flex-col">
-                        {subject && <span className="font-semibold text-slate-700 text-xs truncate mb-0.5">{subject}</span>}
-                        <span className="text-slate-500 text-xs truncate">{contentText || '-'}</span>
+                        {subject && <span className="font-semibold text-slate-700 dark:text-slate-205 text-xs truncate mb-0.5">{subject}</span>}
+                        <span className="text-slate-500 dark:text-slate-400 text-xs truncate">{contentText || '-'}</span>
                     </div>
                 );
             },
@@ -504,11 +504,11 @@ const Comments: React.FC = () => {
             cell: ({ row }) => {
                 const docType = row.original.reference_doctype as string;
                 const docName = row.original.reference_name as string;
-                if (!docType && !docName) return <span className="text-slate-400">-</span>;
+                if (!docType && !docName) return <span className="text-slate-400 dark:text-slate-550">-</span>;
                 return (
                     <div className="flex flex-col">
-                        <span className="text-slate-900 font-semibold text-xs leading-none">{docName || '-'}</span>
-                        <span className="text-[10px] text-slate-400 font-bold uppercase mt-1 tracking-wider">{docType || '-'}</span>
+                        <span className="text-slate-900 dark:text-slate-100 font-semibold text-xs leading-none">{docName || '-'}</span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase mt-1 tracking-wider">{docType || '-'}</span>
                     </div>
                 );
             },
@@ -523,12 +523,12 @@ const Comments: React.FC = () => {
                     <div className="flex items-center gap-2">
                         <span className={cn(
                             "px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border flex items-center gap-1",
-                            seen ? "bg-slate-100 text-slate-600 border-slate-200" : "bg-blue-50 text-blue-700 border-blue-100"
+                            seen ? "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-350 border-slate-200 dark:border-slate-700" : "bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-405 border-blue-100 dark:border-blue-900/30"
                         )}>
                             {seen ? 'Seen' : 'Unseen'}
                         </span>
                         {published && (
-                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-100">
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-405 border border-emerald-100 dark:border-emerald-900/30">
                                 Published
                             </span>
                         )}
@@ -540,8 +540,8 @@ const Comments: React.FC = () => {
             accessorKey: 'creation',
             header: 'Created On',
             cell: ({ row }) => (
-                <div className="flex items-center gap-1.5 text-slate-500">
-                    <Clock className="w-3.5 h-3.5 text-slate-400" />
+                <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                    <Clock className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                     <span className="text-xs whitespace-nowrap">{formatDateTime(row.getValue('creation'))}</span>
                 </div>
             ),
@@ -576,21 +576,21 @@ const Comments: React.FC = () => {
                     <Card
                         onClick={() => { setSeenFilter('ALL'); setPublishedFilter('ALL'); }}
                         className={cn(
-                            "p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-all cursor-pointer",
-                            seenFilter === 'ALL' && publishedFilter === 'ALL' && "ring-2 ring-purple-600 ring-offset-1 border-purple-200"
+                            "p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-all cursor-pointer",
+                            seenFilter === 'ALL' && publishedFilter === 'ALL' && "ring-2 ring-purple-600 ring-offset-1 border-purple-200 dark:border-purple-900/50"
                         )}
                     >
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[12px] font-bold text-slate-700 uppercase tracking-wider">Total Comments</span>
-                            <div className="p-2 bg-slate-50 rounded-lg">
-                                <MessageSquare className="w-4 h-4 text-slate-600" />
+                            <span className="text-[12px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Total Comments</span>
+                            <div className="p-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
+                                <MessageSquare className="w-4 h-4 text-slate-600 dark:text-slate-450" />
                             </div>
                         </div>
                         <div className="space-y-0.5">
                             {isLoading ? (
                                 <Skeleton className="h-8 w-16 mb-1" />
                             ) : (
-                                <p className="text-2xl font-bold text-slate-900">{count}</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{count}</p>
                             )}
                         </div>
                     </Card>
@@ -599,21 +599,21 @@ const Comments: React.FC = () => {
                     <Card
                         onClick={() => { setSeenFilter('UNSEEN'); setPublishedFilter('ALL'); }}
                         className={cn(
-                            "p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-all cursor-pointer",
-                            seenFilter === 'UNSEEN' && "ring-2 ring-purple-600 ring-offset-1 border-purple-200"
+                            "p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-all cursor-pointer",
+                            seenFilter === 'UNSEEN' && "ring-2 ring-purple-600 ring-offset-1 border-purple-200 dark:border-purple-900/50"
                         )}
                     >
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[12px] font-bold text-blue-600 uppercase tracking-wider">Unseen</span>
-                            <div className="p-2 bg-blue-50 rounded-lg">
-                                <EyeOff className="w-4 h-4 text-blue-600" />
+                            <span className="text-[12px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Unseen</span>
+                            <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+                                <EyeOff className="w-4 h-4 text-blue-600 dark:text-blue-405" />
                             </div>
                         </div>
                         <div className="space-y-0.5">
                             {isLoading ? (
                                 <Skeleton className="h-8 w-16 mb-1" />
                             ) : (
-                                <p className="text-2xl font-bold text-slate-900">{unseenCount}</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{unseenCount}</p>
                             )}
                         </div>
                     </Card>
@@ -622,33 +622,33 @@ const Comments: React.FC = () => {
                     <Card
                         onClick={() => { setSeenFilter('ALL'); setPublishedFilter('PUBLISHED'); }}
                         className={cn(
-                            "p-4 border-border shadow-sm bg-white border border-slate-100 flex flex-col justify-between hover:shadow-md transition-all cursor-pointer",
-                            publishedFilter === 'PUBLISHED' && "ring-2 ring-purple-600 ring-offset-1 border-purple-200"
+                            "p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-all cursor-pointer",
+                            publishedFilter === 'PUBLISHED' && "ring-2 ring-purple-600 ring-offset-1 border-purple-200 dark:border-purple-900/50"
                         )}
                     >
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[12px] font-bold text-emerald-600 uppercase tracking-wider">Published</span>
-                            <div className="p-2 bg-emerald-50 rounded-lg">
-                                <Send className="w-4 h-4 text-emerald-600" />
+                            <span className="text-[12px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Published</span>
+                            <div className="p-2 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg">
+                                <Send className="w-4 h-4 text-emerald-600 dark:text-emerald-405" />
                             </div>
                         </div>
                         <div className="space-y-0.5">
                             {isLoading ? (
                                 <Skeleton className="h-8 w-16 mb-1" />
                             ) : (
-                                <p className="text-2xl font-bold text-slate-900">{publishedCount}</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{publishedCount}</p>
                             )}
                         </div>
                     </Card>
                 </div>
 
                 {/* Filters Row */}
-                <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50/50 border border-slate-200 rounded-2xl backdrop-blur-sm relative z-20">
+                <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl backdrop-blur-sm relative z-20">
                     {/* Advanced Filters */}
                     <Popover open={openFilterPanel} onOpenChange={handleFilterPanelOpen}>
                         <PopoverTrigger asChild>
-                            <Button variant="outline" className="rounded-xl h-10 border-slate-200 bg-white hover:bg-slate-50 gap-2">
-                                <Filter className="w-4 h-4 text-slate-500" />
+                            <Button variant="outline" className="rounded-xl h-10 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-250 hover:bg-slate-50 dark:hover:bg-slate-800 gap-2">
+                                <Filter className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                                 {advancedFilters.length > 0 && (
                                     <span className="bg-purple-600 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center shrink-0">
                                         {advancedFilters.length}
@@ -656,10 +656,10 @@ const Comments: React.FC = () => {
                                 )}
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent align="start" side="bottom" className="w-[480px] p-3 rounded-2xl border-slate-200 shadow-xl z-50">
+                        <PopoverContent align="start" side="bottom" className="w-[480px] p-3 rounded-2xl border-slate-200 dark:border-slate-800 shadow-xl bg-white dark:bg-slate-900 text-slate-750 dark:text-slate-200 z-50">
                             <div className="flex items-center justify-between mb-2">
-                                <p className="text-xs font-bold text-slate-800">Advanced Filters</p>
-                                <span className="text-[9px] text-slate-400 font-medium">Use % as wildcard for "like"</span>
+                                <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Advanced Filters</p>
+                                <span className="text-[9px] text-slate-400 dark:text-slate-500 font-medium">Use % as wildcard for "like"</span>
                             </div>
 
                             <div className="space-y-1.5 max-h-[300px] overflow-y-auto no-scrollbar">
@@ -674,7 +674,7 @@ const Comments: React.FC = () => {
                                                 <Button
                                                     variant="outline"
                                                     role="combobox"
-                                                    className="w-[150px] justify-between h-8 text-xs font-normal border-slate-200 shrink-0"
+                                                    className="w-[150px] justify-between h-8 text-xs font-normal border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 shrink-0"
                                                 >
                                                     <span className="truncate">
                                                         {filter.field
@@ -684,11 +684,11 @@ const Comments: React.FC = () => {
                                                     <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
                                                 </Button>
                                             </PopoverTrigger>
-                                            <PopoverContent className="w-[170px] p-0 rounded-xl border-slate-200 shadow-xl z-[60]" side="bottom" align="start">
-                                                <Command>
-                                                    <CommandInput placeholder="Search field..." className="h-8 text-xs" />
+                                            <PopoverContent className="w-[170px] p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-805 dark:text-slate-200 shadow-xl z-[60]" side="bottom" align="start">
+                                                <Command className="bg-white dark:bg-slate-900">
+                                                    <CommandInput placeholder="Search field..." className="h-8 text-xs text-foreground bg-transparent" />
                                                     <CommandList>
-                                                        <CommandEmpty className="py-2 text-center text-xs text-slate-500">No field found.</CommandEmpty>
+                                                        <CommandEmpty className="py-2 text-center text-xs text-slate-500 dark:text-slate-400">No field found.</CommandEmpty>
                                                         <CommandGroup>
                                                             {COMMENT_FILTER_FIELDS.map((field) => (
                                                                 <CommandItem
@@ -700,7 +700,7 @@ const Comments: React.FC = () => {
                                                                         updateDraftFilter(filter.id, { field: field.value, operator: defaultOp, value: defaultVal });
                                                                         setFieldComboOpen(prev => ({ ...prev, [filter.id]: false }));
                                                                     }}
-                                                                    className="text-xs"
+                                                                    className="text-xs focus:bg-slate-100 dark:focus:bg-slate-800 cursor-pointer"
                                                                 >
                                                                     <Check className={cn('mr-2 h-3 w-3', filter.field === field.value ? 'opacity-100' : 'opacity-0')} />
                                                                     {field.label}
@@ -721,10 +721,10 @@ const Comments: React.FC = () => {
                                                     updateDraftFilter(filter.id, { operator: val, value: newVal });
                                                 }}
                                             >
-                                                <SelectTrigger className="h-8 text-xs w-[95px] border-slate-200 shrink-0">
+                                                <SelectTrigger className="h-8 text-xs w-[95px] border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 shrink-0">
                                                     <SelectValue placeholder="Operator" />
                                                 </SelectTrigger>
-                                                <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                                                <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 shadow-xl">
                                                     {getOperatorsForType(getFieldType(filter.field)).map((op: string) => (
                                                         <SelectItem key={op} value={op} className="text-xs">
                                                             {OPERATOR_LABELS[op] ?? op}
@@ -742,11 +742,11 @@ const Comments: React.FC = () => {
                                                         <Button
                                                             variant="outline"
                                                             className={cn(
-                                                                'flex-1 h-8 text-xs font-normal border-slate-200 justify-start gap-1.5 min-w-0 truncate',
-                                                                !(Array.isArray(filter.value) && filter.value[0]) && 'text-slate-400'
+                                                                'flex-1 h-8 text-xs font-normal border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-205 justify-start gap-1.5 min-w-0 truncate',
+                                                                !(Array.isArray(filter.value) && filter.value[0]) && 'text-slate-400 dark:text-slate-550'
                                                             )}
                                                         >
-                                                            <CalendarIcon className="h-3 w-3 shrink-0 text-slate-400" />
+                                                            <CalendarIcon className="h-3 w-3 shrink-0 text-slate-400 dark:text-slate-500" />
                                                             <span className="truncate">
                                                                 {Array.isArray(filter.value) && filter.value[0]
                                                                     ? filter.value[1]
@@ -756,7 +756,7 @@ const Comments: React.FC = () => {
                                                             </span>
                                                         </Button>
                                                     </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0 rounded-xl border-slate-200 shadow-xl z-[60]" align="start">
+                                                    <PopoverContent className="w-auto p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl z-[60]" align="start">
                                                         <Calendar
                                                             mode="range"
                                                             selected={{
@@ -784,10 +784,10 @@ const Comments: React.FC = () => {
                                                     value={typeof filter.value === 'string' ? filter.value : ''}
                                                     onValueChange={(val) => updateDraftFilter(filter.id, { value: val })}
                                                 >
-                                                    <SelectTrigger className="flex-1 h-8 text-xs border-slate-200">
+                                                    <SelectTrigger className="flex-1 h-8 text-xs border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">
                                                         <SelectValue placeholder="Select period..." />
                                                     </SelectTrigger>
-                                                    <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                                                    <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-850 dark:text-slate-200 shadow-xl">
                                                         <SelectItem value="today" className="text-xs">Today</SelectItem>
                                                         <SelectItem value="yesterday" className="text-xs">Yesterday</SelectItem>
                                                         <SelectItem value="last week" className="text-xs">Last Week</SelectItem>
@@ -806,7 +806,7 @@ const Comments: React.FC = () => {
                                                     placeholder="Value"
                                                     value={typeof filter.value === 'string' ? filter.value : ''}
                                                     onChange={(e) => updateDraftFilter(filter.id, { value: e.target.value })}
-                                                    className="flex-1 h-8 text-xs border-slate-200 rounded-lg"
+                                                    className="flex-1 h-8 text-xs border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-lg"
                                                 />
                                             )
                                         )}
@@ -815,7 +815,7 @@ const Comments: React.FC = () => {
                                             type="button"
                                             variant="ghost"
                                             size="icon"
-                                            className="h-8 w-8 text-slate-400 hover:text-red-500 shrink-0"
+                                            className="h-8 w-8 text-slate-400 dark:text-slate-500 hover:text-red-500 shrink-0"
                                             onClick={() => removeDraftFilter(filter.id)}
                                         >
                                             <X className="h-4 w-4" />
@@ -824,13 +824,13 @@ const Comments: React.FC = () => {
                                 ))}
                             </div>
 
-                            <div className="flex items-center justify-between pt-2 mt-2 border-t border-slate-100">
+                            <div className="flex items-center justify-between pt-2 mt-2 border-t border-slate-100 dark:border-slate-850">
                                 <Button
                                     type="button"
                                     variant="outline"
                                     size="sm"
                                     onClick={addDraftFilter}
-                                    className="h-8 text-xs gap-1 hover:bg-slate-50 border-slate-200"
+                                    className="h-8 text-xs gap-1 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
                                 >
                                     <Plus className="w-3.5 h-3.5" /> Add Condition
                                 </Button>
@@ -840,7 +840,7 @@ const Comments: React.FC = () => {
                                         variant="ghost"
                                         size="sm"
                                         onClick={clearAdvancedFilters}
-                                        className="h-8 text-xs text-slate-500 hover:text-slate-800"
+                                        className="h-8 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
                                     >
                                         Clear All
                                     </Button>
@@ -860,13 +860,13 @@ const Comments: React.FC = () => {
                     {/* Seen filter */}
                     <div className="w-[140px]">
                         <Select value={seenFilter} onValueChange={setSeenFilter}>
-                            <SelectTrigger className="bg-white border-slate-200 focus:ring-purple-500 rounded-xl h-10">
+                            <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-250 focus:ring-purple-500 rounded-xl h-10">
                                 <div className="flex items-center gap-2">
-                                    <Filter className="w-3.5 h-3.5 text-slate-400" />
+                                    <Filter className="w-3.5 h-3.5 text-slate-400 dark:text-slate-555" />
                                     <SelectValue placeholder="Seen status" />
                                 </div>
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                            <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-xl">
                                 <SelectItem value="ALL">All Seen/Unseen</SelectItem>
                                 <SelectItem value="SEEN">Seen Only</SelectItem>
                                 <SelectItem value="UNSEEN">Unseen Only</SelectItem>
@@ -877,13 +877,13 @@ const Comments: React.FC = () => {
                     {/* Published filter */}
                     <div className="w-[155px]">
                         <Select value={publishedFilter} onValueChange={setPublishedFilter}>
-                            <SelectTrigger className="bg-white border-slate-200 focus:ring-purple-500 rounded-xl h-10">
+                            <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-250 focus:ring-purple-500 rounded-xl h-10">
                                 <div className="flex items-center gap-2">
-                                    <Filter className="w-3.5 h-3.5 text-slate-400" />
+                                    <Filter className="w-3.5 h-3.5 text-slate-400 dark:text-slate-555" />
                                     <SelectValue placeholder="Published status" />
                                 </div>
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                            <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-xl">
                                 <SelectItem value="ALL">All Publications</SelectItem>
                                 <SelectItem value="PUBLISHED">Published Only</SelectItem>
                                 <SelectItem value="UNPUBLISHED">Unpublished Only</SelectItem>
@@ -894,13 +894,13 @@ const Comments: React.FC = () => {
                     {/* Type Filter */}
                     <div className="w-[160px]">
                         <Select value={typeFilter} onValueChange={setTypeFilter}>
-                            <SelectTrigger className="bg-white border-slate-200 focus:ring-purple-500 rounded-xl h-10">
+                            <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-250 focus:ring-purple-500 rounded-xl h-10">
                                 <div className="flex items-center gap-2">
-                                    <Layers className="w-3.5 h-3.5 text-slate-400" />
+                                    <Layers className="w-3.5 h-3.5 text-slate-400 dark:text-slate-555" />
                                     <SelectValue placeholder="Comment Type" />
                                 </div>
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-slate-200 shadow-xl max-h-[300px]">
+                            <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-xl max-h-[300px]">
                                 <SelectItem value="ALL">All Types</SelectItem>
                                 {commentTypes.map(type => (
                                     <SelectItem key={type} value={type}>{type}</SelectItem>
@@ -911,7 +911,7 @@ const Comments: React.FC = () => {
 
                     {/* Search Bar */}
                     <div className="relative flex-1 min-w-[200px]">
-                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-555" />
                         <Input
                             placeholder="Search Author..."
                             value={searchQuery}
@@ -919,7 +919,7 @@ const Comments: React.FC = () => {
                                 setSearchQuery(e.target.value);
                                 setCurrentPage(1);
                             }}
-                            className="pl-9 bg-white border-slate-200 focus:ring-purple-500 rounded-xl h-10"
+                            className="pl-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 focus:ring-purple-500 rounded-xl h-10"
                         />
                     </div>
 
@@ -929,7 +929,7 @@ const Comments: React.FC = () => {
                         onClick={handleRefresh}
                         disabled={isRefreshing || isLoading}
                         variant="outline"
-                        className="rounded-xl px-4 font-semibold gap-2 h-10 border-slate-200 bg-white hover:bg-slate-50 transition-all"
+                        className="rounded-xl px-4 font-semibold gap-2 h-10 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
                     >
                         <RefreshCcw className={cn("w-4 h-4", (isRefreshing || isLoading) && "animate-spin")} />
                     </Button>
@@ -939,34 +939,34 @@ const Comments: React.FC = () => {
                         <Button
                             variant="ghost"
                             onClick={handleResetFilters}
-                            className="text-slate-500 hover:text-slate-900 font-semibold px-3 py-2 rounded-xl transition-colors hover:bg-slate-50"
+                            className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-150 font-semibold px-3 py-2 rounded-xl transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
                         >
                             Reset
                         </Button>
                     )}
 
                     {/* Pagination Controls */}
-                    <div className="flex items-center gap-2 ml-auto border-l pl-3 border-slate-200">
+                    <div className="flex items-center gap-2 ml-auto border-l pl-3 border-slate-200 dark:border-slate-800">
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                             disabled={currentPage === 1 || isLoading}
-                            className="h-9 w-9 p-0 rounded-xl border-slate-200 bg-white hover:bg-slate-50"
+                            className="h-9 w-9 p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
                         >
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
-                        <div className="flex items-center gap-1.5 px-3 h-9 bg-white border border-slate-200 rounded-xl">
-                            <span className="text-sm font-bold text-purple-600">{currentPage}</span>
+                        <div className="flex items-center gap-1.5 px-3 h-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-foreground">
+                            <span className="text-sm font-bold text-purple-600 dark:text-purple-400">{currentPage}</span>
                             <span className="text-xs text-slate-400 font-bold">/</span>
-                            <span className="text-xs text-slate-500 font-bold">{totalPages || 1}</span>
+                            <span className="text-xs text-slate-500 dark:text-slate-450 font-bold">{totalPages || 1}</span>
                         </div>
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                             disabled={currentPage === totalPages || totalPages === 0 || isLoading}
-                            className="h-9 w-9 p-0 rounded-xl border-slate-200 bg-white hover:bg-slate-50"
+                            className="h-9 w-9 p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
                         >
                             <ChevronRight className="h-4 w-4" />
                         </Button>
@@ -975,14 +975,14 @@ const Comments: React.FC = () => {
             </div>
 
             {/* Data Table Section */}
-            <Card className="flex-1 min-h-0 flex flex-col border-none shadow-sm bg-white rounded-2xl border border-slate-100 relative group/table overflow-hidden">
+            <Card className="flex-1 min-h-0 flex flex-col border-none shadow-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 relative group/table overflow-hidden">
                 <ScrollArea className="flex-1 w-full h-full">
                     <table className="w-full caption-bottom text-sm relative min-w-[1000px]">
-                        <TableHeader className="sticky top-0 z-30 bg-slate-50/95 backdrop-blur-md">
+                        <TableHeader className="sticky top-0 z-30 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-md">
                             {table.getHeaderGroups().map((headerGroup) => (
-                                <TableRow key={headerGroup.id} className="bg-slate-50/95 backdrop-blur-md border-b border-slate-100 hover:bg-slate-50/95 transition-none">
+                                <TableRow key={headerGroup.id} className="bg-slate-50/95 dark:bg-slate-900/95 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/95 dark:hover:bg-slate-900/95 transition-none">
                                     {headerGroup.headers.map((header) => (
-                                        <TableHead key={header.id} className="font-semibold text-slate-600 h-11 whitespace-nowrap">
+                                        <TableHead key={header.id} className="font-semibold text-slate-600 dark:text-slate-400 h-11 whitespace-nowrap">
                                             {header.isPlaceholder
                                                 ? null
                                                 : flexRender(
@@ -997,14 +997,14 @@ const Comments: React.FC = () => {
                         <TableBody>
                             {permissionError ? (
                                 <TableRow>
-                                    <TableCell colSpan={columns.length} className="h-64 text-center text-slate-400">
+                                    <TableCell colSpan={columns.length} className="h-64 text-center text-slate-400 dark:text-slate-500">
                                         <div className="flex flex-col items-center justify-center space-y-3">
-                                            <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center text-red-500">
+                                            <div className="w-12 h-12 bg-red-50 dark:bg-red-950/20 rounded-full flex items-center justify-center text-red-500">
                                                 <AlertCircle className="w-6 h-6" />
                                             </div>
                                             <div>
-                                                <p className="text-sm font-bold text-slate-800">Permission Error</p>
-                                                <p className="text-xs text-red-600 mt-1 max-w-md mx-auto leading-relaxed">{permissionError}</p>
+                                                <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Permission Error</p>
+                                                <p className="text-xs text-red-600 dark:text-red-405 mt-1 max-w-md mx-auto leading-relaxed">{permissionError}</p>
                                             </div>
                                         </div>
                                     </TableCell>
@@ -1023,7 +1023,7 @@ const Comments: React.FC = () => {
                                 table.getRowModel().rows.map((row) => (
                                     <TableRow
                                         key={row.id}
-                                        className="border-0 hover:bg-slate-50/50 transition-colors"
+                                        className="border-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
                                     >
                                         {row.getVisibleCells().map((cell) => (
                                             <TableCell key={cell.id} className="py-3 whitespace-nowrap">
@@ -1037,16 +1037,16 @@ const Comments: React.FC = () => {
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={columns.length} className="h-64 text-center text-slate-400">
+                                    <TableCell colSpan={columns.length} className="h-64 text-center text-slate-400 dark:text-slate-500">
                                         <div className="flex flex-col items-center justify-center space-y-3">
-                                            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center">
-                                                <Search className="w-8 h-8 text-slate-200" />
+                                            <div className="w-16 h-16 bg-slate-50 dark:bg-slate-950/20 rounded-full flex items-center justify-center">
+                                                <Search className="w-8 h-8 text-slate-200 dark:text-slate-800" />
                                             </div>
                                             <div>
-                                                <p className="text-sm font-semibold text-slate-600">No comments found</p>
-                                                <p className="text-xs text-slate-400">Try adjusting your filters or search criteria.</p>
+                                                <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">No comments found</p>
+                                                <p className="text-xs text-slate-400 dark:text-slate-500">Try adjusting your filters or search criteria.</p>
                                             </div>
-                                            <Button variant="outline" size="sm" onClick={handleResetFilters} className="rounded-xl border-slate-200">
+                                            <Button variant="outline" size="sm" onClick={handleResetFilters} className="rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200">
                                                 Clear Search Filters
                                             </Button>
                                         </div>

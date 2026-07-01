@@ -1,70 +1,96 @@
 import { ChevronDown } from "lucide-react";
-
-const rows = [
-  { score: 100, cve: "CVE-2021-44228", lib: "org.apache.logging.log4j:log4j-core@2.14.1", n: 1 },
-  { score: 93, cve: "CVE-2024-50379", lib: "org.apache.tomcat...-embed-core@9.0.37", n: 1 },
-  { score: 93, cve: "CVE-2023-41419", lib: "gevent@21.8.0", n: 1 },
-  { score: 90, cve: "CVE-2021-45046", lib: "org.apache.logging.log4j:log4j-core@2.14.1", n: 1 },
-  { score: 73, cve: "CVE-2023-43804", lib: "urllib3@1.25.9", n: 1 },
-];
+import { useTickets } from "@/contexts/TicketContext";
 
 export function TopVulnerabilities() {
+  const { ticketsData, isLoading } = useTickets();
+
+  const recentTickets = ticketsData ? ticketsData.slice(0, 5) : [];
+
+  const getPriorityStyle = (priority: string) => {
+    switch (priority) {
+      case 'Urgent':
+        return "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/35 dark:border-red-500/50";
+      case 'High':
+        return "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/35 dark:border-orange-500/50";
+      case 'Medium':
+        return "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/35 dark:border-blue-500/50";
+      default:
+        return "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/35 dark:border-slate-500/50";
+    }
+  };
+
+  const getStatusStyle = (status: string) => {
+    switch (status) {
+      case 'Open':
+        return "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20";
+      case 'In Progress':
+        return "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20";
+      case 'Resolved':
+        return "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/20";
+      default:
+        return "text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/40";
+    }
+  };
+
   return (
     <div className="bg-card border border-border rounded-lg p-4 h-full flex flex-col min-h-0 overflow-hidden select-none transition-colors">
       {/* Title block */}
       <div className="flex items-center gap-2 mb-3">
-        <span className="text-xs font-semibold text-muted-foreground">Top vulnerabilities to fix</span>
-        <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded font-bold">10</span>
+        <span className="text-xs font-semibold text-muted-foreground">Recent support tickets</span>
+        <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded font-bold">
+          {recentTickets.length}
+        </span>
       </div>
       
       {/* Table Headers */}
-      <div className="grid grid-cols-[100px_110px_1fr_60px] gap-3 text-[10px] text-muted-foreground font-semibold pb-2 border-b border-border items-center">
+      <div className="grid grid-cols-[100px_90px_1fr_95px] gap-3 text-[10px] text-muted-foreground font-semibold pb-2 border-b border-border items-center">
         <div>
           <button className="flex items-center gap-1 bg-muted hover:bg-muted/80 text-muted-foreground px-2 py-1 rounded border border-border text-[9px] font-bold cursor-pointer transition-colors">
-            Raven Score <ChevronDown className="w-2.5 h-2.5" />
+            Priority <ChevronDown className="w-2.5 h-2.5" />
           </button>
         </div>
-        <div>CVE</div>
-        <div>Library@Version</div>
-        <div className="text-right">No. Images</div>
+        <div>Ticket ID</div>
+        <div>Subject</div>
+        <div className="text-right">Status</div>
       </div>
       
       {/* Table Content */}
       <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-border/40">
-        {rows.map((r, i) => {
-          const isHigh = r.score >= 90;
-          return (
-            <div key={i} className="grid grid-cols-[100px_110px_1fr_60px] gap-3 items-center py-2.5 text-xs">
-              {/* Badge Column */}
-              <div>
-                <span 
-                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold border ${
-                    isHigh 
-                      ? "bg-[#ef4444]/10 text-[#fca5a5] border-[#ef4444]/35" 
-                      : "bg-[#f59e0b]/10 text-[#fde047] border-[#f59e0b]/35"
-                  }`}
-                >
-                  {/* Raven Icon */}
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="w-2.5 h-2.5">
-                    <path d="M12 2C11.5 3.5 10 5.5 7.5 7 5 8.5 2 9.5 2 10.5c0 1 2.5 1.5 4.5 1.5 1.5 0 3-.5 4-1 .5 1.5.5 3 .5 4.5 0 2-.5 3.5-1.5 4.5-.5.5 0 1 .5 1 1.5 0 3-2 3.5-4.5.5 2.5 2 4.5 3.5 4.5.5 0 1-.5.5-1-1-1-1.5-2.5-1.5-4.5 0-1.5 0-3 .5-4.5 1 .5 2.5 1 4 1 2 0 4.5-.5 4.5-1.5 0-1-3-2-5.5-3.5-2.5-1.5-4-3.5-4.5-5z" />
-                  </svg>
-                  {r.score}
-                </span>
+        {isLoading ? (
+          <div className="py-4 text-xs text-muted-foreground text-center">Loading tickets...</div>
+        ) : recentTickets.length === 0 ? (
+          <div className="py-4 text-xs text-muted-foreground text-center">No recent tickets</div>
+        ) : (
+          recentTickets.map((ticket) => {
+            return (
+              <div key={ticket.ticket_id} className="grid grid-cols-[100px_90px_1fr_95px] gap-3 items-center py-2.5 text-xs">
+                {/* Priority Badge */}
+                <div>
+                  <span 
+                    className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${getPriorityStyle(ticket.priority)}`}
+                  >
+                    {ticket.priority}
+                  </span>
+                </div>
+                
+                {/* Ticket ID */}
+                <div className="font-mono text-[10px] text-foreground font-semibold truncate">{ticket.ticket_id}</div>
+                
+                {/* Subject */}
+                <div className="text-[10px] text-muted-foreground truncate max-w-full" title={ticket.subject}>
+                  {ticket.subject}
+                </div>
+                
+                {/* Status */}
+                <div className="text-right pr-2">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${getStatusStyle(ticket.status)}`}>
+                    {ticket.status}
+                  </span>
+                </div>
               </div>
-              
-              {/* CVE Column */}
-              <div className="font-mono text-[10px] text-foreground font-semibold">{r.cve}</div>
-              
-              {/* Library Column */}
-              <div className="font-mono text-[10px] text-muted-foreground truncate max-w-full">
-                {r.lib}
-              </div>
-              
-              {/* No. Images Column */}
-              <div className="text-muted-foreground text-[10px] font-semibold text-right pr-2">{r.n}</div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
     </div>
   );

@@ -129,13 +129,13 @@ const ActivityLogDetails: React.FC = () => {
 
   const getStatusColor = (status: string | undefined) => {
     switch (status) {
-      case 'Success': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+      case 'Success': return 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900';
       case 'Failed':
       case 'Error':
-        return 'bg-red-100 text-red-700 border-red-200';
-      case 'Warning': return 'bg-amber-100 text-amber-700 border-amber-200';
-      case 'Info': return 'bg-blue-100 text-blue-700 border-blue-200';
-      default: return 'bg-slate-100 text-slate-700 border-slate-200';
+        return 'bg-red-100 dark:bg-red-950/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900';
+      case 'Warning': return 'bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900';
+      case 'Info': return 'bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-900';
+      default: return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800';
     }
   };
 
@@ -158,12 +158,12 @@ const ActivityLogDetails: React.FC = () => {
   };
 
   const InfoRow = ({ label, value, icon: Icon }: { label: string, value: string | null | undefined, icon?: any }) => (
-    <div className="flex items-center justify-between py-3 border-b border-slate-50 last:border-0 group">
+    <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-slate-800 last:border-0 group">
       <div className="flex items-center gap-3">
         {Icon && <Icon size={16} className="text-slate-400 group-hover:text-purple-500 transition-colors" />}
-        <span className="text-sm font-medium text-slate-500">{label}</span>
+        <span className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</span>
       </div>
-      <span className="text-sm font-bold text-slate-900">{value || '-'}</span>
+      <span className="text-sm font-bold text-slate-900 dark:text-slate-100">{value || '-'}</span>
     </div>
   );
 
@@ -178,13 +178,13 @@ const ActivityLogDetails: React.FC = () => {
 
   if (docError || !docDetails) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
-        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8 bg-card text-foreground">
+        <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
           <AlertCircle className="w-8 h-8 text-red-500" />
         </div>
-        <h2 className="text-xl font-bold text-slate-900 mb-2">Log Not Found</h2>
-        <p className="text-slate-500 mb-6">The requested activity log details could not be loaded.</p>
-        <Button onClick={() => navigate('/activity-log')} className="rounded-xl bg-purple-600 hover:bg-purple-700">
+        <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">Log Not Found</h2>
+        <p className="text-slate-500 dark:text-slate-450 mb-6">The requested activity log details could not be loaded.</p>
+        <Button onClick={() => navigate('/activity-log')} className="rounded-xl bg-purple-600 hover:bg-purple-700 text-white">
           Back to Activity Logs
         </Button>
       </div>
@@ -192,29 +192,29 @@ const ActivityLogDetails: React.FC = () => {
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-stone-200/50">
-      <form onSubmit={handleSave} className="space-y-6 flex-1 flex flex-col min-h-0">
+    <div className="h-full flex flex-col overflow-hidden bg-stone-200/50 dark:bg-slate-950/50">
+      <form onSubmit={handleSave} className="space-y-6 flex-1 flex flex-col min-h-0 p-4">
         {/* Breadcrumbs & Navigation */}
         <div className="flex flex-wrap items-center justify-between gap-4 shrink-0 px-1">
-          <div className="flex items-center gap-2 text-sm text-slate-500 font-medium font-sans">
+          <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 font-medium font-sans">
             <button
               type="button"
               onClick={() => navigate('/activity-log')}
-              className="hover:text-purple-600 transition-colors flex items-center gap-1.5 focus:outline-none"
+              className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors flex items-center gap-1.5 focus:outline-none"
             >
               <Home size={16} />
               Backoffice
             </button>
-            <ChevronRight size={14} className="text-slate-300" />
+            <ChevronRight size={14} className="text-slate-300 dark:text-slate-700" />
             <button
               type="button"
               onClick={() => navigate('/activity-log')}
-              className="hover:text-purple-600 transition-colors focus:outline-none"
+              className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors focus:outline-none"
             >
               Activity Log
             </button>
-            <ChevronRight size={14} className="text-slate-300" />
-            <span className="text-slate-900 font-bold">{logId}</span>
+            <ChevronRight size={14} className="text-slate-300 dark:text-slate-700" />
+            <span className="text-slate-900 dark:text-slate-100 font-bold">{logId}</span>
             <div className={cn("ml-2 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border", getStatusColor(docDetails.status))}>
               {docDetails.status || 'N/A'}
             </div>
@@ -228,11 +228,11 @@ const ActivityLogDetails: React.FC = () => {
                 size="sm"
                 onClick={goToPreviousLog}
                 disabled={currentLogIndex <= 0}
-                className="rounded-xl h-9 w-9 p-0 border-slate-200 bg-white hover:bg-slate-50 shadow-sm"
+                className="rounded-xl h-9 w-9 p-0 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm"
               >
                 <ChevronLeft size={18} />
               </Button>
-              <div className="px-3 py-1.5 bg-slate-100/50 rounded-xl text-xs font-bold text-slate-600 border border-slate-200">
+              <div className="px-3 py-1.5 bg-slate-100/50 dark:bg-slate-900/50 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800">
                 {currentLogIndex + 1} / {allLogs.length}
               </div>
               <Button
@@ -241,7 +241,7 @@ const ActivityLogDetails: React.FC = () => {
                 size="sm"
                 onClick={goToNextLog}
                 disabled={currentLogIndex >= allLogs.length - 1}
-                className="rounded-xl h-9 w-9 p-0 border-slate-200 bg-white hover:bg-slate-50 shadow-sm"
+                className="rounded-xl h-9 w-9 p-0 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm"
               >
                 <ChevronRight size={18} />
               </Button>
@@ -250,7 +250,7 @@ const ActivityLogDetails: React.FC = () => {
         </div>
 
         {/* Tabs Navigation */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden shrink-0 flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden shrink-0 flex items-center justify-between">
           <div className="flex overflow-x-auto no-scrollbar flex-1">
             {tabs.map((tab) => {
               const Icon = tab.icon;
@@ -262,24 +262,24 @@ const ActivityLogDetails: React.FC = () => {
                   className={cn(
                     "flex items-center gap-2 px-6 py-4 text-sm font-bold transition-all whitespace-nowrap relative min-w-[160px] justify-center",
                     activeTab === tab.id
-                      ? 'text-purple-600 bg-purple-50/50'
-                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'text-purple-600 dark:text-purple-400 bg-purple-50/50 dark:bg-purple-950/30'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40'
                   )}
                 >
                   <Icon size={18} />
                   {tab.label}
                   {activeTab === tab.id && (
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600" />
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600 dark:bg-purple-500" />
                   )}
                 </button>
               );
             })}
           </div>
-          <div className="flex items-center px-4 border-l border-slate-100">
+          <div className="flex items-center px-4 border-l border-slate-100 dark:border-slate-800">
             <button
               type="button"
               onClick={handleRefresh}
-              className="p-2 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
+              className="p-2 text-slate-400 dark:text-slate-500 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30 rounded-lg transition-all"
               title="Refresh details"
               disabled={isRefreshing}
             >
@@ -289,7 +289,7 @@ const ActivityLogDetails: React.FC = () => {
         </div>
 
         {/* Tab Content Area */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col flex-1 min-h-0 relative">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col flex-1 min-h-0 relative">
           <ScrollArea className="flex-1 w-full">
             <div className="p-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
               {/* Tab 1: Log Information */}
@@ -298,10 +298,10 @@ const ActivityLogDetails: React.FC = () => {
                   {/* Left column: Editable Fields */}
                   <div className="space-y-6">
                     <div>
-                      <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Edit Log details</h3>
-                      <div className="bg-slate-50/30 rounded-2xl p-6 border border-slate-100 space-y-4">
+                      <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">Edit Log details</h3>
+                      <div className="bg-slate-50/30 dark:bg-slate-950/20 rounded-2xl p-6 border border-slate-100 dark:border-slate-800 space-y-4">
                         <div className="space-y-1.5">
-                          <Label htmlFor="formFullName" className="text-slate-700 font-semibold text-xs">
+                          <Label htmlFor="formFullName" className="text-slate-700 dark:text-slate-300 font-semibold text-xs">
                             User Full Name
                           </Label>
                           <Input
@@ -309,19 +309,19 @@ const ActivityLogDetails: React.FC = () => {
                             value={formFullName}
                             onChange={(e) => setFormFullName(e.target.value)}
                             placeholder="Enter user name"
-                            className="border-slate-200 rounded-xl bg-white focus-visible:ring-purple-500 focus-visible:border-purple-300"
+                            className="border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus-visible:ring-purple-500 focus-visible:border-purple-300 dark:focus-visible:border-purple-800"
                           />
                         </div>
 
                         <div className="space-y-1.5">
-                          <Label htmlFor="formStatus" className="text-slate-700 font-semibold text-xs">
+                          <Label htmlFor="formStatus" className="text-slate-700 dark:text-slate-300 font-semibold text-xs">
                             Status
                           </Label>
                           <Select value={formStatus} onValueChange={setFormStatus}>
-                            <SelectTrigger id="formStatus" className="border-slate-200 rounded-xl bg-white">
+                            <SelectTrigger id="formStatus" className="border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">
                               <SelectValue placeholder="Select Status" />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-slate-200 shadow-lg">
+                            <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-lg">
                               <SelectItem value="Success">Success</SelectItem>
                               <SelectItem value="Failed">Failed</SelectItem>
                               <SelectItem value="Error">Error</SelectItem>
@@ -332,7 +332,7 @@ const ActivityLogDetails: React.FC = () => {
                         </div>
 
                         <div className="space-y-1.5">
-                          <Label htmlFor="formSubject" className="text-slate-700 font-semibold text-xs">
+                          <Label htmlFor="formSubject" className="text-slate-700 dark:text-slate-300 font-semibold text-xs">
                             Subject
                           </Label>
                           <Input
@@ -340,7 +340,7 @@ const ActivityLogDetails: React.FC = () => {
                             value={formSubject}
                             onChange={(e) => setFormSubject(e.target.value)}
                             placeholder="Activity subject"
-                            className="border-slate-200 rounded-xl bg-white focus-visible:ring-purple-500 focus-visible:border-purple-300"
+                            className="border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus-visible:ring-purple-500 focus-visible:border-purple-300 dark:focus-visible:border-purple-800"
                           />
                         </div>
                       </div>
@@ -350,8 +350,8 @@ const ActivityLogDetails: React.FC = () => {
                   {/* Right column: Readonly Metadata */}
                   <div className="space-y-6">
                     <div>
-                      <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Log Metadata</h3>
-                      <div className="bg-slate-50/50 rounded-2xl p-6 border border-slate-100 space-y-1">
+                      <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">Log Metadata</h3>
+                      <div className="bg-slate-50/50 dark:bg-slate-950/20 rounded-2xl p-6 border border-slate-100 dark:border-slate-800 space-y-1">
                         <InfoRow label="Log ID" value={docDetails.name} icon={Code} />
                         <InfoRow label="Operation Type" value={docDetails.operation} icon={Globe} />
                         <InfoRow label="Owner / Creator" value={docDetails.owner} icon={User} />
@@ -366,14 +366,14 @@ const ActivityLogDetails: React.FC = () => {
               {/* Tab 2: Message & Trace */}
               <div className={cn("max-w-4xl mx-auto space-y-6", activeTab !== 'trace' && "hidden")}>
                 <div>
-                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Message / Exception Trace</h3>
-                  <div className="bg-slate-50/30 rounded-2xl p-6 border border-slate-100 space-y-4">
+                  <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">Message / Exception Trace</h3>
+                  <div className="bg-slate-50/30 dark:bg-slate-950/20 rounded-2xl p-6 border border-slate-100 dark:border-slate-800 space-y-4">
                     <Textarea
                       id="formMessage"
                       value={formMessage}
                       onChange={(e) => setFormMessage(e.target.value)}
                       placeholder="Detail log message contents..."
-                      className="border-slate-200 rounded-xl min-h-[300px] font-mono text-xs bg-white focus-visible:ring-purple-500 focus-visible:border-purple-300"
+                      className="border-slate-200 dark:border-slate-800 rounded-xl min-h-[300px] font-mono text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus-visible:ring-purple-500 focus-visible:border-purple-300 dark:focus-visible:border-purple-800"
                     />
                   </div>
                 </div>
@@ -383,12 +383,12 @@ const ActivityLogDetails: React.FC = () => {
           </ScrollArea>
 
           {/* Sticky footer for saving changes */}
-          <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-end gap-3 shrink-0">
+          <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-end gap-3 shrink-0">
             <Button
               type="button"
               variant="outline"
               onClick={() => navigate('/activity-log')}
-              className="border-slate-200 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition-colors px-6"
+              className="border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 transition-colors px-6"
             >
               Cancel
             </Button>

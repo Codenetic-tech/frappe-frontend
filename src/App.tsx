@@ -6,7 +6,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { FilterProvider } from "@/contexts/FilterContext";
-import { LeadProvider } from "@/contexts/LeadContext";
 import { OrgTreeProvider } from "@/contexts/OrgTreeContext";
 import ClientDashboard from "./pages/ClientDashboard";
 import OrderBook from "./pages/OrderBook";
@@ -28,20 +27,22 @@ import ClientDetails from "./pages/ClientDetails";
 import Announcements from "./pages/Announcements";
 import Updates from "./pages/Updates";
 import TasksKanbanPage from "./pages/TasksKanbanPage";
-import CrmDashboard from "./pages/CrmDashboard";
 import Tickets from "./pages/Tickets";
 import TicketDetails from "./pages/TicketDetails";
 import Subscription from "./pages/Subscription";
 import Revenue from "./pages/Revenue";
 import { TicketProvider } from "@/contexts/TicketContext";
 import { RevenueProvider } from "@/contexts/RevenueContext";
-import { CrmDashboardProvider } from "@/contexts/CrmDashboardContext";
 import MainLayout from "./components/layout/MainLayout";
 import { Sparkles } from "lucide-react";
 import { TaskProvider } from "@/contexts/TaskContext";
 import { FrappeProvider } from "frappe-react-sdk";
 import Comments from "./pages/Comments";
 import CommentDetails from "./pages/CommentDetails";
+import ClientHoldings from "./pages/ClientHoldings";
+import Insurance from "./pages/Insurance";
+import GetQuote from "./pages/GetQuote";
+
 
 const queryClient = new QueryClient();
 
@@ -210,14 +211,7 @@ const AppContent = () => {
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/crm-dashboard"
-        element={
-          <ProtectedRoute>
-            <CrmDashboard />
-          </ProtectedRoute>
-        }
-      />
+
       <Route
         path="/leads"
         element={
@@ -299,6 +293,14 @@ const AppContent = () => {
         }
       />
       <Route
+        path="/client-holdings"
+        element={
+          <ProtectedRoute>
+            <ClientHoldings />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/revenue"
         element={
           <ProtectedRoute>
@@ -315,6 +317,22 @@ const AppContent = () => {
         }
       />
       <Route
+        path="/insurance"
+        element={
+          <ProtectedRoute>
+            <Insurance />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/get-quote"
+        element={
+          <ProtectedRoute>
+            <GetQuote />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/task"
         element={<Navigate to="/tasks" replace />}
       />
@@ -326,26 +344,22 @@ const AppContent = () => {
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <FrappeProvider url='' socketPort='8081' siteName='pulse.gopocket.in' swrConfig={{ revalidateOnFocus: false, }}>
+      <FrappeProvider url='' socketPort='8081' siteName='pulse.gopocket.in' swrConfig={{ revalidateOnFocus: false }}>
         <AuthProvider>
           <OrgTreeProvider>
             <FilterProvider>
               <TooltipProvider>
-                <LeadProvider>
-                  <RevenueProvider>
-                    <CrmDashboardProvider>
-                      <TicketProvider>
-                        <TaskProvider>
-                          <Toaster />
-                          <Sonner />
-                          <BrowserRouter>
-                            <AppContent />
-                          </BrowserRouter>
-                        </TaskProvider>
-                      </TicketProvider>
-                    </CrmDashboardProvider>
-                  </RevenueProvider>
-                </LeadProvider>
+                <RevenueProvider>
+                  <TicketProvider>
+                    <TaskProvider>
+                      <Toaster />
+                      <Sonner />
+                      <BrowserRouter>
+                        <AppContent />
+                      </BrowserRouter>
+                    </TaskProvider>
+                  </TicketProvider>
+                </RevenueProvider>
               </TooltipProvider>
             </FilterProvider>
           </OrgTreeProvider>
