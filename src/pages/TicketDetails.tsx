@@ -1,28 +1,24 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-    ChevronRight,
-    Home,
-    ChevronLeft,
     Ticket,
-    FileText,
+    Mail,
+    Activity as ActivityIcon,
     MessageSquare,
     RefreshCw,
-    Activity,
-    Info,
-    CheckCircle,
-    AlertTriangle
 } from 'lucide-react';
-import { useTickets, TicketItem, isSLABreached } from '@/contexts/TicketContext';
-import { useAuth } from '@/contexts/AuthContext';
-import TicketInfoTab from '@/components/TicketPage/TicketInfoTab';
-import TicketChatTab from '@/components/TicketPage/TicketChatTab';
-import TicketTimelineTab from '@/components/TicketPage/TicketTimelineTab';
+import { useFrappeGetDoc, useFrappeUpdateDoc } from 'frappe-react-sdk';
+import TicketActivityTab from '@/components/TicketPage/TicketActivityTab';
+import TicketCommentsTab from '@/components/TicketPage/TicketCommentsTab';
+import TicketComposer from '@/components/TicketPage/TicketComposer';
+import TicketDetailsPanel from '@/components/TicketPage/TicketDetailsPanel';
 import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
+import { useTicketActivities } from '@/hooks/useTicketActivities';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Tab {
     id: string;
@@ -30,62 +26,66 @@ interface Tab {
     icon: React.ComponentType<any>;
 }
 
+const TICKET_STATUSES = [
+    { status: 'Open', color: 'bg-blue-500' },
+    { status: 'In Progress', color: 'bg-purple-500' },
+    { status: 'Resolved', color: 'bg-emerald-500' },
+    { status: 'Closed', color: 'bg-slate-500' },
+];
+
+const getStatusColor = (status: string) => {
+    switch (status) {
+        case 'Open': return 'bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-900/30';
+        case 'In Progress': return 'bg-purple-50 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-900/30';
+        case 'Resolved': return 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/30';
+        default: return 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700';
+    }
+};
+
 const TicketDetails: React.FC = () => {
-    const { ticketsData, isLoading, refreshTicketsData, updateTicketStatus } = useTickets();
-    const { user } = useAuth();
     const { ticketId } = useParams<{ ticketId: string }>();
     const navigate = useNavigate();
-    const [ticket, setTicket] = useState<TicketItem | null>(null);
-    const [activeTab, setActiveTab] = useState('chat');
+    const [activeTab, setActiveTab] = useState('activity');
+    const { updateDoc } = useFrappeUpdateDoc();
 
-    const isAssignedToMe = useMemo(() => {
-        if (!ticket || !user) return false;
-        return user.user_code === ticket.to_department;
-    }, [ticket, user]);
+    const { data: ticket, isLoading, mutate } = useFrappeGetDoc<any>('HD Ticket', ticketId || '', {
+        fields: [
+            'name', 'subject', 'raised_by', 'status', 'priority', 'ticket_type', 'agent_group',
+            'creation', 'modified', 'description', 'via_customer_portal',
+            'response_by', 'first_responded_on', 'first_response_time', 'first_response_failed_by',
+            'resolution_by', 'resolution_time', 'resolution_failed_by', 'agreement_status',
+        ],
+    });
+
+    const { data: activities, isLoading: isActivitiesLoading, refresh: refreshActivities } = useTicketActivities(ticket?.name);
 
     const tabs: Tab[] = [
-        { id: 'chat', label: 'Communication', icon: MessageSquare },
-        { id: 'info', label: 'Ticket Details', icon: Info },
-        { id: 'timeline', label: 'Timeline', icon: Activity },
+        { id: 'activity', label: 'Activity', icon: ActivityIcon },
+        { id: 'emails', label: 'Emails', icon: Mail },
+        { id: 'comments', label: 'Comments', icon: MessageSquare },
     ];
-
-    // Find current ticket
-    useEffect(() => {
-        if (ticketId && ticketsData) {
-            const currentTicket = ticketsData.find(t => t.ticket_id === ticketId);
-            if (currentTicket) {
-                setTicket(currentTicket);
-            }
-        }
-    }, [ticketId, ticketsData]);
-
-    // Navigation logic
-    const allTickets = useMemo(() => ticketsData || [], [ticketsData]);
-    const currentIndex = useMemo(() => allTickets.findIndex(t => t.ticket_id === ticketId), [allTickets, ticketId]);
-
-    const goToPrevious = () => {
-        if (currentIndex > 0) {
-            navigate(`/ticketing/${allTickets[currentIndex - 1].ticket_id}`);
-        }
-    };
-
-    const goToNext = () => {
-        if (currentIndex < allTickets.length - 1) {
-            navigate(`/ticketing/${allTickets[currentIndex + 1].ticket_id}`);
-        }
-    };
 
     const handleStatusUpdate = async (newStatus: string) => {
         if (!ticket) return;
-        const success = await updateTicketStatus(ticket.ticket_id, newStatus);
-        if (success) {
+        try {
+            await updateDoc('HD Ticket', ticket.name, { status: newStatus });
+            mutate();
             toast({
                 variant: "success",
                 title: "Status Updated",
                 description: `Ticket status changed to ${newStatus}.`,
             });
-            refreshTicketsData(); // Refresh to get latest data including modified time
+        } catch (err) {
+            toast({
+                variant: "destructive",
+                title: "Update Failed",
+                description: "Could not update the ticket status.",
+            });
         }
+    };
+
+    const handleCommentAdded = () => {
+        refreshActivities();
     };
 
     if (isLoading && !ticket) {
@@ -101,10 +101,10 @@ const TicketDetails: React.FC = () => {
             <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
                 <Card className="p-12 rounded-3xl border-slate-100 dark:border-slate-800 shadow-xl flex flex-col items-center max-w-md bg-white dark:bg-slate-900">
                     <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6">
-                        <Ticket className="w-10 h-10 text-slate-305 dark:text-slate-500" />
+                        <Ticket className="w-10 h-10 text-slate-300 dark:text-slate-500" />
                     </div>
                     <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Ticket Not Found</h2>
-                    <p className="text-slate-505 dark:text-slate-400 mb-8">The ticket you are looking for doesn't exist or you don't have access.</p>
+                    <p className="text-slate-500 dark:text-slate-400 mb-8">The ticket you are looking for doesn't exist or you don't have access.</p>
                     <Button onClick={() => navigate('/ticketing')} className="rounded-xl bg-purple-600 hover:bg-purple-700 h-12 px-8 font-bold text-white">
                         Go back to Dashboard
                     </Button>
@@ -114,138 +114,98 @@ const TicketDetails: React.FC = () => {
     }
 
     return (
-        <div className="flex flex-col h-full w-full animate-in fade-in duration-300 bg-stone-200/50 dark:bg-slate-950/20 overflow-hidden">
-            <div className="space-y-6 flex-1 flex flex-col min-h-0">
-                {/* Header Section */}
-                <div className="flex flex-wrap items-center justify-between gap-4 shrink-0 px-2 leading-none">
-                    <div className="flex items-center gap-2 text-sm text-slate-505 dark:text-slate-400 font-medium">
-                        <button onClick={() => navigate('/ticketing')} className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors flex items-center gap-1.5 focus:outline-none">
-                            <Home size={16} />
-                            Ticketing
-                        </button>
-                        <ChevronRight size={14} className="text-slate-300 dark:text-slate-600" />
-                        <span className="text-slate-900 dark:text-slate-100 font-bold">{ticket.ticket_id}</span>
-                        <div className={cn(
-                            "ml-2 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border",
-                            ticket.status === 'Open' ? 'bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-900/30' :
-                                ticket.status === 'In Progress' ? 'bg-purple-50 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-900/30' :
-                                    ticket.status === 'Resolved' ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/30' :
-                                        'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                        )}>
-                            {ticket.status}
-                        </div>
-                        {isSLABreached(ticket) && (
-                            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/30 text-[10px] font-bold uppercase tracking-wider animate-pulse">
-                                <AlertTriangle size={12} strokeWidth={3} />
-                                SLA Breached
-                            </div>
-                        )}
+        <div className="flex flex-col h-full w-full animate-in fade-in duration-300 bg-background dark:bg-slate-950/50 overflow-hidden">
+            <div className="space-y-4 flex-1 flex flex-col min-h-0">
+                {/* Persistent Ticket Details (25%) + Tabbed Content (75%) */}
+                <div className="flex-1 flex flex-col lg:flex-row gap-4 min-h-0">
+                    {/* Left: Ticket Details Panel — persists across all tabs */}
+                    <div className="w-full lg:w-1/4 shrink-0 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col lg:max-h-full lg:min-h-0 max-h-[480px]">
+                        <TicketDetailsPanel
+                            ticket={ticket}
+                            onTicketUpdate={() => {
+                                mutate();
+                                refreshActivities();
+                            }}
+                        />
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={goToPrevious}
-                                disabled={currentIndex <= 0}
-                                className="rounded-xl h-9 w-9 p-0 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-700 dark:text-slate-300 shadow-sm"
-                            >
-                                <ChevronLeft size={18} />
-                            </Button>
-                            <div className="px-3 py-1.5 bg-white dark:bg-slate-900 rounded-xl text-[10px] font-bold text-slate-400 dark:text-slate-500 border border-slate-100 dark:border-slate-800 shadow-sm uppercase tracking-widest whitespace-nowrap">
-                                {currentIndex + 1} / {allTickets.length}
-                            </div>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={goToNext}
-                                disabled={currentIndex >= allTickets.length - 1}
-                                className="rounded-xl h-9 w-9 p-0 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-700 dark:text-slate-300 shadow-sm"
-                            >
-                                <ChevronRight size={18} />
-                            </Button>
-                        </div>
+                    {/* Right: Tabs */}
+                    <div className="flex-1 flex flex-col gap-4 min-h-0">
+                        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden shrink-0">
+                            <div className="flex flex-wrap items-center justify-between gap-2 pr-3">
+                                <div className="flex flex-wrap">
+                                    {tabs.map((tab) => {
+                                        const Icon = tab.icon;
+                                        return (
+                                            <button
+                                                key={tab.id}
+                                                onClick={() => setActiveTab(tab.id)}
+                                                className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-all whitespace-nowrap ${activeTab === tab.id
+                                                    ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50 dark:bg-purple-950/30'
+                                                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800/40'
+                                                    }`}
+                                            >
+                                                <Icon size={18} />
+                                                {tab.label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
 
-                        <Separator orientation="vertical" className="h-8 bg-slate-200 dark:bg-slate-800 hidden md:block" />
+                                <div className="flex items-center gap-2 ml-auto">
+                                    <Select value={ticket.status} onValueChange={handleStatusUpdate}>
+                                        <SelectTrigger
+                                            className={cn(
+                                                "h-8 w-auto gap-2 pl-3 pr-2.5 rounded-lg border text-xs font-bold uppercase tracking-wide focus:ring-purple-500/30 [&>svg]:h-3.5 [&>svg]:w-3.5 [&>svg]:opacity-60",
+                                                getStatusColor(ticket.status)
+                                            )}
+                                        >
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent align="end">
+                                            {TICKET_STATUSES.map((s) => (
+                                                <SelectItem key={s.status} value={s.status} className="text-xs font-semibold uppercase tracking-wide">
+                                                    <span className="flex items-center gap-2">
+                                                        <span className={cn("w-2 h-2 rounded-full", s.color)} />
+                                                        {s.status}
+                                                    </span>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
 
-                        <div className="flex items-center gap-2">
-                            {(() => {
-                                const isCreatedByMe = user?.user_code === ticket.requester_name;
-                                const statusOptions = isCreatedByMe ? [
-                                    { status: 'Open', color: 'bg-blue-500' },
-                                    { status: 'Closed', color: 'bg-slate-500' }
-                                ] : [
-                                    { status: 'Open', color: 'bg-blue-500' },
-                                    { status: 'In Progress', color: 'bg-purple-500' },
-                                    { status: 'Resolved', color: 'bg-emerald-500' }
-                                ];
+                                    <div className="w-px h-5 bg-slate-200 dark:bg-slate-700 mx-1" />
 
-                                return statusOptions.map((s) => (
-                                    <Button
-                                        key={s.status}
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => handleStatusUpdate(s.status)}
-                                        className={cn(
-                                            "hidden md:flex rounded-xl text-[10px] font-bold uppercase tracking-wider gap-2 h-9 border-slate-200 dark:border-slate-800 hover:border-purple-200 dark:hover:border-purple-900/40 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 hover:text-purple-600 dark:hover:text-purple-400 transition-all px-4",
-                                            ticket.status === s.status && "bg-slate-900 dark:bg-slate-100 border-slate-900 dark:border-slate-100 text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200 hover:text-white dark:hover:text-slate-900"
-                                        )}
+                                    <button
+                                        onClick={() => refreshActivities()}
+                                        disabled={isActivitiesLoading}
+                                        title="Refresh activity"
+                                        className="h-8 w-8 shrink-0 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition-colors disabled:opacity-50"
                                     >
-                                        {!(ticket.status === s.status) && <div className={cn("w-2 h-2 rounded-full", s.color)} />}
-                                        {ticket.status === s.status && <CheckCircle size={14} className="text-emerald-400 dark:text-emerald-600" />}
-                                        {s.status}
-                                    </Button>
-                                ));
-                            })()}
+                                        <RefreshCw size={14} className={cn(isActivitiesLoading && "animate-spin")} />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Tab Content Area */}
+                        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col flex-1 min-h-0">
+                            <ScrollArea className="flex-1 w-full">
+                                <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+                                    {activeTab === 'activity' && <TicketActivityTab data={activities} isLoading={isActivitiesLoading} filter="all" />}
+                                    {activeTab === 'emails' && <TicketActivityTab data={activities} isLoading={isActivitiesLoading} filter="communications" />}
+                                    {activeTab === 'comments' && <TicketCommentsTab comments={activities?.comments ?? []} isLoading={isActivitiesLoading} />}
+                                </div>
+                                <ScrollBar orientation="vertical" />
+                            </ScrollArea>
+
+                            <TicketComposer ticketName={ticket.name} onCommentAdded={handleCommentAdded} />
                         </div>
                     </div>
                 </div>
-
-                {/* Main Tabs Navigation */}
-                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden shrink-0">
-                    <div className="flex">
-                        {tabs.map((tab) => {
-                            const Icon = tab.icon;
-                            return (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
-                                    className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-all whitespace-nowrap ${activeTab === tab.id
-                                        ? 'text-purple-600 dark:text-purple-400 border-b-2 border-purple-600 dark:border-purple-450 bg-purple-50 dark:bg-purple-950/20'
-                                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-250 hover:bg-gray-50 dark:hover:bg-slate-850/40'
-                                        }`}
-                                >
-                                    <Icon size={18} />
-                                    {tab.label}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-
-                {/* Content Area */}
-                <Card className="border-slate-200 dark:border-slate-800 shadow-xl rounded-xl overflow-hidden flex-1 flex flex-col min-h-0 bg-white dark:bg-slate-900">
-                    <ScrollArea className="flex-1">
-                        <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 h-full">
-                            {activeTab === 'info' && <TicketInfoTab ticket={ticket} />}
-                            {activeTab === 'chat' && <TicketChatTab ticket={ticket} onReplyAdded={refreshTicketsData} />}
-                            {activeTab === 'timeline' && <TicketTimelineTab ticketId={ticket.ticket_id} />}
-                        </div>
-                        <ScrollBar orientation="vertical" />
-                    </ScrollArea>
-                </Card>
             </div>
         </div>
     );
 };
 
 export default TicketDetails;
-
-const Separator = ({ orientation = 'horizontal', className }: { orientation?: 'horizontal' | 'vertical', className?: string }) => (
-    <div className={cn(
-        "bg-slate-100 dark:bg-slate-800 shrink-0",
-        orientation === 'horizontal' ? 'h-[1px] w-full' : 'w-[1px] h-full',
-        className
-    )} />
-);

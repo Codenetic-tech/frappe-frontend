@@ -1,5 +1,5 @@
 import { ChevronDown } from "lucide-react";
-import { useTickets } from "@/contexts/TicketContext";
+import { useFrappeGetDocCount } from "frappe-react-sdk";
 
 const openData = [165, 168, 170, 172, 175, 185, 182];
 const resolvedData = [15, 18, 16, 17, 18, 17, 18];
@@ -32,9 +32,8 @@ function Line({ data, color, max }: { data: number[]; color: string; max: number
 }
 
 export function OpenResolved() {
-  const { statusCount } = useTickets();
-  const openCount = statusCount?.Open || 0;
-  const resolvedCount = (statusCount?.Resolved || 0) + (statusCount?.Closed || 0);
+  const { data: openCount = 0 } = useFrappeGetDocCount("HD Ticket", [["status", "=", "Open"]]);
+  const { data: resolvedCount = 0 } = useFrappeGetDocCount("HD Ticket", [["status", "in", ["Resolved", "Closed"]]]);
 
   return (
     <div className="bg-card border border-border rounded-lg p-4 h-full flex flex-col min-h-0 overflow-hidden select-none transition-colors">

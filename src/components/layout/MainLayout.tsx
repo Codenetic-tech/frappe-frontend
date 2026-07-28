@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "../dashboard/Navbar";
 import Watchlist from "./Watchlist";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { TemplateCustomizer } from "./TemplateCustomizer";
 
@@ -96,11 +95,11 @@ const MainLayout = ({ children }: MainLayoutProps) => {
                             </aside> */}
 
                             {/* Dashboard Content (70% - expands to fill) */}
-                            <main className="flex-1 h-full bg-card text-card-foreground border border-border/30 rounded-xl shadow-sm overflow-hidden flex flex-col">
+                            <main className="flex-1 h-full bg-card text-card-foreground rounded-xl shadow-sm overflow-hidden flex flex-col">
                                 {scrollWholePage ? (
-                                    <ScrollArea className="flex-1 h-full w-full">
+                                    <div className="flex-1 min-h-0 w-full min-w-0 overflow-y-auto overflow-x-hidden">
                                         {children}
-                                    </ScrollArea>
+                                    </div>
                                 ) : (
                                     children
                                 )}

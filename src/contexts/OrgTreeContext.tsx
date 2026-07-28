@@ -65,6 +65,8 @@ export const OrgTreeProvider: React.FC<{ children: ReactNode }> = ({ children })
         orderBy: { field: 'org_name', order: 'asc' as const }
     }), []);
 
+    const shouldFetch = isAuthenticated && !orgTreeData;
+
     const {
         data: rawTreeData,
         error: sdkError,
@@ -73,7 +75,7 @@ export const OrgTreeProvider: React.FC<{ children: ReactNode }> = ({ children })
     } = useFrappeGetDocList<any>(
         'CRM Heirarchy',
         docListOptions,
-        isAuthenticated ? undefined : null
+        shouldFetch ? undefined : null
     );
 
     // Sync state when raw data is successfully fetched

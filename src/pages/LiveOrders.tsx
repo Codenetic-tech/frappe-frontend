@@ -75,7 +75,7 @@ import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { exportToExcel } from '@/utils/excelExport';
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from 'sonner';
-import { useFrappeGetDoc, FrappeContext } from 'frappe-react-sdk';
+import { useFrappeGetDoc, useFrappeEventListener, FrappeContext } from 'frappe-react-sdk';
 
 export interface OrderItem {
     norenordno: string;
@@ -866,6 +866,24 @@ const LiveOrders: React.FC = () => {
         }
     };
 
+    // Real-time listener for Sky Order Feed updates via WebSocket
+    const handleListUpdate = useCallback((eventData: any) => {
+        console.log('Realtime Sky Order Feed event:', eventData);
+        fetchData();
+    }, [fetchData]);
+
+    // Unsubscribe from Sky Order Feed doctype room to avoid broad, noisy updates
+    useEffect(() => {
+        const socket = frappe?.socket;
+        if (socket) {
+            console.log('Explicitly unsubscribing from Sky Order Feed doctype room...');
+            socket.emit("doctype_unsubscribe", "Sky Order Feed");
+        }
+    }, [frappe]);
+
+    // Listen to custom scoped Sky Order Feed update events
+    useFrappeEventListener('sky_order_feed_list_update', handleListUpdate);
+
     const handleResetFilters = () => {
         setSearchQuery('');
         setStatusFilter('ALL');
@@ -983,21 +1001,37 @@ const LiveOrders: React.FC = () => {
         if (!exch) return '-';
         const ex = exch.toUpperCase();
 
-        const badgeStyles: Record<string, string> = {
-            'NSE': 'bg-blue-50 text-blue-700 border-blue-150 hover:bg-blue-50 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/30',
-            'NFO': 'bg-cyan-50 text-cyan-700 border-cyan-150 hover:bg-cyan-50 dark:bg-cyan-950/20 dark:text-cyan-400 dark:border-cyan-900/30',
-            'BSE': 'bg-indigo-50 text-indigo-700 border-indigo-150 hover:bg-indigo-50 dark:bg-indigo-950/20 dark:text-indigo-400 dark:border-indigo-900/30',
-            'MCX': 'bg-orange-50 text-orange-700 border-orange-150 hover:bg-orange-50 dark:bg-orange-950/20 dark:text-orange-400 dark:border-orange-900/30',
-            'BFO': 'bg-rose-50 text-rose-700 border-rose-150 hover:bg-rose-50 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/30',
-            'NCOM': 'bg-slate-50 text-slate-700 border-slate-150 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
+        const containerClasses: Record<string, string> = {
+            'NSE': 'bg-blue-100 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400',
+            'NFO': 'bg-cyan-100 dark:bg-cyan-950/20 text-cyan-700 dark:text-cyan-400',
+            'BSE': 'bg-indigo-100 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-400',
+            'MCX': 'bg-orange-100 dark:bg-orange-950/20 text-orange-700 dark:text-orange-400',
+            'BFO': 'bg-rose-100 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400',
+            'NCOM': 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300',
         };
 
-        const currentStyle = badgeStyles[ex] || 'bg-slate-50 text-slate-600 border-slate-150 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700';
+        const dotClasses: Record<string, string> = {
+            'NSE': 'bg-blue-500',
+            'NFO': 'bg-cyan-500',
+            'BSE': 'bg-indigo-500',
+            'MCX': 'bg-orange-500',
+            'BFO': 'bg-rose-500',
+            'NCOM': 'bg-slate-500',
+        };
+
+        const currentStyle = containerClasses[ex] || 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300';
+        const currentDot = dotClasses[ex] || 'bg-slate-500';
 
         return (
-            <Badge variant="outline" className={cn("font-bold px-2 py-0.5 rounded-md text-[10px]", currentStyle)}>
-                {ex}
-            </Badge>
+            <div className="flex items-center gap-2">
+                <div className={cn(
+                    "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5",
+                    currentStyle
+                )}>
+                    <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", currentDot)} />
+                    {ex}
+                </div>
+            </div>
         );
     };
 
@@ -1005,35 +1039,63 @@ const LiveOrders: React.FC = () => {
         if (!status) return '-';
         const st = status.toUpperCase();
 
-        const badgeStyles: Record<string, string> = {
-            'COMPLETE': 'bg-green-100 text-green-700 border-green-200 hover:bg-green-100 dark:bg-green-950/20 dark:text-green-400 dark:border-green-900/30',
-            'OPEN': 'bg-blue-100 text-blue-750 border-blue-200 hover:bg-blue-100 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/30',
-            'CANCELED': 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/30',
-            'REJECTED': 'bg-red-100 text-red-700 border-red-200 hover:bg-red-100 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/30',
-            'TRIGGER_PENDING': 'bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-100 dark:bg-purple-950/20 dark:text-purple-405 dark:border-purple-900/30',
-            'INVALID_STATUS_TYPE': 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700',
+        const containerClasses: Record<string, string> = {
+            'COMPLETE': 'bg-green-100 dark:bg-green-950/20 text-green-700 dark:text-green-400',
+            'OPEN': 'bg-blue-100 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400',
+            'CANCELED': 'bg-amber-100 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400',
+            'REJECTED': 'bg-red-100 dark:bg-red-950/20 text-red-700 dark:text-red-400',
+            'TRIGGER_PENDING': 'bg-purple-100 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400',
+            'INVALID_STATUS_TYPE': 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300',
         };
 
-        const currentStyle = badgeStyles[st] || 'bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700';
+        const dotClasses: Record<string, string> = {
+            'COMPLETE': 'bg-green-500',
+            'OPEN': 'bg-blue-500',
+            'CANCELED': 'bg-amber-500',
+            'REJECTED': 'bg-red-500',
+            'TRIGGER_PENDING': 'bg-purple-500',
+            'INVALID_STATUS_TYPE': 'bg-slate-500',
+        };
+
+        const currentStyle = containerClasses[st] || 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300';
+        const currentDot = dotClasses[st] || 'bg-slate-500';
+
+        const displayLabel = status.replace(/_/g, ' ');
 
         return (
-            <Badge className={cn("font-bold px-2.5 py-0.5 rounded-full text-[10px] capitalize border-none", currentStyle)}>
-                {status.replace(/_/g, ' ').toLowerCase()}
-            </Badge>
+            <div className="flex items-center gap-2">
+                <div className={cn(
+                    "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5",
+                    currentStyle
+                )}>
+                    <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", currentDot)} />
+                    {displayLabel}
+                </div>
+            </div>
         );
     };
 
     const renderTranTypeBadge = (type: string | null | undefined) => {
         if (!type) return '-';
         const t = type.toUpperCase();
-        return t === 'B' ? (
-            <Badge variant="outline" className="font-bold px-2 py-0.5 rounded-md text-[10px] bg-emerald-50 text-emerald-700 border-emerald-250 hover:bg-emerald-50 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30">
-                BUY
-            </Badge>
-        ) : (
-            <Badge variant="outline" className="font-bold px-2 py-0.5 rounded-md text-[10px] bg-rose-50 text-rose-700 border-rose-250 hover:bg-rose-50 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/30">
-                SELL
-            </Badge>
+        const isBuy = t === 'B' || t === 'BUY';
+        
+        const currentStyle = isBuy
+            ? 'bg-emerald-100 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400'
+            : 'bg-rose-100 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400';
+        const currentDot = isBuy ? 'bg-emerald-500' : 'bg-rose-500';
+        const label = isBuy ? 'BUY' : 'SELL';
+
+        return (
+            <div className="flex items-center gap-2">
+                <div className={cn(
+                    "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5",
+                    currentStyle
+                )}>
+                    <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", currentDot)} />
+                    {label}
+                </div>
+            </div>
         );
     };
 

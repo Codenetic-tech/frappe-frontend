@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { format, setHours, setMinutes } from 'date-fns';
 import {
     Popover,
@@ -16,7 +16,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
     Select,
     SelectContent,
@@ -28,26 +27,43 @@ import {
     Command,
     CommandEmpty,
     CommandGroup,
-    CommandInput,
     CommandItem,
     CommandList,
 } from "@/components/ui/command";
+import { Command as CommandPrimitive } from "cmdk";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Ticket, MessageSquare, Building2, AlertCircle, Paperclip, Calendar as CalendarIcon, X, FileIcon, Clock, Check } from "lucide-react";
-import { useTickets, TICKET_DEPARTMENTS } from '@/contexts/TicketContext';
-import { useOrgTree } from '@/contexts/OrgTreeContext';
+import {
+    Loader2,
+    Ticket,
+    MessageSquare,
+    User as UserIcon,
+    Search,
+    AlertCircle,
+    Paperclip,
+    Calendar as CalendarIcon,
+    X,
+    FileIcon,
+    Clock,
+    Check,
+    UploadCloud,
+    FileImage,
+    FileText,
+    FileArchive,
+    FileCode,
+    Trash2,
+    Plus,
+} from "lucide-react";
+import { useFrappePostCall } from 'frappe-react-sdk';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Placeholder from '@tiptap/extension-placeholder';
+import TiptapUnderline from '@tiptap/extension-underline';
+import TextAlign from '@tiptap/extension-text-align';
+import Link from '@tiptap/extension-link';
+import { EditorToolbar } from './TiptapEditorToolbar';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-    DropdownMenuSub,
-    DropdownMenuSubContent,
-    DropdownMenuSubTrigger,
-} from "@/components/ui/dropdown-menu";
 
 interface TicketModalProps {
     isOpen: boolean;
@@ -56,63 +72,177 @@ interface TicketModalProps {
     loading: boolean;
 }
 
+interface AssignedToOption {
+    user: string;
+    code: string;
+    for_value: string;
+}
+
+const MAX_FILE_SIZE_MB = 10;
+const MAX_TOTAL_SIZE_MB = 30;
+
+const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+};
+
+const getFileIcon = (fileName: string) => {
+    const ext = fileName.split('.').pop()?.toLowerCase() || '';
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)) {
+        return <FileImage className="w-4 h-4 text-purple-600 shrink-0" />;
+    }
+    if (['pdf', 'doc', 'docx', 'txt', 'rtf'].includes(ext)) {
+        return <FileText className="w-4 h-4 text-blue-600 shrink-0" />;
+    }
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {
+        return <FileArchive className="w-4 h-4 text-amber-600 shrink-0" />;
+    }
+    if (['json', 'js', 'ts', 'html', 'css', 'py', 'sql'].includes(ext)) {
+        return <FileCode className="w-4 h-4 text-emerald-600 shrink-0" />;
+    }
+    return <FileIcon className="w-4 h-4 text-slate-600 shrink-0" />;
+};
+
+// ─── Main Modal Component ───────────────────────────────────────────────────────
 export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose, onSubmit, loading }) => {
     const { toast } = useToast();
-    const { orgTreeData } = useOrgTree();
     const { user } = useAuth();
     const [subject, setSubject] = useState('');
-    const [description, setDescription] = useState('');
     const [priority, setPriority] = useState('Medium');
-    const [toDepartment, setToDepartment] = useState('');
+    const [assignedTo, setAssignedTo] = useState<AssignedToOption | null>(null);
     const [openTo, setOpenTo] = useState(false);
+    const [assigneeSearch, setAssigneeSearch] = useState('');
+    const [assignees, setAssignees] = useState<AssignedToOption[]>([]);
+    const [assigneesError, setAssigneesError] = useState('');
+    const { call: getAssignedTo, loading: loadingAssignees } = useFrappePostCall<{ message: AssignedToOption[] }>(
+        'gopocket.api.get_assigned_to'
+    );
     const [date, setDate] = useState<Date | undefined>(undefined);
     const [hours, setHoursState] = useState('05');
     const [minutes, setMinutesState] = useState('00');
     const [ampm, setAmpm] = useState('PM');
-    const [attachment, setAttachment] = useState<File | null>(null);
+
+    // Multi-file upload states
+    const [attachments, setAttachments] = useState<File[]>([]);
     const [attachmentError, setAttachmentError] = useState('');
+    const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const branchOptions = useMemo(() => {
-        if (!orgTreeData) return { ticketing: [], others: [] };
-        const branches = orgTreeData.filter(node => node.category === 'BRANCH');
-        const ticketing = branches.filter(b => TICKET_DEPARTMENTS.includes(b.name));
-        const others = branches.filter(b => !TICKET_DEPARTMENTS.includes(b.name));
-        console.log('Branch Options:', { ticketing: ticketing.length, others: others.length });
-        return { ticketing, others };
-    }, [orgTreeData]);
+    // Tiptap Editor
+    const editor = useEditor({
+        extensions: [
+            StarterKit.configure({
+                heading: { levels: [2, 3] },
+            }),
+            Placeholder.configure({
+                placeholder: 'Describe the issue in detail — steps to reproduce, expected behavior, impact...',
+            }),
+            TiptapUnderline,
+            TextAlign.configure({
+                types: ['heading', 'paragraph'],
+            }),
+            Link.configure({
+                openOnClick: false,
+                autolink: true,
+            }),
+        ],
+        content: '',
+        editorProps: {
+            attributes: {
+                class: 'prose prose-sm max-w-none focus:outline-none min-h-[180px] px-4 py-3 text-slate-800 leading-relaxed',
+            },
+        },
+    });
+
+    const fetchAssignees = useCallback((query: string) => {
+        setAssigneesError('');
+        getAssignedTo({ search: query || undefined })
+            .then((res) => {
+                setAssignees(res?.message ?? []);
+            })
+            .catch((err: any) => {
+                setAssigneesError(err?.message || 'Failed to load assignees.');
+                setAssignees([]);
+            });
+    }, [getAssignedTo]);
+
+    // Debounced, server-side search — re-queries on every keystroke (capped at
+    // 50 records server-side), not just on first open. Clicking the search icon
+    // (see below) bypasses the debounce and searches immediately.
+    useEffect(() => {
+        if (!openTo) return;
+        const handle = setTimeout(() => fetchAssignees(assigneeSearch), 300);
+        return () => clearTimeout(handle);
+    }, [openTo, assigneeSearch, fetchAssignees]);
 
     const hours_options = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
     const minutes_options = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
+    const validateAndAddFiles = (newFiles: FileList | File[]) => {
         setAttachmentError('');
+        const fileArray = Array.from(newFiles);
+        let errorMsg = '';
+        const validFiles: File[] = [];
+        let currentTotalBytes = attachments.reduce((sum, f) => sum + f.size, 0);
 
-        if (file) {
-            if (file.size > 5 * 1024 * 1024) {
-                setAttachmentError('File size exceeds 5 MB limit.');
-                setAttachment(null);
-                if (fileInputRef.current) fileInputRef.current.value = '';
-                return;
+        for (const file of fileArray) {
+            if (attachments.some(existing => existing.name === file.name && existing.size === file.size)) continue;
+            if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+                errorMsg = `"${file.name}" exceeds max limit of ${MAX_FILE_SIZE_MB}MB.`;
+                continue;
             }
-            setAttachment(file);
+            if (currentTotalBytes + file.size > MAX_TOTAL_SIZE_MB * 1024 * 1024) {
+                errorMsg = `Total attachments size cannot exceed ${MAX_TOTAL_SIZE_MB}MB.`;
+                break;
+            }
+            currentTotalBytes += file.size;
+            validFiles.push(file);
         }
-    };
 
-    const removeAttachment = () => {
-        setAttachment(null);
-        setAttachmentError('');
+        if (errorMsg) setAttachmentError(errorMsg);
+        if (validFiles.length > 0) setAttachments(prev => [...prev, ...validFiles]);
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) validateAndAddFiles(e.target.files);
+    };
+
+    const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); };
+    const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); };
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault(); e.stopPropagation(); setIsDragging(false);
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) validateAndAddFiles(e.dataTransfer.files);
+    };
+
+    const removeAttachment = (indexToRemove: number) => { setAttachments(prev => prev.filter((_, idx) => idx !== indexToRemove)); setAttachmentError(''); };
+    const clearAllAttachments = () => { setAttachments([]); setAttachmentError(''); if (fileInputRef.current) fileInputRef.current.value = ''; };
+
+    const totalAttachmentsSize = useMemo(() => attachments.reduce((acc, f) => acc + f.size, 0), [attachments]);
+
+    const getEditorHtml = useCallback(() => {
+        if (!editor) return '';
+        return editor.getHTML();
+    }, [editor]);
+
+    const isDescriptionEmpty = useCallback(() => {
+        if (!editor) return true;
+        return editor.isEmpty;
+    }, [editor]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!subject.trim() || !description.trim() || !date || !toDepartment) {
+        const descHtml = getEditorHtml();
+        const descEmpty = isDescriptionEmpty();
+
+        if (!subject.trim() || descEmpty || !date || !assignedTo?.for_value) {
             toast({
                 variant: "destructive",
                 title: "Required Fields Missing",
-                description: "Please fill in all mandatory fields (Subject, Description, Department, and Due Date).",
+                description: "Please fill in all mandatory fields (Subject, Description, To, and Due Date). If you already picked a TO recipient, reopen the field and re-select it.",
             });
             return;
         }
@@ -122,101 +252,107 @@ export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose, onSub
             let h = parseInt(hours);
             if (ampm === 'PM' && h < 12) h += 12;
             if (ampm === 'AM' && h === 12) h = 0;
-
             const finalDate = setMinutes(setHours(new Date(date), h), parseInt(minutes));
             due_date_str = format(finalDate, 'yyyy-MM-dd HH:mm:ss');
         }
 
         await onSubmit({
             subject,
-            description,
+            description: descHtml,
             priority,
-            to_department: toDepartment,
+            custom_allocated_to: assignedTo.for_value,
+            assigned_user: assignedTo.user,
             due_date: due_date_str,
-            attachment: attachment,
+            attachment: attachments[0] || null,
+            attachments: attachments,
         });
 
         // Reset form
         setSubject('');
-        setDescription('');
+        editor?.commands.clearContent();
         setPriority('Medium');
-        setToDepartment('');
+        setAssignedTo(null);
+        setAssigneeSearch('');
         setDate(undefined);
         setHoursState('05');
         setMinutesState('00');
         setAmpm('PM');
-        setAttachment(null);
+        setAttachments([]);
         setAttachmentError('');
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden border-none shadow-2xl rounded-3xl">
-                <div className="bg-gradient-to-r from-purple-600 to-violet-700 p-8">
+            <DialogContent className="sm:max-w-[900px] p-0 gap-0 overflow-hidden border-none shadow-2xl rounded-3xl">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-purple-600 via-purple-700 to-violet-800 px-8 py-6">
                     <DialogHeader>
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
-                                <Ticket className="text-white w-5 h-5" />
+                        <div className="flex items-center gap-3">
+                            <div className="p-2.5 bg-white/20 rounded-2xl backdrop-blur-md border border-white/20">
+                                <Ticket className="text-white w-6 h-6" />
                             </div>
-                            <DialogTitle className="text-white text-2xl font-bold tracking-tight">Create New Ticket</DialogTitle>
+                            <div>
+                                <DialogTitle className="text-white text-xl font-bold tracking-tight">Create New Ticket</DialogTitle>
+                                <p className="text-purple-200 text-xs font-medium mt-0.5">Fill in the details to log a support or task ticket.</p>
+                            </div>
                         </div>
-                        <p className="text-purple-100 text-sm font-medium opacity-90">Please provide details about the issue or request.</p>
                     </DialogHeader>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-8 space-y-6 bg-white">
-                    <div className="space-y-5">
+                {/* Body */}
+                <form onSubmit={handleSubmit} className="bg-white flex flex-col max-h-[80vh]">
+                    <ScrollArea className="flex-1 max-h-[calc(80vh-140px)]">
+                    <div className="px-8 py-6 space-y-6">
+
+                        {/* Subject — Full Width */}
                         <div className="space-y-2">
-                            <Label htmlFor="subject" className="text-slate-700 font-bold text-sm ml-1 flex items-center gap-2">
+                            <Label htmlFor="subject" className="text-slate-700 font-bold text-sm ml-0.5 flex items-center gap-2">
                                 <MessageSquare className="w-4 h-4 text-purple-500" />
-                                Ticket Subject <span className="text-red-500">*</span>
+                                Subject <span className="text-red-500">*</span>
                             </Label>
                             <Input
                                 id="subject"
                                 value={subject}
                                 onChange={(e) => setSubject(e.target.value)}
                                 placeholder="Briefly describe the issue..."
-                                className="border-slate-200 focus:ring-purple-500 rounded-2xl h-12 shadow-sm transition-all focus:border-purple-300"
+                                className="border-slate-200 focus:ring-purple-500 rounded-xl h-11 shadow-sm transition-all focus:border-purple-300 font-medium"
                                 required
                             />
                         </div>
 
+                        {/* Rich Text Description — Full Width, Prominent */}
                         <div className="space-y-2">
-                            <Label htmlFor="description" className="text-slate-700 font-bold text-sm ml-1">
+                            <Label className="text-slate-700 font-bold text-sm ml-0.5 flex items-center gap-2">
+                                <FileText className="w-4 h-4 text-purple-500" />
                                 Detailed Description <span className="text-red-500">*</span>
                             </Label>
-                            <Textarea
-                                id="description"
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                placeholder="Add more context and details here..."
-                                className="border-slate-200 focus:ring-purple-500 rounded-2xl min-h-[120px] resize-none shadow-sm transition-all focus:border-purple-300"
-                                required
-                            />
+                            <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-sm focus-within:ring-2 focus-within:ring-purple-500/20 focus-within:border-purple-300 transition-all">
+                                <EditorToolbar editor={editor} />
+                                <EditorContent editor={editor} />
+                            </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-6">
+                        {/* Metadata Row — 3 columns on larger screens */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* Assign To */}
                             <div className="space-y-2">
-                                <Label className="text-slate-700 font-bold text-sm ml-1 flex items-center gap-2">
-                                    <Building2 className="w-4 h-4 text-purple-500" />
+                                <Label className="text-slate-700 font-bold text-xs ml-0.5 flex items-center gap-1.5">
+                                    <UserIcon className="w-3.5 h-3.5 text-purple-500" />
                                     TO <span className="text-red-500">*</span>
                                 </Label>
-
                                 <Popover open={openTo} onOpenChange={setOpenTo}>
                                     <PopoverTrigger asChild>
                                         <Button
                                             variant="outline"
                                             role="combobox"
                                             aria-expanded={openTo}
-                                            className="w-full justify-between border-slate-200 rounded-2xl h-12 shadow-sm focus:border-purple-300 font-normal px-3"
+                                            className="w-full justify-between border-slate-200 rounded-xl h-10 shadow-sm focus:border-purple-300 font-normal px-3 bg-white hover:bg-slate-50 text-sm"
                                         >
-                                            <span className={cn(toDepartment ? "text-slate-900" : "text-slate-400")}>
-                                                {toDepartment ?
-                                                    orgTreeData?.find(b => b.name === toDepartment)?.name1 || toDepartment :
-                                                    "Select recipient..."}
+                                            <span className={cn("truncate", assignedTo ? "text-slate-900 font-medium" : "text-slate-400 text-xs")}>
+                                                {assignedTo ? `${assignedTo.user} (${assignedTo.code})` : "Select recipient..."}
                                             </span>
-                                            <Building2 className="w-4 h-4 shrink-0 opacity-50" />
+                                            <UserIcon className="w-3.5 h-3.5 shrink-0 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent
@@ -224,59 +360,60 @@ export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose, onSub
                                         align="start"
                                         onWheel={(e) => e.stopPropagation()}
                                     >
-                                        <Command className="border-none overflow-visible">
-                                            <CommandInput placeholder="Search department or branch..." className="h-11" />
+                                        <Command className="border-none overflow-visible" shouldFilter={false}>
+                                            <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => fetchAssignees(assigneeSearch)}
+                                                    title="Search now"
+                                                    className="mr-2 shrink-0 opacity-50 hover:opacity-100 transition-opacity"
+                                                >
+                                                    <Search className="h-4 w-4" />
+                                                </button>
+                                                <CommandPrimitive.Input
+                                                    placeholder="Search user or code..."
+                                                    className="flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                                                    value={assigneeSearch}
+                                                    onValueChange={setAssigneeSearch}
+                                                />
+                                            </div>
                                             <CommandList className="max-h-[220px] overflow-y-auto pointer-events-auto p-1">
-                                                <CommandEmpty>No recipient found.</CommandEmpty>
-                                                {branchOptions.ticketing.length > 0 && (
-                                                    <CommandGroup heading="Ticketing Departments">
-                                                        {branchOptions.ticketing.map((branch) => (
-                                                            <CommandItem
-                                                                key={branch.name}
-                                                                value={branch.name}
-                                                                onSelect={(currentValue) => {
-                                                                    setToDepartment(currentValue);
-                                                                    setOpenTo(false);
-                                                                }}
-                                                                className="cursor-pointer py-2.5 rounded-lg mx-1"
-                                                            >
-                                                                <div className="flex items-center justify-between w-full">
-                                                                    <div className="flex flex-col">
-                                                                        <span className="font-bold text-slate-700">{branch.name}</span>
-                                                                        <span className="text-[10px] text-slate-400 font-mono">{branch.name1}</span>
+                                                {loadingAssignees ? (
+                                                    <div className="flex items-center justify-center gap-2 py-6 text-xs text-slate-400 font-medium">
+                                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                        Loading...
+                                                    </div>
+                                                ) : assigneesError ? (
+                                                    <div className="px-3 py-4 text-xs text-red-500 font-medium text-center">
+                                                        {assigneesError}
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <CommandEmpty>No recipient found.</CommandEmpty>
+                                                        <CommandGroup>
+                                                            {assignees.map((assignee) => (
+                                                                <CommandItem
+                                                                    key={`${assignee.code}-${assignee.user}`}
+                                                                    value={`${assignee.user} ${assignee.code}`}
+                                                                    onSelect={() => {
+                                                                        setAssignedTo(assignee);
+                                                                        setOpenTo(false);
+                                                                    }}
+                                                                    className="cursor-pointer py-2.5 rounded-lg mx-1"
+                                                                >
+                                                                    <div className="flex items-center justify-between w-full">
+                                                                        <div className="flex flex-col">
+                                                                            <span className="font-bold text-slate-700">{assignee.user}</span>
+                                                                            <span className="text-[10px] text-slate-400 font-mono">{assignee.code}</span>
+                                                                        </div>
+                                                                        {assignedTo?.user === assignee.user && assignedTo?.code === assignee.code && (
+                                                                            <Check className="h-4 w-4 text-purple-600" />
+                                                                        )}
                                                                     </div>
-                                                                    {toDepartment === branch.name && (
-                                                                        <Check className="h-4 w-4 text-purple-600" />
-                                                                    )}
-                                                                </div>
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                )}
-                                                {branchOptions.others.length > 0 && (
-                                                    <CommandGroup heading="Other Branches">
-                                                        {branchOptions.others.map((branch) => (
-                                                            <CommandItem
-                                                                key={branch.name}
-                                                                value={branch.name}
-                                                                onSelect={(currentValue) => {
-                                                                    setToDepartment(currentValue);
-                                                                    setOpenTo(false);
-                                                                }}
-                                                                className="cursor-pointer py-2.5 rounded-lg mx-1"
-                                                            >
-                                                                <div className="flex items-center justify-between w-full">
-                                                                    <div className="flex flex-col">
-                                                                        <span className="font-semibold text-slate-600">{branch.name}</span>
-                                                                        <span className="text-[10px] text-slate-400 font-mono">{branch.name1}</span>
-                                                                    </div>
-                                                                    {toDepartment === branch.name && (
-                                                                        <Check className="h-4 w-4 text-purple-600" />
-                                                                    )}
-                                                                </div>
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
+                                                                </CommandItem>
+                                                            ))}
+                                                        </CommandGroup>
+                                                    </>
                                                 )}
                                             </CommandList>
                                         </Command>
@@ -284,16 +421,17 @@ export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose, onSub
                                 </Popover>
                             </div>
 
+                            {/* Priority */}
                             <div className="space-y-2">
-                                <Label className="text-slate-700 font-bold text-sm ml-1 flex items-center gap-2">
-                                    <AlertCircle className="w-4 h-4 text-purple-500" />
+                                <Label className="text-slate-700 font-bold text-xs ml-0.5 flex items-center gap-1.5">
+                                    <AlertCircle className="w-3.5 h-3.5 text-purple-500" />
                                     Priority
                                 </Label>
                                 <Select value={priority} onValueChange={setPriority}>
-                                    <SelectTrigger className="border-slate-200 rounded-2xl h-12 shadow-sm focus:border-purple-300">
+                                    <SelectTrigger className="border-slate-200 rounded-xl h-10 shadow-sm focus:border-purple-300 font-medium text-sm">
                                         <SelectValue placeholder="Select priority" />
                                     </SelectTrigger>
-                                    <SelectContent className="rounded-2xl border-slate-200 shadow-xl">
+                                    <SelectContent className="rounded-xl border-slate-200 shadow-xl">
                                         <SelectItem value="Urgent">🔴 Urgent</SelectItem>
                                         <SelectItem value="High">🟠 High</SelectItem>
                                         <SelectItem value="Medium">🔵 Medium</SelectItem>
@@ -301,12 +439,11 @@ export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose, onSub
                                     </SelectContent>
                                 </Select>
                             </div>
-                        </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Due Date */}
                             <div className="space-y-2">
-                                <Label className="text-slate-700 font-bold text-sm ml-1 flex items-center gap-2">
-                                    <CalendarIcon className="w-4 h-4 text-purple-500" />
+                                <Label className="text-slate-700 font-bold text-xs ml-0.5 flex items-center gap-1.5">
+                                    <CalendarIcon className="w-3.5 h-3.5 text-purple-500" />
                                     Due Date & Time <span className="text-red-500">*</span>
                                 </Label>
                                 <Popover>
@@ -314,17 +451,17 @@ export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose, onSub
                                         <Button
                                             variant="outline"
                                             className={cn(
-                                                "w-full justify-start text-left font-medium rounded-2xl h-12 border-slate-200 shadow-sm",
+                                                "w-full justify-start text-left font-medium rounded-xl h-10 border-slate-200 shadow-sm bg-white hover:bg-slate-50 text-sm",
                                                 !date && "text-slate-400"
                                             )}
                                         >
-                                            <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                                            <CalendarIcon className="mr-2 h-3.5 w-3.5 opacity-50" />
                                             {date ? (
-                                                <span className="text-slate-900">
+                                                <span className="text-slate-900 font-medium text-xs">
                                                     {format(date, "PPP")} {hours}:{minutes} {ampm}
                                                 </span>
                                             ) : (
-                                                <span>Select deadline...</span>
+                                                <span className="text-xs">Select deadline...</span>
                                             )}
                                         </Button>
                                     </PopoverTrigger>
@@ -340,7 +477,7 @@ export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose, onSub
                                             <Clock className="w-3.5 h-3.5 text-slate-400 mr-1" />
                                             <div className="flex items-center gap-1.5">
                                                 <Select value={hours} onValueChange={setHoursState}>
-                                                    <SelectTrigger className="w-[65px] h-9 rounded-xl border-slate-200 bg-white">
+                                                    <SelectTrigger className="w-[60px] h-8 rounded-lg border-slate-200 bg-white text-xs">
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent className="rounded-xl border-slate-200">
@@ -351,7 +488,7 @@ export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose, onSub
                                                 </Select>
                                                 <span className="text-slate-400 font-bold">:</span>
                                                 <Select value={minutes} onValueChange={setMinutesState}>
-                                                    <SelectTrigger className="w-[65px] h-9 rounded-xl border-slate-200 bg-white">
+                                                    <SelectTrigger className="w-[60px] h-8 rounded-lg border-slate-200 bg-white text-xs">
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent className="rounded-xl border-slate-200">
@@ -361,7 +498,7 @@ export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose, onSub
                                                     </SelectContent>
                                                 </Select>
                                                 <Select value={ampm} onValueChange={setAmpm}>
-                                                    <SelectTrigger className="w-[65px] h-9 rounded-xl border-slate-200 bg-white">
+                                                    <SelectTrigger className="w-[60px] h-8 rounded-lg border-slate-200 bg-white text-xs">
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent className="rounded-xl border-slate-200">
@@ -374,86 +511,136 @@ export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose, onSub
                                     </PopoverContent>
                                 </Popover>
                             </div>
+                        </div>
 
-                            <div className="space-y-2">
-                                <Label className="text-slate-700 font-bold text-sm ml-1 flex items-center gap-2">
+                        {/* File Upload — Full Width */}
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-slate-700 font-bold text-sm ml-0.5 flex items-center gap-2">
                                     <Paperclip className="w-4 h-4 text-purple-500" />
-                                    Attachment (Max 5MB)
+                                    Attachments ({attachments.length})
                                 </Label>
-                                <div className="space-y-2">
-                                    <input
-                                        type="file"
-                                        ref={fileInputRef}
-                                        onChange={handleFileChange}
-                                        className="hidden"
-                                        id="ticket-attachment"
-                                    />
-                                    {!attachment ? (
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            onClick={() => fileInputRef.current?.click()}
-                                            className="w-full border-dashed border-2 border-slate-200 hover:border-purple-300 hover:bg-purple-50 rounded-2xl h-12 gap-2 text-slate-500 transition-all font-medium"
-                                        >
-                                            <Paperclip className="w-4 h-4" />
-                                            Choose File
-                                        </Button>
-                                    ) : (
-                                        <div className="flex items-center justify-between p-3 bg-purple-50 border border-purple-100 rounded-2xl animate-in zoom-in-95 duration-200">
-                                            <div className="flex items-center gap-2 min-w-0">
-                                                <FileIcon className="w-4 h-4 text-purple-600 shrink-0" />
-                                                <span className="text-sm font-semibold text-purple-900 truncate">
-                                                    {attachment.name}
-                                                </span>
-                                                <span className="text-[10px] text-purple-400 font-medium shrink-0">
-                                                    ({(attachment.size / 1024 / 1024).toFixed(2)} MB)
-                                                </span>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={removeAttachment}
-                                                className="p-1 hover:bg-purple-200 rounded-full transition-colors group"
-                                            >
-                                                <X className="w-4 h-4 text-purple-400 group-hover:text-purple-600" />
-                                            </button>
-                                        </div>
-                                    )}
-                                    {attachmentError && (
-                                        <p className="text-[10px] font-bold text-red-500 flex items-center gap-1 ml-1 animate-in slide-in-from-top-1">
-                                            <AlertCircle className="w-3 h-3" />
-                                            {attachmentError}
-                                        </p>
-                                    )}
-                                </div>
+                                {attachments.length > 0 && (
+                                    <span className="text-xs text-slate-500 font-medium">
+                                        Total: {formatFileSize(totalAttachmentsSize)} / {MAX_TOTAL_SIZE_MB}MB
+                                    </span>
+                                )}
                             </div>
+
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleFileChange}
+                                className="hidden"
+                                id="ticket-attachments"
+                                multiple
+                            />
+
+                            <div
+                                onDragOver={handleDragOver}
+                                onDragLeave={handleDragLeave}
+                                onDrop={handleDrop}
+                                onClick={() => fileInputRef.current?.click()}
+                                className={cn(
+                                    "relative border-2 border-dashed rounded-2xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 group text-center",
+                                    isDragging
+                                        ? "border-purple-600 bg-purple-50/80 scale-[1.01]"
+                                        : "border-slate-200 hover:border-purple-400 hover:bg-purple-50/30 bg-slate-50/40"
+                                )}
+                            >
+                                <div className="p-2.5 bg-purple-100/80 text-purple-700 rounded-xl mb-1.5 group-hover:scale-110 transition-transform">
+                                    <UploadCloud className="w-5 h-5" />
+                                </div>
+                                <p className="text-xs font-semibold text-slate-700">
+                                    <span className="text-purple-600 underline underline-offset-2">Click to upload</span> or drag and drop
+                                </p>
+                                <p className="text-[10px] text-slate-400 mt-0.5">
+                                    Multiple files up to {MAX_FILE_SIZE_MB}MB each
+                                </p>
+                            </div>
+
+                            {attachmentError && (
+                                <div className="flex items-center gap-1.5 text-xs font-bold text-red-500 bg-red-50 border border-red-100 p-2 rounded-xl animate-in slide-in-from-top-1">
+                                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                    <span>{attachmentError}</span>
+                                </div>
+                            )}
+
+                            {attachments.length > 0 && (
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between px-0.5">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Attached Files</span>
+                                        <button
+                                            type="button"
+                                            onClick={clearAllAttachments}
+                                            className="text-[10px] text-red-500 hover:text-red-700 font-semibold transition-colors flex items-center gap-1"
+                                        >
+                                            <Trash2 className="w-3 h-3" /> Clear All
+                                        </button>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 max-h-36 overflow-y-auto">
+                                        {attachments.map((file, idx) => (
+                                            <div
+                                                key={`${file.name}-${idx}`}
+                                                className="flex items-center justify-between p-2 bg-slate-50 border border-slate-200/80 rounded-lg hover:border-purple-200 hover:bg-purple-50/20 transition-all"
+                                            >
+                                                <div className="flex items-center gap-2 min-w-0 pr-1">
+                                                    {getFileIcon(file.name)}
+                                                    <div className="flex flex-col min-w-0">
+                                                        <span className="text-[11px] font-bold text-slate-700 truncate" title={file.name}>
+                                                            {file.name}
+                                                        </span>
+                                                        <span className="text-[9px] text-slate-400 font-medium">
+                                                            {formatFileSize(file.size)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => { e.stopPropagation(); removeAttachment(idx); }}
+                                                    className="p-0.5 hover:bg-slate-200 text-slate-400 hover:text-red-600 rounded transition-colors shrink-0"
+                                                    title="Remove attachment"
+                                                >
+                                                    <X className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
+                    </ScrollArea>
 
-                    <DialogFooter className="pt-4 border-t border-slate-100 gap-3">
+                    {/* Footer */}
+                    <div className="px-8 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-end gap-3">
                         <Button
                             type="button"
                             variant="ghost"
                             onClick={onClose}
-                            className="rounded-2xl h-12 px-6 font-semibold text-slate-500 hover:bg-slate-50"
+                            className="rounded-xl h-10 px-5 font-semibold text-slate-500 hover:bg-slate-100 text-sm"
                             disabled={loading}
                         >
                             Cancel
                         </Button>
                         <Button
                             type="submit"
-                            disabled={loading || !subject.trim() || !description.trim() || !date || !toDepartment}
-                            className="bg-purple-600 hover:bg-purple-700 text-white rounded-2xl h-12 px-8 font-bold shadow-lg shadow-purple-100 transition-all active:scale-95 min-w-[140px]"
+                            disabled={loading || !subject.trim() || isDescriptionEmpty() || !date || !assignedTo?.for_value}
+                            className="bg-purple-600 hover:bg-purple-700 text-white rounded-xl h-10 px-6 font-bold shadow-lg shadow-purple-200 transition-all active:scale-95 min-w-[130px] text-sm"
                         >
                             {loading ? (
                                 <>
-                                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                     Creating...
                                 </>
                             ) : (
-                                'Create Ticket'
+                                <>
+                                    <Plus className="mr-1.5 h-4 w-4" />
+                                    Create Ticket
+                                </>
                             )}
                         </Button>
-                    </DialogFooter>
+                    </div>
                 </form>
             </DialogContent>
         </Dialog>

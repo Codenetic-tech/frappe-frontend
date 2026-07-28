@@ -1,18 +1,22 @@
 import { ChevronDown } from "lucide-react";
-import { useTickets } from "@/contexts/TicketContext";
+import { useFrappeGetDocList } from "frappe-react-sdk";
 
 export function TopVulnerabilities() {
-  const { ticketsData, isLoading } = useTickets();
+  const { data: ticketsData, isLoading } = useFrappeGetDocList<any>("HD Ticket", {
+    fields: ["name", "subject", "status", "priority"],
+    limit: 5,
+    orderBy: { field: "creation", order: "desc" }
+  });
 
-  const recentTickets = ticketsData ? ticketsData.slice(0, 5) : [];
+  const recentTickets = ticketsData || [];
 
   const getPriorityStyle = (priority: string) => {
-    switch (priority) {
-      case 'Urgent':
+    switch (priority?.toLowerCase()) {
+      case 'urgent':
         return "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/35 dark:border-red-500/50";
-      case 'High':
+      case 'high':
         return "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/35 dark:border-orange-500/50";
-      case 'Medium':
+      case 'medium':
         return "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/35 dark:border-blue-500/50";
       default:
         return "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/35 dark:border-slate-500/50";
@@ -20,12 +24,12 @@ export function TopVulnerabilities() {
   };
 
   const getStatusStyle = (status: string) => {
-    switch (status) {
-      case 'Open':
+    switch (status?.toLowerCase()) {
+      case 'open':
         return "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20";
-      case 'In Progress':
+      case 'in progress':
         return "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20";
-      case 'Resolved':
+      case 'resolved':
         return "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/20";
       default:
         return "text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/40";
@@ -63,7 +67,7 @@ export function TopVulnerabilities() {
         ) : (
           recentTickets.map((ticket) => {
             return (
-              <div key={ticket.ticket_id} className="grid grid-cols-[100px_90px_1fr_95px] gap-3 items-center py-2.5 text-xs">
+              <div key={ticket.name} className="grid grid-cols-[100px_90px_1fr_95px] gap-3 items-center py-2.5 text-xs">
                 {/* Priority Badge */}
                 <div>
                   <span 
@@ -74,7 +78,7 @@ export function TopVulnerabilities() {
                 </div>
                 
                 {/* Ticket ID */}
-                <div className="font-mono text-[10px] text-foreground font-semibold truncate">{ticket.ticket_id}</div>
+                <div className="font-mono text-[10px] text-foreground font-semibold truncate">{ticket.name}</div>
                 
                 {/* Subject */}
                 <div className="text-[10px] text-muted-foreground truncate max-w-full" title={ticket.subject}>

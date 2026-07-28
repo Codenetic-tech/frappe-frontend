@@ -8,8 +8,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import { useFrappeGetDocCount } from 'frappe-react-sdk';
-import { useTickets } from "@/contexts/TicketContext";
+import { useFrappeGetDocCount, useFrappeGetDocList } from 'frappe-react-sdk';
 
 export function InfoLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -69,8 +68,7 @@ export function HealthScore() {
 }
 
 export function AdrIncidents() {
-  const { statusCount } = useTickets();
-  const openTickets = statusCount?.Open || 0;
+  const { data: openTickets = 0 } = useFrappeGetDocCount("HD Ticket", [["status", "=", "Open"]]);
 
   return (
     <div className="bg-card border border-border rounded-lg p-4 h-full flex flex-col min-h-0 select-none transition-colors">
@@ -87,7 +85,12 @@ export function AdrIncidents() {
 }
 
 export function AdrCoverage() {
-  const { ticketsData, statusCount } = useTickets();
+  const { data: ticketsData } = useFrappeGetDocList<any>("HD Ticket", {
+    fields: ["name", "priority", "status"],
+    limit: 0,
+  });
+  const { data: totalTickets = 0 } = useFrappeGetDocCount("HD Ticket", []);
+  const { data: resolvedCount = 0 } = useFrappeGetDocCount("HD Ticket", [["status", "in", ["Resolved", "Closed"]]]);
 
   const priorityData = useMemo(() => {
     const counts = { Urgent: 0, High: 0, Medium: 0, Low: 0 };
@@ -107,8 +110,6 @@ export function AdrCoverage() {
     ];
   }, [ticketsData]);
 
-  const resolvedCount = (statusCount?.Resolved || 0) + (statusCount?.Closed || 0);
-  const totalTickets = statusCount?.Total || 0;
   const slaPct = totalTickets > 0 ? Math.round((resolvedCount / totalTickets) * 100) : 0;
 
   return (
@@ -146,3 +147,4 @@ export function AdrCoverage() {
     </div>
   );
 }
+

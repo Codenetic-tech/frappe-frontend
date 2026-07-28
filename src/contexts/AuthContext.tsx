@@ -395,6 +395,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = () => {
     frappeLogout();
+
+    // Disconnect socket on logout
+    try {
+      const socket = frappeCtx?.socket;
+      if (socket) {
+        console.log('Disconnecting socket on logout...');
+        socket.disconnect();
+      }
+    } catch (socketErr) {
+      console.warn('Socket disconnect failed:', socketErr);
+    }
+
     setUser(null);
     setFrappeUser(null);
     sessionStorage.removeItem('user');

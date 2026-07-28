@@ -55,7 +55,9 @@ import {
     FileDown,
     Plus,
     X,
-    Layers
+    Layers,
+    MessageSquare,
+    MoreHorizontal
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
@@ -64,7 +66,23 @@ import { exportToExcel } from '@/utils/excelExport';
 import { useOrgTree } from '@/contexts/OrgTreeContext';
 import { toast } from 'sonner';
 import { Skeleton } from "@/components/ui/skeleton";
-import { useFrappeGetDocList, useFrappeGetDocCount, useFrappeGetDoc, useFrappeDocTypeEventListener, FrappeContext } from 'frappe-react-sdk';
+import { useFrappeGetDocList, useFrappeGetDocCount, useFrappeGetDoc, useFrappeEventListener, FrappeContext } from 'frappe-react-sdk';
+
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 
 // Custom debounce hook
 function useDebounce<T>(value: T, delay: number): T {
@@ -512,7 +530,8 @@ const Kyc: React.FC = () => {
                 'src',
                 'tag',
                 'ucc',
-                'mobile_number'
+                'mobile_number',
+                '_comments'
             ],
             filters,
             orderBy: orderByObj,
@@ -647,6 +666,49 @@ const Kyc: React.FC = () => {
         }
     };
 
+    const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+    const [activeKycForComment, setActiveKycForComment] = useState<any | null>(null);
+    const [commentText, setCommentText] = useState('');
+    const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+
+    const handleAddComment = async () => {
+        if (!activeKycForComment || !commentText.trim()) return;
+        setIsSubmittingComment(true);
+        try {
+            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+            const headers = { 'Content-Type': 'application/json' };
+            const res = await fetch(`${API_BASE_URL}/api/method/frappe.client.insert`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    doc: {
+                        doctype: 'Comment',
+                        comment_type: 'Comment',
+                        reference_doctype: 'KYC',
+                        reference_name: activeKycForComment.name,
+                        content: `<p>${commentText.replace(/\n/g, '<br>')}</p>`
+                    }
+                })
+            });
+
+            if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+            const data = await res.json();
+            if (data.message) {
+                toast.success('Comment added successfully');
+                setCommentText('');
+                setIsCommentModalOpen(false);
+                mutateList();
+            } else {
+                throw new Error('Failed to insert comment');
+            }
+        } catch (e: any) {
+            console.error('Failed to create comment:', e);
+            toast.error(e.message || 'Failed to add comment');
+        } finally {
+            setIsSubmittingComment(false);
+        }
+    };
+
     // Real-time listener for KYC list updates
     const handleListUpdate = useCallback((eventData: any) => {
         console.log('Realtime KYC event:', eventData);
@@ -661,7 +723,17 @@ const Kyc: React.FC = () => {
         toast.success(`KYC record "${eventData.name}" was modified. List updated automatically.`);
     }, [mutateList, mutateTotalCount, mutateApprovedCount, mutateOpenedCount, mutatePendingCount, mutateProgressCount, mutateRejectedCount]);
 
-    useFrappeDocTypeEventListener('KYC', handleListUpdate);
+    // Unsubscribe from KYC doctype room to avoid broad, noisy updates
+    useEffect(() => {
+        const socket = frappe?.socket;
+        if (socket) {
+            console.log('Explicitly unsubscribing from KYC doctype room...');
+            socket.emit("doctype_unsubscribe", "KYC");
+        }
+    }, [frappe]);
+
+    // Listen to custom scoped KYC update events
+    useFrappeEventListener('kyc_list_update', handleListUpdate);
 
     const handleExport = async () => {
         if (!frappe) return;
@@ -701,7 +773,8 @@ const Kyc: React.FC = () => {
                             'bfo',
                             'mcx',
                             'client_mapping',
-                            'mobile_number'
+                            'mobile_number',
+                            '_comments'
                         ],
                         filters: totalFilters,
                         limit_start: current_limit_start,
@@ -738,6 +811,7 @@ const Kyc: React.FC = () => {
                     'Refer': item.refer,
                     'Stage': item.kyc_stage === 'END PAGE' ? 'ESIGN COMPLETED' : item.kyc_stage,
                     'Status': item.application_status || 'IN PROGRESS',
+                    'Comments': formatComment(item._comments),
                     'Created At': item.application_created_date,
                     'Modified At': item.application_modified_date_time,
                     'NSE': item.nse === 'Active' ? 'Active' : '-',
@@ -765,6 +839,21 @@ const Kyc: React.FC = () => {
 
     const count = totalCount;
     const totalPages = Math.ceil(count / ITEMS_PER_PAGE);
+
+    const formatComment = (commentStr?: string) => {
+        if (!commentStr) return '-';
+        try {
+            const commentsArray = JSON.parse(commentStr);
+            if (Array.isArray(commentsArray) && commentsArray.length > 0) {
+                const lastCommentObj = commentsArray[commentsArray.length - 1];
+                const rawHtml = lastCommentObj.comment || '';
+                return rawHtml.replace(/<[^>]*>/g, '');
+            }
+        } catch (e) {
+            return commentStr.replace(/<[^>]*>/g, '');
+        }
+        return '-';
+    };
 
     const formatValue = (value: string | null) => value || '-';
 
@@ -1320,7 +1409,9 @@ const Kyc: React.FC = () => {
                                 <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400">Refer</th>
                                 <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400">Stage</th>
                                 <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400">Status</th>
+                                <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400">Comments</th>
                                 <th className="text-center py-3 px-4 font-semibold text-slate-655 dark:text-slate-400">Ready</th>
+                                <th className="text-right py-3 px-4 font-semibold text-slate-655 dark:text-slate-400" style={{ width: 80, minWidth: 80, maxWidth: 80 }}>Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50 dark:divide-slate-800/40">
@@ -1334,7 +1425,9 @@ const Kyc: React.FC = () => {
                                         <td className="py-3 px-4"><Skeleton className="h-4 w-24 bg-slate-200 dark:bg-slate-800" /></td>
                                         <td className="py-3 px-4"><Skeleton className="h-4 w-28 bg-slate-200 dark:bg-slate-800" /></td>
                                         <td className="py-3 px-4"><Skeleton className="h-5 w-20 rounded-full bg-slate-200 dark:bg-slate-800" /></td>
+                                        <td className="py-3 px-4"><Skeleton className="h-4 w-32 bg-slate-200 dark:bg-slate-800" /></td>
                                         <td className="py-3 px-4 text-center"><Skeleton className="w-2 h-2 rounded-full mx-auto bg-slate-200 dark:bg-slate-800" /></td>
+                                        <td className="py-3 px-4 text-right"><Skeleton className="h-8 w-8 rounded-lg ml-auto bg-slate-200 dark:bg-slate-800" /></td>
                                     </tr>
                                 ))
                             ) : kycData && kycData.length > 0 ? (
@@ -1352,22 +1445,44 @@ const Kyc: React.FC = () => {
                                         <td className="py-3 px-4 text-slate-700 dark:text-slate-300">{formatValue(row.user_name)}</td>
                                         <td className="py-3 px-4 text-slate-700 dark:text-slate-300">{row.refer ? (referCodeMap.get(row.refer) || row.refer) : '-'}</td>
                                         <td className="py-3 px-4">
-                                            <Badge variant="outline" className="text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/20 border-purple-100 dark:border-purple-900/30 py-0.5 text-[10px]">
-                                                {row.kyc_stage === 'END PAGE' ? 'ESIGN COMPLETED' : formatValue(row.kyc_stage)}
-                                            </Badge>
+                                            <div className="flex items-center gap-2">
+                                                <div className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 bg-purple-100 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400">
+                                                    <div className="w-1.5 h-1.5 rounded-full animate-pulse bg-purple-500" />
+                                                    {row.kyc_stage === 'END PAGE' ? 'ESIGN COMPLETED' : formatValue(row.kyc_stage)}
+                                                </div>
+                                            </div>
                                         </td>
                                         <td className="py-3 px-4">
-                                            <Badge
-                                                className={cn(
-                                                    "capitalize font-bold px-2.5 py-0.5 rounded-full border-none text-[10px]",
-                                                    row.application_status === 'ACCOUNT OPENED' || row.application_status === 'APPROVED' ? "bg-green-100 dark:bg-green-950/20 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-950/30 hover:text-green-700 dark:hover:text-green-400" :
-                                                        row.application_status === 'REJECTED' ? "bg-red-100 dark:bg-red-950/20 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/30 hover:text-red-700 dark:hover:text-red-400" :
-                                                            row.application_status === 'PENDING FOR APPROVAL' ? "bg-purple-100 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-950/30 hover:text-purple-700 dark:hover:text-purple-400" :
-                                                                "bg-amber-100 dark:bg-amber-950/20 text-amber-705 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/30 hover:text-amber-707 dark:hover:text-amber-400"
-                                                )}
-                                            >
-                                                {row.application_status || 'IN PROGRESS'}
-                                            </Badge>
+                                            {(() => {
+                                                const status = row.application_status || 'IN PROGRESS';
+                                                const isApproved = status === 'ACCOUNT OPENED' || status === 'APPROVED';
+                                                const isRejected = status === 'REJECTED';
+                                                const isPending = status === 'PENDING FOR APPROVAL';
+                                                
+                                                const currentStyle = isApproved 
+                                                    ? "bg-green-100 dark:bg-green-950/20 text-green-700 dark:text-green-400" 
+                                                    : isRejected 
+                                                        ? "bg-red-100 dark:bg-red-950/20 text-red-700 dark:text-red-400" 
+                                                        : isPending 
+                                                            ? "bg-purple-100 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400" 
+                                                            : "bg-amber-100 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400";
+                                                const currentDot = isApproved ? "bg-green-500" : isRejected ? "bg-red-500" : isPending ? "bg-purple-500" : "bg-amber-500";
+                                                
+                                                return (
+                                                    <div className="flex items-center gap-2">
+                                                        <div className={cn(
+                                                            "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5",
+                                                            currentStyle
+                                                        )}>
+                                                            <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", currentDot)} />
+                                                            {status}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })()}
+                                        </td>
+                                        <td className="py-3 px-4 text-slate-600 dark:text-slate-400 truncate max-w-[200px]" title={formatComment(row._comments)}>
+                                            {formatComment(row._comments)}
                                         </td>
                                         <td className="py-3 px-4 text-center">
                                             <div className={cn(
@@ -1375,11 +1490,33 @@ const Kyc: React.FC = () => {
                                                 row.client_mapping ? "bg-green-500" : "bg-red-400 opacity-30"
                                             )} />
                                         </td>
+                                        <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()} style={{ width: 80, minWidth: 80, maxWidth: 80 }}>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
+                                                        <MoreHorizontal className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end" className="w-44 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-xl p-1.5">
+                                                    <DropdownMenuItem
+                                                        onClick={() => {
+                                                            setActiveKycForComment(row);
+                                                            setCommentText('');
+                                                            setIsCommentModalOpen(true);
+                                                        }}
+                                                        className="text-sm py-2 px-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer font-semibold text-purple-600 dark:text-purple-400 flex items-center gap-2"
+                                                    >
+                                                        <MessageSquare className="w-4 h-4" />
+                                                        Add Comment
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </td>
                                     </tr>
                                 ))
                             ) : !isLoading && (
                                 <tr>
-                                    <td colSpan={9} className="h-72 text-center">
+                                    <td colSpan={10} className="h-72 text-center">
                                         <div className="flex flex-col items-center justify-center animate-in fade-in zoom-in duration-500">
                                             <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-3xl flex items-center justify-center mb-4 border border-slate-100/50 dark:border-slate-800 shadow-sm">
                                                 <FileText className="w-10 h-10 text-slate-200 dark:text-slate-700" />
@@ -1458,6 +1595,45 @@ const Kyc: React.FC = () => {
                     </div>
                 </SheetContent>
             </Sheet>
+
+            {/* Comment Modal */}
+            <Dialog open={isCommentModalOpen} onOpenChange={setIsCommentModalOpen}>
+                <DialogContent className="sm:max-w-md rounded-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 shadow-2xl p-6">
+                    <DialogHeader>
+                        <DialogTitle className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                            <MessageSquare className="w-5 h-5 text-purple-600" />
+                            Add Comment
+                        </DialogTitle>
+                        <DialogDescription className="text-sm text-slate-500 dark:text-slate-400">
+                            Add a new comment for this KYC application ({activeKycForComment?.application_id || activeKycForComment?.user_name}).
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-3">
+                        <textarea
+                            className="w-full h-32 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 p-3 text-base placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 text-slate-900 dark:text-slate-100 transition-all resize-none"
+                            placeholder="Write your comment here..."
+                            value={commentText}
+                            onChange={(e) => setCommentText(e.target.value)}
+                        />
+                    </div>
+                    <DialogFooter className="flex sm:justify-end gap-2 border-t border-slate-100 dark:border-slate-800/80 pt-4">
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsCommentModalOpen(false)}
+                            className="rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleAddComment}
+                            disabled={isSubmittingComment || !commentText.trim()}
+                            className="rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold px-4"
+                        >
+                            {isSubmittingComment ? 'Adding...' : 'Add Comment'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

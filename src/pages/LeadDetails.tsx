@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Activity, CheckSquare, Mail, MessageCircle, FileText, MessageSquare,
+  Activity, CheckSquare, Mail, MessageCircle, MessageSquare,
   ChevronRight, Home, IndianRupee, Video, Phone,
   Search, Filter, RefreshCw,
   ChevronLeft, Users,
@@ -11,6 +11,8 @@ import { useFrappeGetDoc } from 'frappe-react-sdk';
 import { LeadItem } from './Leads';
 import LeadFormTab from '@/components/CRM/LeadDetails/LeadFormTab';
 import LeadCommentsTab from '@/components/CRM/LeadDetails/LeadCommentsTab';
+import LeadActivityTab from '@/components/CRM/LeadDetails/LeadActivityTab';
+import { useLeadActivities } from '@/hooks/useLeadActivities';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -40,7 +42,13 @@ const LeadDetails: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [lead, setLead] = useState<LeadItem | null>(null);
-  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'form');
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'activity');
+
+  const {
+    data: leadActivities,
+    isLoading: isLeadActivitiesLoading,
+    refresh: refreshLeadActivities
+  } = useLeadActivities(leadId);
 
   useEffect(() => {
     if (leadData) {
@@ -49,7 +57,6 @@ const LeadDetails: React.FC = () => {
   }, [leadData]);
 
   const tabs: Tab[] = [
-    { id: 'form', label: 'Lead Details', icon: FileText },
     { id: 'activity', label: 'Activity', icon: Activity },
     { id: 'comment', label: 'Comments', icon: MessageSquare },
     { id: 'task', label: 'Tasks', icon: CheckSquare },
@@ -119,8 +126,8 @@ const LeadDetails: React.FC = () => {
   if (!lead) return null;
 
   return (
-    <div className="flex flex-col h-full w-full animate-in fade-in duration-300 bg-stone-200/50 dark:bg-slate-950/50 overflow-hidden">
-      <div className="space-y-6 flex-1 flex flex-col min-h-0 p-4">
+    <div className="flex flex-col h-full w-full animate-in fade-in duration-300 bg-background dark:bg-slate-950/50 overflow-hidden">
+      <div className="space-y-4 flex-1 flex flex-col min-h-0">
         {/* Breadcrumbs & Navigation */}
         <div className="flex flex-wrap items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 font-medium">
@@ -164,55 +171,69 @@ const LeadDetails: React.FC = () => {
           </div>
         </div>
 
-        {/* Tabs Layout */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden shrink-0">
-          <div className="flex flex-wrap">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-all whitespace-nowrap ${activeTab === tab.id
-                    ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50 dark:bg-purple-950/30'
-                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800/40'
-                    }`}
-                >
-                  <Icon size={18} />
-                  {tab.label}
-                </button>
-              );
-            })}
+        {/* Persistent Lead Details (25%) + Tabbed Content (75%) */}
+        <div className="flex-1 flex flex-col lg:flex-row gap-4 min-h-0">
+          {/* Left: Lead Details Panel — persists across all tabs */}
+          <div className="w-full lg:w-1/4 shrink-0 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col lg:max-h-full lg:min-h-0 max-h-[480px]">
+            <LeadFormTab
+              lead={lead}
+              leadId={lead.name}
+              onLeadUpdate={(updated) => {
+                setLead(updated);
+                refetchLead();
+                refreshLeadActivities();
+              }}
+            />
           </div>
-        </div>
 
-        {/* Tab Content Area */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col flex-1 min-h-0">
-          <ScrollArea className="flex-1 w-full">
-            <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-              {activeTab === 'form' && lead && (
-                <LeadFormTab
-                  lead={lead}
-                  leadId={lead.name}
-                  onLeadUpdate={(updated) => {
-                    setLead(updated);
-                    refetchLead();
-                  }}
-                />
-              )}
-              {activeTab === 'activity' && <div className="p-8 text-center text-slate-400 italic">Timeline View Coming Soon...</div>}
-              {activeTab === 'comment' && (
-                <LeadCommentsTab
-                  lead={lead}
-                  onNoteAdded={() => refetchLead()}
-                />
-              )}
-              {activeTab === 'task' && <LeadTasksTab />}
-              {activeTab === 'whatsapp' && <WhatsAppTab />}
-              {activeTab === 'email' && <div className="p-8 text-center text-slate-400 italic">Email Communication Log Coming Soon...</div>}
+          {/* Right: Tabs */}
+          <div className="flex-1 flex flex-col gap-4 min-h-0">
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden shrink-0">
+              <div className="flex flex-wrap">
+                {tabs.map((tab) => {
+                  const Icon = tab.icon;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-all whitespace-nowrap ${activeTab === tab.id
+                        ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50 dark:bg-purple-950/30'
+                        : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800/40'
+                        }`}
+                    >
+                      <Icon size={18} />
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <ScrollBar orientation="vertical" />
-          </ScrollArea>
+
+            {/* Tab Content Area */}
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col flex-1 min-h-0">
+              <ScrollArea className="flex-1 w-full">
+                <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+                  {activeTab === 'activity' && (
+                    <LeadActivityTab
+                      data={leadActivities}
+                      isLoading={isLeadActivitiesLoading}
+                      onRefresh={refreshLeadActivities}
+                    />
+                  )}
+                  {activeTab === 'comment' && (
+                    <LeadCommentsTab
+                      lead={lead}
+                      onNoteAdded={() => refetchLead()}
+                    />
+                  )}
+                  {activeTab === 'task' && <LeadTasksTab />}
+                  {activeTab === 'whatsapp' && <WhatsAppTab />}
+                  {activeTab === 'email' && <div className="p-8 text-center text-slate-400 italic">Email Communication Log Coming Soon...</div>}
+                </div>
+                <ScrollBar orientation="vertical" />
+              </ScrollArea>
+            </div>
+          </div>
         </div>
       </div>
     </div>

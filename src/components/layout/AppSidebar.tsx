@@ -216,22 +216,6 @@ const allMenuItems = [
     bgColor: 'bg-slate-50 dark:bg-slate-800/60',
     roles: ['manager', 'employee', 'admin']
   },
-  {
-    title: 'Insurance',
-    url: '/insurance',
-    icon: ShieldCheck,
-    color: 'text-blue-600 dark:text-blue-400',
-    bgColor: 'bg-blue-50 dark:bg-blue-950/45',
-    roles: ['manager', 'employee', 'admin']
-  },
-  {
-    title: 'Get Quote',
-    url: '/get-quote',
-    icon: ClipboardList,
-    color: 'text-emerald-600 dark:text-emerald-400',
-    bgColor: 'bg-emerald-50 dark:bg-emerald-950/45',
-    roles: ['manager', 'employee', 'admin']
-  }
 ];
 const commonItems = ["Profile"];
 
@@ -277,15 +261,6 @@ export function AppSidebar() {
         gradient: 'from-slate-600 to-slate-800',
         items: ['HRMS'],
         url: '/hrms'
-      },
-      {
-        id: 'Insurance',
-        name: 'Insurance',
-        icon: ShieldCheck,
-        color: 'text-blue-600',
-        gradient: 'from-blue-600 to-sky-700',
-        items: ['Insurance', 'Get Quote'],
-        url: '/insurance'
       }
     ];
   }, [isBranchUser]);
@@ -295,7 +270,6 @@ export function AppSidebar() {
     if (currentPath.includes('kyc') || currentPath.includes('leads') || currentPath.includes('clients') || currentPath.includes('live-orders') || currentPath.includes('revenue') || currentPath.includes('activity-log')) return 'crm';
     if (currentPath.includes('ticketing')) return 'Ticketing';
     if (currentPath.includes('hrms')) return 'HRMS';
-    if (currentPath.includes('insurance') || currentPath.includes('get-quote')) return 'Insurance';
     if (currentPath.includes('orderbook') || currentPath.includes('positions') || currentPath.includes('holdings') || currentPath.includes('mutualfunds') || currentPath.includes('strategy-builder') || currentPath.includes('dashboard')) return 'Trading';
 
     return 'crm';
@@ -307,7 +281,6 @@ export function AppSidebar() {
     else if (currentPath.includes('kyc') || currentPath.includes('leads') || currentPath.includes('clients') || currentPath.includes('live-orders') || currentPath.includes('revenue') || currentPath.includes('activity-log')) setActiveAppId('crm');
     else if (currentPath.includes('ticketing')) setActiveAppId('Ticketing');
     else if (currentPath.includes('hrms')) setActiveAppId('HRMS');
-    else if (currentPath.includes('insurance') || currentPath.includes('get-quote')) setActiveAppId('Insurance');
     else if (currentPath.includes('orderbook') || currentPath.includes('positions') || currentPath.includes('holdings') || currentPath.includes('mutualfunds') || currentPath.includes('strategy-builder') || currentPath.includes('dashboard')) setActiveAppId('Trading');
   }, [currentPath]);
 

@@ -42,8 +42,8 @@ import {
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { exportToExcel } from '@/utils/excelExport';
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from 'sonner';
-import { FrappeContext, useFrappeDocTypeEventListener, useFrappeUpdateDoc } from 'frappe-react-sdk';
+import { useToast } from '@/hooks/use-toast';
+import { FrappeContext, useFrappeEventListener, useFrappeUpdateDoc } from 'frappe-react-sdk';
 import useSWR from 'swr';
 import { cn } from '@/lib/utils';
 import {
@@ -74,8 +74,31 @@ import {
     AlertCircle,
     Phone,
     MapPin,
-    User
+    User,
+    MessageSquare,
+    Bookmark,
+    Volume2,
+    Mic,
+    MicOff,
+    Pause,
+    Play,
+    Grid,
+    CircleDot,
+    UserPlus,
+    PhoneForwarded,
+    Headphones,
+    Signal,
+    Tag
 } from 'lucide-react';
+
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 
 export interface LeadItem {
     name: string;
@@ -273,6 +296,17 @@ const postFetcher = async (key: string | [string, string] | { url: string; body:
 
 const Leads: React.FC = () => {
     const navigate = useNavigate();
+    const { toast: radixToast, dismiss } = useToast();
+    const toast = {
+        success: (msg: string) => radixToast({ title: 'Success', description: msg, variant: 'success' }),
+        error: (msg: string) => radixToast({ title: 'Error', description: msg, variant: 'destructive' }),
+        info: (msg: string) => radixToast({ description: msg }),
+        loading: (msg: string) => {
+            const { id } = radixToast({ description: msg });
+            return id;
+        },
+        dismiss: (id?: string) => dismiss(id)
+    };
     const { user } = useAuth();
     const { selectedHierarchy } = useFilter();
     const { orgTreeData } = useOrgTree();
@@ -280,6 +314,179 @@ const Leads: React.FC = () => {
     const { updateDoc } = useFrappeUpdateDoc();
     const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
     const isBulkUpdatingRef = useRef(false);
+
+    const [isCallModalOpen, setIsCallModalOpen] = useState(false);
+    const [isDialerOpen, setIsDialerOpen] = useState(false);
+    const [dialNumber, setDialNumber] = useState('');
+    const [isDockerOpen, setIsDockerOpen] = useState(false);
+    const [isMinimized, setIsMinimized] = useState(false);
+    const [widgetPosition, setWidgetPosition] = useState({ x: 20, y: 20 });
+    const dragRef = useRef<{ startX: number; startY: number; posX: number; posY: number } | null>(null);
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+        const handle = (e.target as HTMLElement).closest('.drag-handle');
+        if (handle) {
+            e.preventDefault();
+            dragRef.current = {
+                startX: e.clientX,
+                startY: e.clientY,
+                posX: widgetPosition.x,
+                posY: widgetPosition.y,
+            };
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+        }
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+        if (!dragRef.current) return;
+        const dx = e.clientX - dragRef.current.startX;
+        const dy = dragRef.current.startY - e.clientY;
+        setWidgetPosition({
+            x: Math.max(10, dragRef.current.posX + dx),
+            y: Math.max(10, dragRef.current.posY + dy),
+        });
+    };
+
+    const handleMouseUp = () => {
+        dragRef.current = null;
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    const [activeCallLead, setActiveCallLead] = useState<LeadItem | null>(null);
+    const [callDuration, setCallDuration] = useState(0);
+    const [isMuted, setIsMuted] = useState(false);
+    const [isOnHold, setIsOnHold] = useState(false);
+    const [isRecording, setIsRecording] = useState(false);
+    const [callStatus, setCallStatus] = useState<'initiating' | 'in-progress' | 'ended'>('initiating');
+    const [callOutcome, setCallOutcome] = useState<string | null>(null);
+
+    useEffect(() => {
+        let interval: any;
+        if (isCallModalOpen && callStatus === 'in-progress' && !isOnHold) {
+            interval = setInterval(() => {
+                setCallDuration((prev) => prev + 1);
+            }, 1000);
+        }
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [isCallModalOpen, callStatus, isOnHold]);
+
+    const formatDuration = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    };
+
+    const handleMakeCall = async (leadOrNumber: LeadItem | string) => {
+        const isString = typeof leadOrNumber === 'string';
+        const mobile_no = isString ? leadOrNumber : leadOrNumber.mobile_no;
+        
+        if (!mobile_no) {
+            toast.error('Mobile number is missing');
+            return;
+        }
+        
+        const cleanNumber = mobile_no.replace(/\s+/g, '');
+        const to_number = cleanNumber.startsWith('+') ? cleanNumber : `+91${cleanNumber}`;
+
+        const displayName = isString 
+            ? to_number 
+            : ((leadOrNumber as LeadItem).first_name || (leadOrNumber as LeadItem).lead_name || to_number);
+
+        const loadingToastId = toast.loading(`Initiating call to ${displayName}...`);
+        
+        try {
+            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+            const response = await fetch(`${API_BASE_URL}/api/method/crm.integrations.exotel.handler.make_a_call`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    to_number
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok || data.exc || data.exception) {
+                let errMsg = '';
+                if (data._server_messages) {
+                    try {
+                        const msgs = JSON.parse(data._server_messages);
+                        if (Array.isArray(msgs) && msgs[0]) {
+                            const firstMsg = typeof msgs[0] === 'string' ? JSON.parse(msgs[0]) : msgs[0];
+                            if (firstMsg && firstMsg.message) {
+                                errMsg = firstMsg.message;
+                            }
+                        } else if (typeof msgs === 'object' && msgs.message) {
+                            errMsg = msgs.message;
+                        }
+                    } catch (e) {}
+                }
+                
+                if (!errMsg && data.exception) {
+                    const match = data.exception.match(/^(?:[\w.]+):\s*(.*)$/);
+                    errMsg = match ? match[1] : data.exception;
+                }
+                
+                if (!errMsg && data.message && typeof data.message === 'string') {
+                    errMsg = data.message;
+                }
+                
+                if (!errMsg) {
+                    errMsg = 'Failed to initiate call';
+                }
+                
+                throw new Error(errMsg);
+            }
+            
+            toast.dismiss(loadingToastId);
+            
+            let matchingLead: LeadItem | null = null;
+            if (isString) {
+                const cleanFrom = cleanNumber.replace(/^\+?91|^0/, '');
+                matchingLead = leadsData.find((l: LeadItem) => {
+                    if (!l.mobile_no) return false;
+                    const cleanMobile = l.mobile_no.replace(/^\+?91|^0/, '');
+                    return cleanMobile === cleanFrom;
+                }) || null;
+            } else {
+                matchingLead = leadOrNumber as LeadItem;
+            }
+
+            if (!matchingLead) {
+                matchingLead = {
+                    name: '',
+                    first_name: 'Outbound Call',
+                    lead_name: 'Outbound Call',
+                    mobile_no: to_number,
+                    source: 'Manual Dial',
+                    status: 'Open',
+                    creation: new Date().toISOString(),
+                    modified: new Date().toISOString()
+                };
+            }
+
+            setActiveCallLead(matchingLead);
+            setCallStatus('in-progress');
+            setCallDuration(0);
+            setIsMuted(false);
+            setIsOnHold(false);
+            setIsRecording(false);
+            setIsCallModalOpen(true);
+            setIsMinimized(false);
+            setIsDialerOpen(false); // Close dialer on success
+            setDialNumber(''); // Clear dial number
+        } catch (error: any) {
+            toast.dismiss(loadingToastId);
+            toast.error(error.message || 'Error making call');
+            console.error('Exotel make_a_call error:', error);
+        }
+    };
 
     const handleBulkAssign = async (targetParent: any) => {
         setIsRefreshing(true);
@@ -297,15 +504,10 @@ const Leads: React.FC = () => {
 
             toast.success(`Successfully assigned ${selectedRows.size} leads to ${displayName}`);
             setSelectedRows(new Set());
-            
+
             await Promise.all([
                 refetchLeads(),
-                mutateTotalCount(),
-                mutateNewCount(),
-                mutateFollowupCount(),
-                mutateWonCount(),
-                mutateNotInterestedCount(),
-                mutateOthersCount(),
+                mutateChart(),
             ]);
         } catch (err) {
             console.error(err);
@@ -412,22 +614,194 @@ const Leads: React.FC = () => {
 
     const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
         const stored = localStorage.getItem('leadsColumnVisibility');
-        return stored ? JSON.parse(stored) : {
+        const defaults = {
             first_name: true,
             mobile_no: true,
             source: true,
             status: true,
             assigned_to: true,
+            _comments: true,
             city: true,
             campaign: false,
             creation: true,
             modified: false,
         };
+        return stored ? { ...defaults, ...JSON.parse(stored) } : defaults;
     });
 
     useEffect(() => {
         localStorage.setItem('leadsColumnVisibility', JSON.stringify(columnVisibility));
     }, [columnVisibility]);
+
+    const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
+        const stored = localStorage.getItem('leadsColumnWidths');
+        const defaults = {
+            first_name: 180,
+            mobile_no: 180,
+            source: 180,
+            status: 180,
+            assigned_to: 180,
+            _comments: 240,
+            city: 180,
+            campaign: 180,
+            creation: 180,
+            modified: 180,
+        };
+        return stored ? { ...defaults, ...JSON.parse(stored) } : defaults;
+    });
+
+    useEffect(() => {
+        localStorage.setItem('leadsColumnWidths', JSON.stringify(columnWidths));
+    }, [columnWidths]);
+
+    const handleResizeStart = (e: React.MouseEvent, columnId: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const startX = e.clientX;
+        const startWidth = columnWidths[columnId] || 150;
+
+        const handleMouseMove = (moveEvent: MouseEvent) => {
+            const deltaX = moveEvent.clientX - startX;
+            const newWidth = Math.max(80, startWidth + deltaX);
+            setColumnWidths(prev => {
+                const updated = {
+                    ...prev,
+                    [columnId]: newWidth
+                };
+                localStorage.setItem('leadsColumnWidths', JSON.stringify(updated));
+                return updated;
+            });
+        };
+
+        const handleMouseUp = () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+    };
+
+    const renderResizeHandle = (columnId: string) => (
+        <div
+            onMouseDown={(e) => handleResizeStart(e, columnId)}
+            onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+            }}
+            className="absolute right-0 top-0 h-full w-3 cursor-col-resize z-20 group/resize flex items-center justify-center -mr-1.5"
+        >
+            <div className="w-[1px] h-5 bg-slate-200 dark:bg-slate-800 group-hover/resize:bg-purple-500/80 active:bg-purple-600 transition-colors" />
+        </div>
+    );
+
+    const [columnOrder, setColumnOrder] = useState<string[]>(() => {
+        const stored = localStorage.getItem('leadsColumnOrder');
+        const defaultOrder = [
+            'mobile_no',
+            'source',
+            'status',
+            'assigned_to',
+            '_comments',
+            'city',
+            'campaign',
+            'creation',
+            'modified'
+        ];
+        if (stored) {
+            try {
+                const parsed = JSON.parse(stored);
+                // Exclude first_name if it was previously saved in storage
+                // Map _comment to _comments if stored
+                let filtered = parsed
+                    .map((c: string) => c === '_comment' ? '_comments' : c)
+                    .filter((c: string) => c !== 'first_name');
+                
+                // Merge in any missing default columns to avoid them being hidden/lost
+                defaultOrder.forEach(col => {
+                    if (!filtered.includes(col)) {
+                        filtered.push(col);
+                    }
+                });
+                return filtered;
+            } catch (e) {
+                return defaultOrder;
+            }
+        }
+        return defaultOrder;
+    });
+
+    const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+    const [draggedOverIndex, setDraggedOverIndex] = useState<number | null>(null);
+
+    const handleDragStart = (e: React.DragEvent, index: number) => {
+        e.dataTransfer.setData('text/plain', index.toString());
+        setDraggedIndex(index);
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+    };
+
+    const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+        e.preventDefault();
+        const sourceIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
+        setDraggedIndex(null);
+        setDraggedOverIndex(null);
+        if (isNaN(sourceIndex) || sourceIndex === targetIndex) return;
+
+        setColumnOrder(prev => {
+            const next = [...prev];
+            const [dragged] = next.splice(sourceIndex, 1);
+            next.splice(targetIndex, 0, dragged);
+            localStorage.setItem('leadsColumnOrder', JSON.stringify(next));
+            return next;
+        });
+    };
+
+    const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+    const [activeLeadForComment, setActiveLeadForComment] = useState<LeadItem | null>(null);
+    const [commentText, setCommentText] = useState('');
+    const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+
+    const handleAddComment = async () => {
+        if (!activeLeadForComment || !commentText.trim()) return;
+        setIsSubmittingComment(true);
+        try {
+            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+            const headers = { 'Content-Type': 'application/json' };
+            const res = await fetch(`${API_BASE_URL}/api/method/frappe.client.insert`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    doc: {
+                        doctype: 'Comment',
+                        comment_type: 'Comment',
+                        reference_doctype: 'CRM Lead',
+                        reference_name: activeLeadForComment.name,
+                        content: `<p>${commentText.replace(/\n/g, '<br>')}</p>`
+                    }
+                })
+            });
+
+            if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+            const data = await res.json();
+            if (data.message) {
+                toast.success('Comment added successfully');
+                setCommentText('');
+                setIsCommentModalOpen(false);
+                refetchLeads();
+            } else {
+                throw new Error('Failed to insert comment');
+            }
+        } catch (e: any) {
+            console.error('Failed to create comment:', e);
+            toast.error(e.message || 'Failed to add comment');
+        } finally {
+            setIsSubmittingComment(false);
+        }
+    };
 
     // Persistence for filters
     useEffect(() => {
@@ -453,6 +827,21 @@ const Leads: React.FC = () => {
     const visibleColumnCount = useMemo(() => {
         return Object.values(columnVisibility).filter(v => v).length;
     }, [columnVisibility]);
+
+    const totalTableWidth = useMemo(() => {
+        let width = 48 + 80; // checkbox + actions
+        if (columnVisibility.first_name) width += columnWidths.first_name;
+        if (columnVisibility.mobile_no) width += columnWidths.mobile_no;
+        if (columnVisibility.source) width += columnWidths.source;
+        if (columnVisibility.status) width += columnWidths.status;
+        if (columnVisibility.assigned_to) width += columnWidths.assigned_to;
+        if (columnVisibility._comments) width += columnWidths._comments;
+        if (columnVisibility.city) width += columnWidths.city;
+        if (columnVisibility.campaign) width += columnWidths.campaign;
+        if (columnVisibility.creation) width += columnWidths.creation;
+        if (columnVisibility.modified) width += columnWidths.modified;
+        return width;
+    }, [columnVisibility, columnWidths]);
 
     // Filtered hierarchy for parent selection, sorted by category order
     const parentOptions = useMemo(() => {
@@ -619,60 +1008,67 @@ const Leads: React.FC = () => {
 
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
-    // Count queries via SWR
-    const { data: totalCount = 0, error: totalCountErr, mutate: mutateTotalCount } = useSWR(
-        [`${API_BASE_URL}/api/method/frappe.client.get_count`, JSON.stringify({
-            doctype: 'CRM Lead',
-            filters: totalFilters
+    // Fetch dashboard chart data for status breakdown (1 API call instead of 6 separate ones)
+    const { data: chartData, error: chartError, mutate: mutateChart } = useSWR<any>(
+        [`${API_BASE_URL}/api/method/frappe.desk.doctype.dashboard_chart.dashboard_chart.get`, JSON.stringify({
+            chart_name: 'Status-1',
+            filters: JSON.stringify(totalFilters),
+            refresh: 1
         })],
         postFetcher,
-        { revalidateOnFocus: false, revalidateOnReconnect: true }
+        { revalidateOnFocus: false, revalidateOnReconnect: true, dedupingInterval: 0 }
     );
 
-    const { data: newCount = 0, mutate: mutateNewCount } = useSWR(
-        [`${API_BASE_URL}/api/method/frappe.client.get_count`, JSON.stringify({
-            doctype: 'CRM Lead',
-            filters: [...totalFilters, ['status', '=', 'New']]
-        })],
-        postFetcher,
-        { revalidateOnFocus: false, revalidateOnReconnect: true }
-    );
+    const chartCounts = useMemo(() => {
+        let total = 0;
+        let newC = 0;
+        let followupC = 0;
+        let wonC = 0;
+        let notInterestedC = 0;
+        let othersC = 0;
 
-    const { data: followupCount = 0, mutate: mutateFollowupCount } = useSWR(
-        [`${API_BASE_URL}/api/method/frappe.client.get_count`, JSON.stringify({
-            doctype: 'CRM Lead',
-            filters: [...totalFilters, ['status', '=', 'Followup']]
-        })],
-        postFetcher,
-        { revalidateOnFocus: false, revalidateOnReconnect: true }
-    );
+        if (chartData && chartData.labels && chartData.datasets?.[0]?.values) {
+            const labels = chartData.labels;
+            const values = chartData.datasets[0].values;
 
-    const { data: wonCount = 0, mutate: mutateWonCount } = useSWR(
-        [`${API_BASE_URL}/api/method/frappe.client.get_count`, JSON.stringify({
-            doctype: 'CRM Lead',
-            filters: [...totalFilters, ['status', '=', 'won']]
-        })],
-        postFetcher,
-        { revalidateOnFocus: false, revalidateOnReconnect: true }
-    );
+            for (let i = 0; i < labels.length; i++) {
+                const label = labels[i];
+                const value = Number(values[i]) || 0;
+                total += value;
 
-    const { data: notInterestedCount = 0, mutate: mutateNotInterestedCount } = useSWR(
-        [`${API_BASE_URL}/api/method/frappe.client.get_count`, JSON.stringify({
-            doctype: 'CRM Lead',
-            filters: [...totalFilters, ['status', '=', 'Not Interested']]
-        })],
-        postFetcher,
-        { revalidateOnFocus: false, revalidateOnReconnect: true }
-    );
+                const lowerLabel = (label || '').toLowerCase();
+                if (lowerLabel === 'new') {
+                    newC = value;
+                } else if (lowerLabel === 'followup') {
+                    followupC = value;
+                } else if (lowerLabel === 'won') {
+                    wonC = value;
+                } else if (lowerLabel === 'not interested') {
+                    notInterestedC = value;
+                } else {
+                    othersC += value;
+                }
+            }
+        }
 
-    const { data: othersCount = 0, mutate: mutateOthersCount } = useSWR(
-        [`${API_BASE_URL}/api/method/frappe.client.get_count`, JSON.stringify({
-            doctype: 'CRM Lead',
-            filters: [...totalFilters, ['status', 'not in', ['New', 'Followup', 'won', 'Not Interested']]]
-        })],
-        postFetcher,
-        { revalidateOnFocus: false, revalidateOnReconnect: true }
-    );
+        return {
+            totalCount: total,
+            newCount: newC,
+            followupCount: followupC,
+            wonCount: wonC,
+            notInterestedCount: notInterestedC,
+            othersCount: othersC
+        };
+    }, [chartData]);
+
+    const {
+        totalCount,
+        newCount,
+        followupCount,
+        wonCount,
+        notInterestedCount,
+        othersCount
+    } = chartCounts;
 
     // Sorting config & string calculation for backend
     const orderBy = useMemo(() => {
@@ -699,6 +1095,7 @@ const Leads: React.FC = () => {
                 'custom_allocated_person_name',
                 'source',
                 'status',
+                '_comments',
                 'custom_city',
                 'custom_campaign_name',
                 'creation',
@@ -710,13 +1107,13 @@ const Leads: React.FC = () => {
             limit_page_length: ITEMS_PER_PAGE
         })],
         postFetcher,
-        { revalidateOnFocus: false, revalidateOnReconnect: true }
+        { revalidateOnFocus: false, revalidateOnReconnect: true, dedupingInterval: 0 }
     );
 
     const count = totalCount;
 
     useEffect(() => {
-        const errors = [listError, totalCountErr];
+        const errors = [listError, chartError];
         for (const err of errors) {
             if (err) {
                 const status = err.status;
@@ -754,7 +1151,7 @@ const Leads: React.FC = () => {
                 }
             }
         }
-    }, [listError, totalCountErr]);
+    }, [listError, chartError]);
 
     // Save leads to sessionStorage when loaded
     useEffect(() => {
@@ -778,12 +1175,7 @@ const Leads: React.FC = () => {
         try {
             await Promise.all([
                 refetchLeads(),
-                mutateTotalCount(),
-                mutateNewCount(),
-                mutateFollowupCount(),
-                mutateWonCount(),
-                mutateNotInterestedCount(),
-                mutateOthersCount(),
+                mutateChart(),
             ]);
             toast.success('Leads data refreshed successfully');
         } finally {
@@ -796,15 +1188,86 @@ const Leads: React.FC = () => {
         if (isBulkUpdatingRef.current) return;
         console.log('Realtime CRM Lead event:', eventData);
         refetchLeads();
-        mutateTotalCount();
-        mutateNewCount();
-        mutateFollowupCount();
-        mutateWonCount();
-        mutateNotInterestedCount();
-        mutateOthersCount();
-    }, [refetchLeads, mutateTotalCount, mutateNewCount, mutateFollowupCount, mutateWonCount, mutateNotInterestedCount, mutateOthersCount]);
+        mutateChart();
+    }, [refetchLeads, mutateChart]);
 
-    useFrappeDocTypeEventListener('CRM Lead', handleListUpdate);
+    // Unsubscribe from CRM Lead doctype room to avoid broad, noisy updates
+    useEffect(() => {
+        const socket = frappe?.socket;
+        if (socket) {
+            console.log('Explicitly unsubscribing from CRM Lead doctype room...');
+            socket.emit("doctype_unsubscribe", "CRM Lead");
+        }
+    }, [frappe]);
+
+    // Listen to custom scoped CRM Lead update events
+    useFrappeEventListener('crm_lead_list_update', handleListUpdate);
+
+    // Listen to Exotel inbound and outbound calls
+    const handleExotelCall = useCallback((eventData: any) => {
+        console.log('Realtime Exotel Call event:', eventData);
+        if (!eventData) return;
+        
+        let isMyCall = false;
+        if (eventData.AgentEmail && user?.email) {
+            isMyCall = eventData.AgentEmail.toLowerCase() === user.email.toLowerCase();
+        } else if (activeCallLead?.mobile_no) {
+            const cleanLeadNum = activeCallLead.mobile_no.replace(/^\+?91|^0/, '');
+            const cleanToNum = (eventData.To || '').replace(/^\+?91|^0/, '');
+            const cleanFromNum = (eventData.From || '').replace(/^\+?91|^0/, '');
+            isMyCall = cleanLeadNum === cleanToNum || cleanLeadNum === cleanFromNum;
+        }
+
+        if (!isMyCall) return;
+
+        const eventType = (eventData.EventType || '').toLowerCase();
+
+        if (eventType === 'dial') {
+            const cleanFrom = eventData.CallFrom.replace(/^\+?91|^0/, '');
+            
+            // Look for matching lead inside current leadsData
+            let matchingLead = leadsData.find((l: LeadItem) => {
+                if (!l.mobile_no) return false;
+                const cleanMobile = l.mobile_no.replace(/^\+?91|^0/, '');
+                return cleanMobile === cleanFrom;
+            });
+            
+            // Fallback to temp lead info if caller number doesn't match existing leads
+            if (!matchingLead) {
+                matchingLead = {
+                    name: '',
+                    first_name: 'Inbound Caller',
+                    lead_name: 'Inbound Caller',
+                    mobile_no: eventData.CallFrom,
+                    source: 'Inbound Call',
+                    status: 'Open',
+                    creation: new Date().toISOString(),
+                    modified: new Date().toISOString()
+                };
+            }
+            
+            setActiveCallLead(matchingLead);
+            setCallStatus('in-progress');
+            setCallOutcome(null);
+            setCallDuration(0);
+            setIsMuted(false);
+            setIsOnHold(false);
+            setIsRecording(false);
+            setIsCallModalOpen(true);
+            setIsMinimized(false); // Maximize to draw attention
+        } else if (eventType === 'terminal') {
+            const outcome = eventData.Status || 'ended';
+            setCallStatus('ended');
+            setCallOutcome(outcome);
+            
+            // Auto close after 3 seconds so agent can see the final status in the UI
+            setTimeout(() => {
+                setIsCallModalOpen(false);
+            }, 3000);
+        }
+    }, [leadsData, user, activeCallLead]);
+
+    useFrappeEventListener('exotel_call', handleExotelCall);
 
     const handleResetFilters = () => {
         setSearchQuery('');
@@ -842,6 +1305,7 @@ const Leads: React.FC = () => {
                             'custom_allocated_person_name',
                             'source',
                             'status',
+                            '_comments',
                             'custom_city',
                             'custom_campaign_name',
                             'creation',
@@ -880,6 +1344,7 @@ const Leads: React.FC = () => {
                     'Allocated Person': item.custom_allocated_person_name || '',
                     'Source': item.source || '',
                     'Status': item.status || '',
+                    'Comments': formatComment(item._comments),
                     'City': item.custom_city || '',
                     'Campaign Name': item.custom_campaign_name || '',
                     'Created Date': item.creation || '',
@@ -923,6 +1388,24 @@ const Leads: React.FC = () => {
     const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
     const formatValue = (value: string | null | undefined) => value || '-';
+
+    const formatComment = (commentsJson: string | null | undefined) => {
+        if (!commentsJson) return '-';
+        try {
+            const parsed = JSON.parse(commentsJson);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                // Get the latest comment
+                const latest = parsed[parsed.length - 1];
+                const rawComment = latest?.comment || '';
+                // Strip HTML tags
+                const cleanText = rawComment.replace(/<\/?[^>]+(>|$)/g, "");
+                return cleanText || '-';
+            }
+        } catch (e) {
+            console.error('Failed to parse comment JSON:', e);
+        }
+        return '-';
+    };
 
     const renderStatusBadge = (status: string | null | undefined) => {
         if (!status) return '-';
@@ -1331,9 +1814,9 @@ const Leads: React.FC = () => {
 
                     <div className="w-[260px]">
                         <DateRangePicker
-                             value={dateRange}
-                             onChange={setDateRange}
-                             placeholder="Creation Date Range"
+                            value={dateRange}
+                            onChange={setDateRange}
+                            placeholder="Creation Date Range"
                         />
                     </div>
                     <div className="w-[180px]">
@@ -1555,6 +2038,7 @@ const Leads: React.FC = () => {
                                     { id: 'source', label: 'Source' },
                                     { id: 'status', label: 'Status' },
                                     { id: 'assigned_to', label: 'Assigned To' },
+                                    { id: '_comments', label: 'Comments' },
                                     { id: 'city', label: 'City' },
                                     { id: 'campaign', label: 'Campaign' },
                                     { id: 'creation', label: 'Created At' },
@@ -1627,10 +2111,10 @@ const Leads: React.FC = () => {
                 scrollWholePage ? "" : "flex-1 min-h-0 overflow-hidden"
             )}>
                 <TableWrapper scrollWholePage={scrollWholePage}>
-                    <table className="w-full text-sm min-w-[1000px]">
+                    <table className="text-sm table-fixed" style={{ width: '100%', minWidth: totalTableWidth }}>
                         <thead className="sticky top-0 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md z-10">
                             <tr className="border-b border-slate-100 dark:border-slate-800 whitespace-nowrap">
-                                <th className="text-left py-4 px-4 w-12">
+                                <th className="text-left py-4 px-4 sticky left-0 bg-slate-50 dark:bg-slate-900 border-r border-r-slate-100 dark:border-r-slate-800/50 z-20" style={{ width: 48, minWidth: 48, maxWidth: 48 }}>
                                     <Checkbox
                                         checked={sortedData.length > 0 && sortedData.every(row => selectedRows.has(row.name))}
                                         onCheckedChange={(checked) => {
@@ -1643,67 +2127,130 @@ const Leads: React.FC = () => {
                                     />
                                 </th>
                                 {columnVisibility.first_name && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('first_name')}>
-                                        <div className="flex items-center gap-2">
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col relative" onClick={() => handleSort('first_name')} style={{ width: columnWidths.first_name, minWidth: columnWidths.first_name, maxWidth: columnWidths.first_name }}>
+                                        <div className="flex items-center gap-2 truncate pr-2">
                                             First Name
                                             {sortConfig?.key === 'first_name' ? (
-                                                sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600 dark:text-purple-400" /> : <ChevronDown className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                                            ) : <ArrowUpDown className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover/col:text-slate-400" />}
+                                                sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" /> : <ChevronDown className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                                            ) : <ArrowUpDown className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover/col:text-slate-400 shrink-0" />}
                                         </div>
+                                        {renderResizeHandle('first_name')}
                                     </th>
                                 )}
-                                {columnVisibility.mobile_no && <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400">Contact</th>}
-                                {columnVisibility.source && <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400">Source</th>}
-                                {columnVisibility.status && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('status')}>
-                                        <div className="flex items-center gap-2">
-                                            Status
-                                            {sortConfig?.key === 'status' ? (
-                                                sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600 dark:text-purple-400" /> : <ChevronDown className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                                            ) : <ArrowUpDown className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover/col:text-slate-400" />}
-                                        </div>
-                                    </th>
-                                )}
-                                {columnVisibility.assigned_to && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('custom_allocated_person_name')}>
-                                        <div className="flex items-center gap-2">
-                                            Assigned To
-                                            {sortConfig?.key === 'custom_allocated_person_name' ? (
-                                                sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600 dark:text-purple-400" /> : <ChevronDown className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                                            ) : <ArrowUpDown className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover/col:text-slate-400" />}
-                                        </div>
-                                    </th>
-                                )}
-                                {columnVisibility.city && <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400">City</th>}
-                                {columnVisibility.campaign && <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400">Campaign</th>}
-                                {columnVisibility.creation && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('creation')}>
-                                        <div className="flex items-center gap-2">
-                                            Created At
-                                            {sortConfig?.key === 'creation' ? (
-                                                sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600 dark:text-purple-400" /> : <ChevronDown className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                                            ) : <ArrowUpDown className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover/col:text-slate-400" />}
-                                        </div>
-                                    </th>
-                                )}
-                                {columnVisibility.modified && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('modified')}>
-                                        <div className="flex items-center gap-2">
-                                            Modified At
-                                            {sortConfig?.key === 'modified' ? (
-                                                sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600 dark:text-purple-400" /> : <ChevronDown className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                                            ) : <ArrowUpDown className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover/col:text-slate-400" />}
-                                        </div>
-                                    </th>
-                                )}
-                                <th className="text-right py-4 px-4 font-semibold text-slate-600 dark:text-slate-300 w-20">Actions</th>
+                                {columnOrder.map((colId, index) => {
+                                    if (!columnVisibility[colId]) return null;
+
+                                    let content: React.ReactNode = null;
+                                    let onClickHandler: (() => void) | undefined = undefined;
+
+                                    if (colId === 'first_name') {
+                                        onClickHandler = () => handleSort('first_name');
+                                        content = (
+                                            <div className="flex items-center gap-2 truncate pr-2">
+                                                First Name
+                                                {sortConfig?.key === 'first_name' ? (
+                                                    sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" /> : <ChevronDown className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                                                ) : <ArrowUpDown className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover/col:text-slate-400 shrink-0" />}
+                                            </div>
+                                        );
+                                    } else if (colId === 'mobile_no') {
+                                        content = <div className="truncate pr-2">Contact</div>;
+                                    } else if (colId === 'source') {
+                                        content = <div className="truncate pr-2">Source</div>;
+                                    } else if (colId === 'status') {
+                                        onClickHandler = () => handleSort('status');
+                                        content = (
+                                            <div className="flex items-center gap-2 truncate pr-2">
+                                                Status
+                                                {sortConfig?.key === 'status' ? (
+                                                    sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" /> : <ChevronDown className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                                                ) : <ArrowUpDown className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover/col:text-slate-400 shrink-0" />}
+                                            </div>
+                                        );
+                                    } else if (colId === 'assigned_to') {
+                                        onClickHandler = () => handleSort('custom_allocated_person_name');
+                                        content = (
+                                            <div className="flex items-center gap-2 truncate pr-2">
+                                                Assigned To
+                                                {sortConfig?.key === 'custom_allocated_person_name' ? (
+                                                    sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" /> : <ChevronDown className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                                                ) : <ArrowUpDown className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover/col:text-slate-400 shrink-0" />}
+                                            </div>
+                                        );
+                                    } else if (colId === '_comments') {
+                                        content = <div className="truncate pr-2">Comments</div>;
+                                    } else if (colId === 'city') {
+                                        content = <div className="truncate pr-2">City</div>;
+                                    } else if (colId === 'campaign') {
+                                        content = <div className="truncate pr-2">Campaign</div>;
+                                    } else if (colId === 'creation') {
+                                        onClickHandler = () => handleSort('creation');
+                                        content = (
+                                            <div className="flex items-center gap-2 truncate pr-2">
+                                                Created At
+                                                {sortConfig?.key === 'creation' ? (
+                                                    sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" /> : <ChevronDown className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                                                ) : <ArrowUpDown className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover/col:text-slate-400 shrink-0" />}
+                                            </div>
+                                        );
+                                    } else if (colId === 'modified') {
+                                        onClickHandler = () => handleSort('modified');
+                                        content = (
+                                            <div className="flex items-center gap-2 truncate pr-2">
+                                                Modified At
+                                                {sortConfig?.key === 'modified' ? (
+                                                    sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" /> : <ChevronDown className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                                                ) : <ArrowUpDown className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover/col:text-slate-400 shrink-0" />}
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <th
+                                            key={colId}
+                                            draggable
+                                            onDragStart={(e) => handleDragStart(e, index)}
+                                            onDragOver={(e) => {
+                                                handleDragOver(e);
+                                                setDraggedOverIndex(index);
+                                            }}
+                                            onDragLeave={() => setDraggedOverIndex(null)}
+                                            onDragEnd={() => {
+                                                setDraggedIndex(null);
+                                                setDraggedOverIndex(null);
+                                            }}
+                                            onDrop={(e) => handleDrop(e, index)}
+                                            className={cn(
+                                                "text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-grab active:cursor-grabbing select-none group/col relative transition-all duration-150 hover:bg-slate-100/50 dark:hover:bg-slate-800/30",
+                                                draggedIndex !== null && draggedIndex !== index && draggedOverIndex === index && "bg-purple-50/50 dark:bg-purple-950/10"
+                                            )}
+                                            onClick={onClickHandler}
+                                            style={{
+                                                width: columnWidths[colId],
+                                                minWidth: columnWidths[colId],
+                                                maxWidth: columnWidths[colId]
+                                            }}
+                                        >
+                                            {content}
+                                            {renderResizeHandle(colId)}
+                                            {draggedOverIndex === index && draggedIndex !== null && draggedIndex !== index && (
+                                                <div className={cn(
+                                                    "absolute top-0 bottom-0 w-1 bg-purple-600 z-30 pointer-events-none animate-pulse",
+                                                    draggedIndex < index ? "right-0" : "left-0"
+                                                )} />
+                                            )}
+                                        </th>
+                                    );
+                                })}
+                                <th className="p-0 m-0 border-none w-auto" style={{ minWidth: 0 }} />
+                                <th className="text-right py-4 px-4 font-semibold text-slate-600 dark:text-slate-300 sticky right-0 bg-slate-50 dark:bg-slate-900 border-l border-l-slate-100 dark:border-l-slate-800/50 z-20" style={{ width: 80, minWidth: 80, maxWidth: 80 }}>Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
                             {isLoading ? (
                                 Array.from({ length: 10 }).map((_, i) => (
                                     <tr key={i}>
-                                        <td colSpan={visibleColumnCount + 2} className="p-4">
+                                        <td colSpan={visibleColumnCount + 3} className="p-4">
                                             <Skeleton className="h-8 w-full rounded-lg" />
                                         </td>
                                     </tr>
@@ -1714,7 +2261,7 @@ const Leads: React.FC = () => {
                                         key={index}
                                         className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group whitespace-nowrap"
                                     >
-                                        <td className="py-4 px-4 w-12" onClick={(e) => e.stopPropagation()}>
+                                        <td className="py-4 px-4 sticky left-0 bg-white dark:bg-slate-900 border-r border-r-slate-100 dark:border-r-slate-800/50 z-10 group-hover:bg-slate-50 dark:group-hover:bg-slate-800" onClick={(e) => e.stopPropagation()} style={{ width: 48, minWidth: 48, maxWidth: 48 }}>
                                             <Checkbox
                                                 checked={selectedRows.has(row.name)}
                                                 onCheckedChange={(checked) => {
@@ -1729,106 +2276,150 @@ const Leads: React.FC = () => {
                                             />
                                         </td>
                                         {columnVisibility.first_name && (
-                                            <td className="py-4 px-4">
+                                            <td className="py-4 px-4" style={{ width: columnWidths.first_name, minWidth: columnWidths.first_name, maxWidth: columnWidths.first_name }}>
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-8 h-8 rounded-full bg-purple-50 dark:bg-purple-950/30 flex items-center justify-center text-purple-600 dark:text-purple-400 font-bold text-xs uppercase shrink-0">
                                                         {(row.first_name || row.lead_name || 'U')[0]}
                                                     </div>
                                                     <button
                                                         onClick={() => navigate(`/leads/${row.name}`)}
-                                                        className="font-semibold text-slate-900 dark:text-slate-100 leading-tight hover:text-purple-600 transition-colors text-left focus:outline-none"
+                                                        className="font-semibold text-slate-900 dark:text-slate-100 leading-tight hover:text-purple-600 transition-colors text-left focus:outline-none truncate block w-full"
                                                     >
                                                         {formatValue(row.first_name || row.lead_name)}
                                                     </button>
                                                 </div>
                                             </td>
                                         )}
-                                        {columnVisibility.mobile_no && (
-                                            <td className="py-4 px-4">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
-                                                        <Phone className="w-3 h-3 text-slate-400" />
-                                                        <span className="font-semibold text-slate-900 dark:text-slate-100 leading-tight">{row.mobile_no || '-'}</span>
-                                                    </div>
-                                                    {row.mobile_no && (
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                const searchMobile = row.mobile_no?.replace(/^\+91/, '');
-                                                                window.dispatchEvent(new CustomEvent('trigger-kyc-search', {
-                                                                    detail: { clientCode: searchMobile }
-                                                                }));
-                                                            }}
-                                                            className="p-1 hover:bg-purple-50 dark:hover:bg-purple-950/30 rounded-md text-purple-700 hover:text-purple-600 transition-all group/kyc"
-                                                            title="Search in KYC Tracker"
-                                                        >
-                                                            <ExternalLink className="w-3.5 h-3.5" />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        )}
-                                        {columnVisibility.source && (
-                                            <td className="py-4 px-4 text-slate-500 dark:text-slate-400">
-                                                {formatValue(row.source)}
-                                            </td>
-                                        )}
-                                        {columnVisibility.status && (
-                                            <td className="py-4 px-4">
-                                                {renderStatusBadge(row.status)}
-                                            </td>
-                                        )}
-                                        {columnVisibility.assigned_to && (
-                                            <td className="py-4 px-4">
-                                                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 font-medium text-xs">
-                                                    <div className="w-5 h-5 rounded bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-[10px]">
-                                                        <User className="w-3 h-3" />
-                                                    </div>
-                                                    {row.custom_allocated_person_name || row.custom_allocated_code ? (
-                                                        `${row.custom_allocated_person_name || ''} ${row.custom_allocated_code ? `(${row.custom_allocated_code})` : ''}`.trim()
-                                                    ) : '-'}
-                                                </div>
-                                            </td>
-                                        )}
-                                        {columnVisibility.city && (
-                                            <td className="py-4 px-4">
-                                                <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
-                                                    <MapPin className="w-3 h-3 text-slate-400" />
-                                                    <span className="text-xs">{formatValue(row.custom_city)}</span>
-                                                </div>
-                                            </td>
-                                        )}
-                                        {columnVisibility.campaign && (
-                                            <td className="py-4 px-4 text-slate-500 dark:text-slate-400">
-                                                {formatValue(row.custom_campaign_name)}
-                                            </td>
-                                        )}
-                                        {columnVisibility.creation && (
-                                            <td className="py-4 px-4">
-                                                <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
-                                                    <CalendarIcon className="w-3 h-3 text-slate-400" />
-                                                    <span className="text-[12px] font-medium">{row.creation ? row.creation.split(' ')[0] : ''}</span>
-                                                </div>
-                                            </td>
-                                        )}
-                                        {columnVisibility.modified && (
-                                            <td className="py-4 px-4">
-                                                <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
-                                                    <CalendarIcon className="w-3 h-3 text-slate-400" />
-                                                    <span className="text-[12px] font-medium">{row.modified ? row.modified.split(' ')[0] : ''}</span>
-                                                </div>
-                                            </td>
-                                        )}
-                                        <td className="py-4 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                                        {columnOrder.map((colId) => {
+                                            if (!columnVisibility[colId]) return null;
+                                            if (colId === 'mobile_no') {
+                                                return (
+                                                    <td key={colId} className="py-4 px-4" style={{ width: columnWidths.mobile_no, minWidth: columnWidths.mobile_no, maxWidth: columnWidths.mobile_no }}>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 truncate w-full">
+                                                                {row.mobile_no ? (
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleMakeCall(row);
+                                                                        }}
+                                                                        className="p-1.5 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 active:bg-blue-200 dark:active:bg-blue-900/90 text-blue-700 dark:text-blue-400 rounded-lg border border-blue-100 dark:border-blue-900/40 transition-all shrink-0 flex items-center justify-center active:scale-90"
+                                                                        title="Call with Exotel"
+                                                                    >
+                                                                        <Phone className="w-3.5 h-3.5 font-bold" />
+                                                                    </button>
+                                                                ) : (
+                                                                    <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                                                                )}
+                                                                <span className="font-semibold text-slate-900 dark:text-slate-100 leading-tight truncate">{row.mobile_no || '-'}</span>
+                                                            </div>
+                                                            {row.mobile_no && (
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        const searchMobile = row.mobile_no?.replace(/^\+91/, '');
+                                                                        window.dispatchEvent(new CustomEvent('trigger-kyc-search', {
+                                                                            detail: { clientCode: searchMobile }
+                                                                        }));
+                                                                    }}
+                                                                    className="p-1 hover:bg-purple-50 dark:hover:bg-purple-950/30 rounded-md text-purple-700 hover:text-purple-600 transition-all group/kyc shrink-0"
+                                                                    title="Search in KYC Tracker"
+                                                                >
+                                                                    <ExternalLink className="w-3.5 h-3.5" />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                );
+                                            }
+                                            if (colId === 'source') {
+                                                return (
+                                                    <td key={colId} className="py-4 px-4 text-slate-500 dark:text-slate-400 truncate" style={{ width: columnWidths.source, minWidth: columnWidths.source, maxWidth: columnWidths.source }}>
+                                                        {formatValue(row.source)}
+                                                    </td>
+                                                );
+                                            }
+                                            if (colId === 'status') {
+                                                return (
+                                                    <td key={colId} className="py-4 px-4" style={{ width: columnWidths.status, minWidth: columnWidths.status, maxWidth: columnWidths.status }}>
+                                                        {renderStatusBadge(row.status)}
+                                                    </td>
+                                                );
+                                            }
+                                            if (colId === 'assigned_to') {
+                                                return (
+                                                    <td key={colId} className="py-4 px-4" style={{ width: columnWidths.assigned_to, minWidth: columnWidths.assigned_to, maxWidth: columnWidths.assigned_to }}>
+                                                        <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 font-medium text-xs truncate">
+                                                            <div className="w-5 h-5 rounded bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-[10px] shrink-0">
+                                                                <User className="w-3 h-3" />
+                                                            </div>
+                                                            <span className="truncate">
+                                                                {row.custom_allocated_person_name || row.custom_allocated_code ? (
+                                                                    `${row.custom_allocated_person_name || ''} ${row.custom_allocated_code ? `(${row.custom_allocated_code})` : ''}`.trim()
+                                                                ) : '-'}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                );
+                                            }
+                                            if (colId === '_comments') {
+                                                return (
+                                                    <td key={colId} className="py-4 px-4 text-slate-600 dark:text-slate-400 truncate" style={{ width: columnWidths._comments, minWidth: columnWidths._comments, maxWidth: columnWidths._comments }} title={formatComment(row._comments)}>
+                                                        {formatComment(row._comments)}
+                                                    </td>
+                                                );
+                                            }
+                                            if (colId === 'city') {
+                                                return (
+                                                    <td key={colId} className="py-4 px-4" style={{ width: columnWidths.city, minWidth: columnWidths.city, maxWidth: columnWidths.city }}>
+                                                        <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 truncate">
+                                                            <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                                                            <span className="text-xs truncate">{formatValue(row.custom_city)}</span>
+                                                        </div>
+                                                    </td>
+                                                );
+                                            }
+                                            if (colId === 'campaign') {
+                                                return (
+                                                    <td key={colId} className="py-4 px-4 text-slate-500 dark:text-slate-400 truncate" style={{ width: columnWidths.campaign, minWidth: columnWidths.campaign, maxWidth: columnWidths.campaign }}>
+                                                        {formatValue(row.custom_campaign_name)}
+                                                    </td>
+                                                );
+                                            }
+                                            if (colId === 'creation') {
+                                                return (
+                                                    <td key={colId} className="py-4 px-4" style={{ width: columnWidths.creation, minWidth: columnWidths.creation, maxWidth: columnWidths.creation }}>
+                                                        <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 truncate">
+                                                            <CalendarIcon className="w-3 h-3 text-slate-400 shrink-0" />
+                                                            <span className="text-[12px] font-medium truncate">{row.creation ? row.creation.split(' ')[0] : ''}</span>
+                                                        </div>
+                                                    </td>
+                                                );
+                                            }
+                                            if (colId === 'modified') {
+                                                return (
+                                                    <td key={colId} className="py-4 px-4" style={{ width: columnWidths.modified, minWidth: columnWidths.modified, maxWidth: columnWidths.modified }}>
+                                                        <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 truncate">
+                                                            <CalendarIcon className="w-3 h-3 text-slate-400 shrink-0" />
+                                                            <span className="text-[12px] font-medium truncate">{row.modified ? row.modified.split(' ')[0] : ''}</span>
+                                                        </div>
+                                                    </td>
+                                                );
+                                            }
+                                            return null;
+                                        })}
+                                        {/* Spacer Column */}
+                                        <td className="p-0 m-0 border-none w-auto" style={{ minWidth: 0 }} />
+                                        <td className="py-4 px-4 text-right sticky right-0 bg-white dark:bg-slate-900 border-l border-l-slate-100 dark:border-l-slate-800/50 z-10 group-hover:bg-slate-50 dark:group-hover:bg-slate-800" onClick={(e) => e.stopPropagation()} style={{ width: 80, minWidth: 80, maxWidth: 80 }}>
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                     <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
                                                         <MoreHorizontal className="h-4 w-4 text-slate-500 dark:text-slate-400" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="w-40 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-xl">
-                                                    <DropdownMenuLabel className="text-xs text-slate-400 dark:text-slate-500">Change Status</DropdownMenuLabel>
-                                                    {['New', 'Followup', 'Not Interested', 'Call Back', 'Switch off', 'RNR', 'won', 'Client']
+                                                <DropdownMenuContent align="end" className="w-48 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-xl p-1.5">
+                                                    <DropdownMenuLabel className="text-sm font-bold text-slate-500 dark:text-slate-400 px-3 py-1.5">Change Status</DropdownMenuLabel>
+                                                    {['New', 'Followup', 'Not Interested', 'Call Back', 'Switch off', 'RNR']
                                                         .filter(s => s !== row.status)
                                                         .map((status) => (
                                                             <DropdownMenuItem
@@ -1842,11 +2433,23 @@ const Leads: React.FC = () => {
                                                                         toast.error('Failed to update status');
                                                                     }
                                                                 }}
-                                                                className="text-xs"
+                                                                className="text-sm py-2 px-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
                                                             >
                                                                 {status}
                                                             </DropdownMenuItem>
                                                         ))}
+                                                    <div className="h-[1px] bg-slate-100 dark:bg-slate-800 my-1.5" />
+                                                    <DropdownMenuItem
+                                                        onClick={() => {
+                                                            setActiveLeadForComment(row);
+                                                            setCommentText('');
+                                                            setIsCommentModalOpen(true);
+                                                        }}
+                                                        className="text-sm py-2 px-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer font-semibold text-purple-600 dark:text-purple-400 flex items-center gap-2"
+                                                    >
+                                                        <MessageSquare className="w-4 h-4" />
+                                                        Add Comment
+                                                    </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </td>
@@ -1854,7 +2457,7 @@ const Leads: React.FC = () => {
                                 ))
                             ) : !isLoading && (
                                 <tr>
-                                    <td colSpan={visibleColumnCount + 2} className="h-48 text-center text-slate-400 dark:text-slate-500">
+                                    <td colSpan={visibleColumnCount + 3} className="h-48 text-center text-slate-400 dark:text-slate-500">
                                         <div className="flex flex-col items-center justify-center">
                                             <Users className="w-10 h-10 mb-2 opacity-10" />
                                             <p className="text-sm font-medium">No results found matching your filters</p>
@@ -1873,6 +2476,361 @@ const Leads: React.FC = () => {
                     </p>
                 </div>
             </Card>
+
+            {/* Comment Modal */}
+            <Dialog open={isCommentModalOpen} onOpenChange={setIsCommentModalOpen}>
+                <DialogContent className="sm:max-w-md rounded-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 shadow-2xl p-6">
+                    <DialogHeader>
+                        <DialogTitle className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                            <MessageSquare className="w-5 h-5 text-purple-600" />
+                            Add Comment
+                        </DialogTitle>
+                        <DialogDescription className="text-sm text-slate-500 dark:text-slate-400">
+                            Add a new comment for {activeLeadForComment?.first_name || activeLeadForComment?.lead_name || 'this lead'}.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-3">
+                        <textarea
+                            className="w-full h-32 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 p-3 text-base placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 text-slate-900 dark:text-slate-100 transition-all resize-none"
+                            placeholder="Write your comment here..."
+                            value={commentText}
+                            onChange={(e) => setCommentText(e.target.value)}
+                        />
+                    </div>
+                    <DialogFooter className="flex sm:justify-end gap-2 border-t border-slate-100 dark:border-slate-800/80 pt-4">
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsCommentModalOpen(false)}
+                            className="rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleAddComment}
+                            disabled={isSubmittingComment || !commentText.trim()}
+                            className="rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold px-4"
+                        >
+                            {isSubmittingComment ? 'Adding...' : 'Add Comment'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>            {/* Floating Draggable Dialer Widget (Bottom-Left Call Monitor) */}
+            {isCallModalOpen && (
+                <div
+                    onMouseDown={handleMouseDown}
+                    style={{
+                        position: 'fixed',
+                        bottom: `${widgetPosition.y}px`,
+                        left: `${widgetPosition.x}px`,
+                        zIndex: 9999,
+                    }}
+                    className="transition-shadow duration-300"
+                >
+                    {isMinimized ? (
+                        /* Minimized Pill View */
+                        <div className="bg-slate-950 dark:bg-white text-white dark:text-slate-900 rounded-full py-2 px-3 shadow-2xl flex items-center justify-between border border-slate-850 dark:border-slate-200 w-56 drag-handle cursor-grab active:cursor-grabbing select-none">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <Phone className="w-3.5 h-3.5 animate-pulse text-emerald-450 dark:text-emerald-600 shrink-0" />
+                                <span className="font-mono text-[11px] font-bold text-slate-100 dark:text-slate-800 shrink-0">
+                                    {formatDuration(callDuration)}
+                                </span>
+                                <span className="text-[10px] font-semibold truncate opacity-90 text-slate-200 dark:text-slate-700">
+                                    {activeCallLead?.first_name || activeCallLead?.lead_name}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0 ml-1">
+                                <button
+                                    onClick={() => setIsMinimized(false)}
+                                    className="p-1 hover:bg-slate-800 dark:hover:bg-slate-100 rounded-full transition-colors text-slate-300 dark:text-slate-600 outline-none"
+                                    title="Expand Dialer"
+                                >
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5" />
+                                    </svg>
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setCallStatus('ended');
+                                        setIsCallModalOpen(false);
+                                    }}
+                                    className="p-1 hover:bg-red-500 rounded-full transition-colors text-red-400 dark:text-red-500 hover:text-white dark:hover:text-white outline-none"
+                                    title="Dismiss popup"
+                                >
+                                    <X className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        /* Normal Expanded View Widget - Simple Call Status only */
+                        <div className="w-72 bg-slate-950 dark:bg-white border border-slate-800 dark:border-slate-200 text-slate-100 dark:text-slate-900 rounded-2xl shadow-2xl flex flex-col gap-3 p-4 select-none">
+                            {/* Drag Header */}
+                            <div className="drag-handle cursor-grab active:cursor-grabbing flex items-center justify-between pb-2 border-b border-slate-800 dark:border-slate-150">
+                                <span className="text-[10px] font-bold text-purple-400 dark:text-purple-600 uppercase tracking-wider">
+                                    📞 Active Call
+                                </span>
+                                <div className="flex items-center gap-1.5">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setIsMinimized(true);
+                                        }}
+                                        className="p-1 hover:bg-slate-800 dark:hover:bg-slate-100 rounded-md text-slate-400 hover:text-white dark:hover:text-slate-800 transition-colors outline-none"
+                                        title="Minimize"
+                                    >
+                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 13H5" />
+                                        </svg>
+                                    </button>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setCallStatus('ended');
+                                            setIsCallModalOpen(false);
+                                        }}
+                                        className="p-1 hover:bg-red-950/40 dark:hover:bg-red-55 rounded-md text-slate-400 hover:text-red-400 dark:hover:text-red-650 transition-colors outline-none"
+                                        title="Dismiss popup"
+                                    >
+                                        <X className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Lead & Call Status Details */}
+                            <div className="flex flex-col items-center bg-slate-900 dark:bg-slate-50 rounded-xl p-3 border border-slate-850 dark:border-slate-150">
+                                <h4 className="text-sm font-bold text-slate-100 dark:text-slate-850 tracking-wide text-center">
+                                    {activeCallLead?.first_name || activeCallLead?.lead_name || 'Unknown'}
+                                </h4>
+                                <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 font-mono mt-0.5">
+                                    {activeCallLead?.mobile_no}
+                                </span>
+                                <div className="flex items-center gap-2 mt-2">
+                                    {callStatus === 'ended' ? (
+                                        <>
+                                            <span className={cn(
+                                                "w-1.5 h-1.5 rounded-full",
+                                                callOutcome === 'completed' ? "bg-emerald-500" : "bg-red-500 animate-pulse"
+                                            )}></span>
+                                            <span className={cn(
+                                                "text-[10px] font-bold uppercase tracking-wide",
+                                                callOutcome === 'completed' ? "text-emerald-455 dark:text-emerald-600" : "text-red-450 dark:text-red-600"
+                                            )}>
+                                                {callOutcome ? callOutcome.replace('-', ' ') : 'Ended'}
+                                            </span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                            <span className="text-[10px] font-bold text-emerald-450 dark:text-emerald-600 uppercase tracking-wide">
+                                                In progress (Mobile)
+                                            </span>
+                                        </>
+                                    )}
+                                    <span className="text-slate-700 dark:text-slate-300 text-[10px]">|</span>
+                                    <span className="text-[11px] font-mono font-bold text-slate-300 dark:text-slate-700">
+                                        {formatDuration(callDuration)}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Actions layout (Notes, Tags, Assign) */}
+                            <div className="flex gap-2 w-full mt-1">
+                                <button
+                                    onClick={() => {
+                                        setIsCallModalOpen(false);
+                                        setActiveLeadForComment(activeCallLead);
+                                        setCommentText('');
+                                        setIsCommentModalOpen(true);
+                                    }}
+                                    className="flex-1 bg-slate-900 hover:bg-slate-800 dark:bg-slate-50 dark:hover:bg-slate-100 border border-slate-800 dark:border-slate-200 text-slate-300 dark:text-slate-700 py-1.5 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 shadow-sm transition-all outline-none"
+                                >
+                                    <FileText className="w-3.5 h-3.5 text-sky-500" />
+                                    Notes
+                                </button>
+                                <button
+                                    onClick={() => toast.info('Manage Tags')}
+                                    className="flex-1 bg-slate-900 hover:bg-slate-800 dark:bg-slate-50 dark:hover:bg-slate-100 border border-slate-800 dark:border-slate-200 text-slate-300 dark:text-slate-700 py-1.5 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 shadow-sm transition-all outline-none"
+                                >
+                                    <Tag className="w-3.5 h-3.5 text-emerald-500" />
+                                    Tags
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        if (activeCallLead) {
+                                            setIsCallModalOpen(false);
+                                            setSelectedRows(new Set([activeCallLead.name]));
+                                            toast.info('Please select "Assign To" in the bulk options row');
+                                        }
+                                    }}
+                                    className="flex-1 bg-slate-900 hover:bg-slate-800 dark:bg-slate-50 dark:hover:bg-slate-100 border border-slate-800 dark:border-slate-200 text-slate-300 dark:text-slate-700 py-1.5 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 shadow-sm transition-all outline-none"
+                                >
+                                    <UserCheck className="w-3.5 h-3.5 text-purple-500" />
+                                    Assign
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Floating Docker in Bottom-Right */}
+            <div
+                style={{
+                    position: 'fixed',
+                    bottom: '20px',
+                    right: '20px',
+                    zIndex: 9999,
+                }}
+                className="flex flex-col items-end gap-3"
+            >
+                {/* Dialpad Widget */}
+                {isDialerOpen && (
+                    <div className="w-72 bg-[#1c1c1e] dark:bg-[#f4f5f8] border border-neutral-800 dark:border-slate-200 text-white dark:text-slate-900 rounded-[32px] shadow-2xl p-5 flex flex-col gap-3 select-none mb-2 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                        {/* Header */}
+                        <div className="flex items-center justify-between pb-1">
+                            <button
+                                onClick={() => setIsDialerOpen(false)}
+                                className="p-1.5 hover:bg-neutral-800 dark:hover:bg-slate-200 rounded-full text-neutral-400 hover:text-white dark:hover:text-slate-800 transition-colors outline-none"
+                            >
+                                <X className="w-3.5 h-3.5" />
+                            </button>
+                            <span className="text-[11px] font-bold text-neutral-450 dark:text-slate-500 uppercase tracking-wider">
+                                Dial Pad
+                            </span>
+                            <div className="w-6" /> {/* Spacer */}
+                        </div>
+
+                        {/* Number Input */}
+                        <div className="flex flex-col items-center py-2">
+                            <input
+                                type="text"
+                                placeholder="Enter number..."
+                                value={dialNumber}
+                                onChange={(e) => setDialNumber(e.target.value)}
+                                className="w-full bg-transparent text-xl font-extrabold tracking-widest text-center text-white dark:text-slate-800 placeholder-neutral-600 dark:placeholder-slate-400 focus:outline-none font-mono"
+                            />
+                        </div>
+
+                        {/* Keypad Grid */}
+                        <div className="grid grid-cols-3 gap-3 py-1">
+                            {[
+                                { digit: '1', sub: 'o_o' },
+                                { digit: '2', sub: 'ABC' },
+                                { digit: '3', sub: 'DEF' },
+                                { digit: '4', sub: 'GHI' },
+                                { digit: '5', sub: 'JKL' },
+                                { digit: '6', sub: 'MNO' },
+                                { digit: '7', sub: 'PQRS' },
+                                { digit: '8', sub: 'TUV' },
+                                { digit: '9', sub: 'WXYZ' },
+                                { digit: '*', sub: '' },
+                                { digit: '0', sub: '+' },
+                                { digit: '#', sub: '' }
+                            ].map((item) => (
+                                <button
+                                    key={item.digit}
+                                    onClick={() => setDialNumber(prev => prev + item.digit)}
+                                    className="bg-[#2c2c2e] dark:bg-white hover:bg-neutral-700 dark:hover:bg-slate-50 text-white dark:text-slate-800 border border-neutral-800 dark:border-slate-150 rounded-2xl py-2.5 flex flex-col items-center justify-center shadow-sm active:scale-95 transition-all outline-none"
+                                >
+                                    <span className="text-base font-extrabold">{item.digit}</span>
+                                    <span className="text-[7px] font-bold text-neutral-450 dark:text-slate-500 tracking-wider">
+                                        {item.sub || '\u00A0'}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Action buttons (Call and Backspace) */}
+                        <div className="grid grid-cols-3 items-center gap-3 mt-1">
+                            <div /> {/* Left Spacer */}
+                            <button
+                                onClick={() => handleMakeCall(dialNumber)}
+                                disabled={!dialNumber}
+                                className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white rounded-2xl py-2.5 flex items-center justify-center shadow-lg shadow-blue-500/20 active:scale-95 transition-all outline-none cursor-pointer"
+                                title="Initiate Call"
+                            >
+                                <Phone className="w-4 h-4 fill-white" />
+                            </button>
+                            <button
+                                onClick={() => setDialNumber(prev => prev.slice(0, -1))}
+                                disabled={!dialNumber}
+                                className="hover:bg-neutral-800 dark:hover:bg-slate-200 disabled:opacity-30 text-neutral-400 dark:text-slate-500 rounded-2xl py-2.5 flex items-center justify-center active:scale-95 transition-all outline-none cursor-pointer"
+                                title="Delete"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6-6h12v12H9l-6-6z" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                )}
+                               {/* Sub-docked Items in Arc (180 deg to 90 deg) */}
+                {isDockerOpen && (
+                    <>
+                        {/* 1. Dialer Sub-item (180 deg - directly left) */}
+                        <button
+                            onClick={() => {
+                                setIsDialerOpen(!isDialerOpen);
+                                setIsDockerOpen(false);
+                            }}
+                            style={{
+                                position: 'fixed',
+                                bottom: '28px',
+                                right: '148px',
+                                zIndex: 9999,
+                            }}
+                            className="w-10 h-10 bg-purple-600 hover:bg-purple-700 text-white rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-all outline-none cursor-pointer animate-in fade-in zoom-in-50 duration-200"
+                            title="Phone Dialer"
+                        >
+                            <Phone className="w-4 h-4" />
+                        </button>
+
+                        {/* 2. Create Lead Sub-item (135 deg - diagonal) */}
+                        <button
+                            onClick={() => {
+                                toast.info('Create Lead clicked (dummy action)');
+                                setIsDockerOpen(false);
+                            }}
+                            style={{
+                                position: 'fixed',
+                                bottom: '113px',
+                                right: '113px',
+                                zIndex: 9999,
+                            }}
+                            className="w-10 h-10 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-all outline-none cursor-pointer animate-in fade-in zoom-in-50 duration-200 delay-[50ms]"
+                            title="Create Lead"
+                        >
+                            <UserPlus className="w-4 h-4" />
+                        </button>
+
+                        {/* 3. Dummy Action 1 (90 deg - directly top) */}
+                        <button
+                            onClick={() => {
+                                toast.info('Support Channel clicked (dummy action)');
+                                setIsDockerOpen(false);
+                            }}
+                            style={{
+                                position: 'fixed',
+                                bottom: '148px',
+                                right: '28px',
+                                zIndex: 9999,
+                            }}
+                            className="w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-all outline-none cursor-pointer animate-in fade-in zoom-in-50 duration-200 delay-[100ms]"
+                            title="Support Channel"
+                        >
+                            <Headphones className="w-4 h-4" />
+                        </button>
+                    </>
+                )}
+
+                {/* Main Docker Toggle Button */}
+                <button
+                    onClick={() => setIsDockerOpen(!isDockerOpen)}
+                    className="h-14 w-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white shadow-2xl flex items-center justify-center p-0 transition-all active:scale-90 duration-300 cursor-pointer outline-none"
+                    title="Menu Actions"
+                >
+                    <Plus className={cn("w-7 h-7 transition-transform duration-300", isDockerOpen && "rotate-45")} />
+                </button>
+            </div>
         </div>
     );
 };

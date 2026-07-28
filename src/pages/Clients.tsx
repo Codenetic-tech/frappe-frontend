@@ -890,29 +890,41 @@ const Clients: React.FC = () => {
 
         const normalizedStatus = status.toUpperCase();
 
-        const statusStyles: Record<string, string> = {
-            'ACTIVE': "bg-green-100 dark:bg-green-950/20 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-950/30 hover:text-green-700 dark:hover:text-green-300",
-            'REACTIVATED': "bg-purple-100 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-950/30 hover:text-purple-700 dark:hover:text-purple-300",
-            'SUSPENDED': "bg-red-100 dark:bg-red-950/20 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/30 hover:text-red-700 dark:hover:text-red-300",
-            'CLOSED': "bg-red-100 dark:bg-red-950/20 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/30 hover:text-red-700 dark:hover:text-red-300",
-            'DORMANT': "bg-amber-100 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/30 hover:text-amber-700 dark:hover:text-amber-300",
-            'INACTIVE': "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-400 dark:hover:text-slate-400",
-            'NOT ENABLED': "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-350 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-300",
+        const containerClasses: Record<string, string> = {
+            'ACTIVE': 'bg-green-100 dark:bg-green-950/20 text-green-700 dark:text-green-400',
+            'REACTIVATED': 'bg-purple-100 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400',
+            'SUSPENDED': 'bg-red-100 dark:bg-red-950/20 text-red-700 dark:text-red-400',
+            'CLOSED': 'bg-red-100 dark:bg-red-950/20 text-red-700 dark:text-red-400',
+            'DORMANT': 'bg-amber-100 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400',
+            'INACTIVE': 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500',
+            'NOT ENABLED': 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-350',
         };
 
-        const currentStyle = statusStyles[normalizedStatus] || "bg-slate-50 dark:bg-slate-850 text-slate-300 dark:text-slate-600";
+        const dotClasses: Record<string, string> = {
+            'ACTIVE': 'bg-green-500',
+            'REACTIVATED': 'bg-purple-500',
+            'SUSPENDED': 'bg-red-500',
+            'CLOSED': 'bg-red-500',
+            'DORMANT': 'bg-amber-500',
+            'INACTIVE': 'bg-slate-400',
+            'NOT ENABLED': 'bg-slate-500',
+        };
+
+        const currentStyle = containerClasses[normalizedStatus] || 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300';
+        const currentDot = dotClasses[normalizedStatus] || 'bg-slate-500';
 
         const displayText = normalizedStatus === 'INACTIVE' ? 'NOT ENABLED' : status;
 
         return (
-            <Badge
-                className={cn(
-                    "capitalize font-bold px-2.5 py-0.5 rounded-full border-none text-[10px] whitespace-nowrap",
+            <div className="flex items-center justify-center gap-2">
+                <div className={cn(
+                    "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 whitespace-nowrap",
                     currentStyle
-                )}
-            >
-                {displayText}
-            </Badge>
+                )}>
+                    <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", currentDot)} />
+                    {displayText}
+                </div>
+            </div>
         );
     };
 
@@ -1626,14 +1638,20 @@ const Clients: React.FC = () => {
                                         {columnVisibility.opened_date && <td className="py-4 px-4 text-slate-500 dark:text-slate-400 font-mono text-xs">{formatValue(row.account_opened_date)}</td>}
                                         {columnVisibility.trade_done && (
                                             <td className="py-4 px-4">
-                                                <Badge
-                                                    className={cn(
-                                                        "capitalize font-bold px-2.5 py-0.5 rounded-full border-none text-[10px]",
-                                                        row.trade_done === 'TRUE' ? "bg-green-100 dark:bg-green-950/20 text-green-700 dark:text-green-400" : "bg-red-100 dark:bg-red-950/20 text-red-700 dark:text-red-400"
-                                                    )}
-                                                >
-                                                    {row.trade_done || 'FALSE'}
-                                                </Badge>
+                                                {(() => {
+                                                    const isTrue = row.trade_done === 'TRUE';
+                                                    return (
+                                                        <div className="flex items-center gap-2">
+                                                            <div className={cn(
+                                                                "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5",
+                                                                isTrue ? "bg-green-100 dark:bg-green-950/20 text-green-700 dark:text-green-400" : "bg-red-100 dark:bg-red-950/20 text-red-700 dark:text-red-400"
+                                                            )}>
+                                                                <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", isTrue ? "bg-green-500" : "bg-red-500")} />
+                                                                {row.trade_done || 'FALSE'}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })()}
                                             </td>
                                         )}
                                         {columnVisibility.last_trade && <td className="py-4 px-4 text-slate-500 dark:text-slate-400 font-mono text-xs">{formatValue(row.last_traded_day)}</td>}
@@ -1649,16 +1667,28 @@ const Clients: React.FC = () => {
                                         {columnVisibility.bfo && <td className="py-4 px-4 text-center">{renderExchangeBadge(row.bfo)}</td>}
                                         {columnVisibility.status && (
                                             <td className="py-4 px-4">
-                                                <Badge
-                                                    className={cn(
-                                                        "capitalize font-bold px-2.5 py-0.5 rounded-full border-none text-[10px]",
-                                                        row.activation_status === 'ACTIVE' ? "bg-green-700 dark:bg-green-600 text-white hover:bg-green-700 hover:text-white" :
-                                                            row.activation_status === 'CLOSED' ? "bg-red-700 dark:bg-red-600 text-white hover:bg-red-700 hover:text-white" :
-                                                                "bg-amber-700 dark:bg-amber-600 text-white hover:bg-amber-700 hover:text-white"
-                                                    )}
-                                                >
-                                                    {row.activation_status || 'UNKNOWN'}
-                                                </Badge>
+                                                {(() => {
+                                                    const st = (row.activation_status || '').toUpperCase();
+                                                    const isGreen = st === 'ACTIVE';
+                                                    const isRed = st === 'CLOSED';
+                                                    const currentStyle = isGreen 
+                                                        ? "bg-green-100 dark:bg-green-950/20 text-green-700 dark:text-green-400" 
+                                                        : isRed 
+                                                            ? "bg-red-100 dark:bg-red-950/20 text-red-700 dark:text-red-400" 
+                                                            : "bg-amber-100 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400";
+                                                    const currentDot = isGreen ? "bg-green-500" : isRed ? "bg-red-500" : "bg-amber-500";
+                                                    return (
+                                                        <div className="flex items-center gap-2">
+                                                            <div className={cn(
+                                                                "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5",
+                                                                currentStyle
+                                                            )}>
+                                                                <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", currentDot)} />
+                                                                {row.activation_status || 'UNKNOWN'}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })()}
                                             </td>
                                         )}
                                     </tr>

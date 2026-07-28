@@ -27,24 +27,23 @@ import ClientDetails from "./pages/ClientDetails";
 import Announcements from "./pages/Announcements";
 import Updates from "./pages/Updates";
 import TasksKanbanPage from "./pages/TasksKanbanPage";
-import Tickets from "./pages/Tickets";
+import Tickets from "./pages/GopocketTickets";
 import TicketDetails from "./pages/TicketDetails";
 import Subscription from "./pages/Subscription";
 import Revenue from "./pages/Revenue";
-import { TicketProvider } from "@/contexts/TicketContext";
 import { RevenueProvider } from "@/contexts/RevenueContext";
 import MainLayout from "./components/layout/MainLayout";
 import { Sparkles } from "lucide-react";
 import { TaskProvider } from "@/contexts/TaskContext";
 import { FrappeProvider } from "frappe-react-sdk";
+import { SWRConfig } from "swr";
 import Comments from "./pages/Comments";
 import CommentDetails from "./pages/CommentDetails";
 import ClientHoldings from "./pages/ClientHoldings";
-import Insurance from "./pages/Insurance";
-import GetQuote from "./pages/GetQuote";
 
 
 const queryClient = new QueryClient();
+
 
 // Coming Soon component for new routes
 const ComingSoon = () => (
@@ -317,22 +316,6 @@ const AppContent = () => {
         }
       />
       <Route
-        path="/insurance"
-        element={
-          <ProtectedRoute>
-            <Insurance />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/get-quote"
-        element={
-          <ProtectedRoute>
-            <GetQuote />
-          </ProtectedRoute>
-        }
-      />
-      <Route
         path="/task"
         element={<Navigate to="/tasks" replace />}
       />
@@ -344,13 +327,13 @@ const AppContent = () => {
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <FrappeProvider url='' socketPort='8081' siteName='pulse.gopocket.in' swrConfig={{ revalidateOnFocus: false }}>
-        <AuthProvider>
-          <OrgTreeProvider>
-            <FilterProvider>
-              <TooltipProvider>
-                <RevenueProvider>
-                  <TicketProvider>
+      <SWRConfig value={{ revalidateOnFocus: false }}>
+        <FrappeProvider url='' socketPort='8081' siteName='pulse.gopocket.in'>
+          <AuthProvider>
+            <OrgTreeProvider>
+              <FilterProvider>
+                <TooltipProvider>
+                  <RevenueProvider>
                     <TaskProvider>
                       <Toaster />
                       <Sonner />
@@ -358,13 +341,13 @@ const App = () => {
                         <AppContent />
                       </BrowserRouter>
                     </TaskProvider>
-                  </TicketProvider>
-                </RevenueProvider>
-              </TooltipProvider>
-            </FilterProvider>
-          </OrgTreeProvider>
-        </AuthProvider>
-      </FrappeProvider>
+                  </RevenueProvider>
+                </TooltipProvider>
+              </FilterProvider>
+            </OrgTreeProvider>
+          </AuthProvider>
+        </FrappeProvider>
+      </SWRConfig>
     </QueryClientProvider>
   );
 };
