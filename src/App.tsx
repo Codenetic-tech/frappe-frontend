@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { userHasRole } from "@/utils/frappeUser";
 import { FilterProvider } from "@/contexts/FilterContext";
 import { OrgTreeProvider } from "@/contexts/OrgTreeContext";
 import ClientDashboard from "./pages/ClientDashboard";
@@ -84,7 +85,10 @@ const TICKETING_DEPARTMENTS = [
 ];
 
 const HomeRedirect = () => {
-  return <Navigate to="/leads" replace />;
+  const { frappeUser } = useAuth();
+  // Helpdesk-only agents don't have CRM access — land them on tickets instead.
+  const isHelpdeskOnlyUser = userHasRole(frappeUser, 'Helpdesk Ho User');
+  return <Navigate to={isHelpdeskOnlyUser ? '/ticketing' : '/leads'} replace />;
 };
 
 const AppContent = () => {

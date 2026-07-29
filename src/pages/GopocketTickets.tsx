@@ -1,12 +1,15 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useFrappeUpdateDoc } from 'frappe-react-sdk';
+import { useFrappeUpdateDoc, useFrappePostCall } from 'frappe-react-sdk';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Calendar } from '@/components/ui/calendar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { getInitials, avatarColorClass } from '@/components/TicketPage/activityUtils';
 import {
     Select,
     SelectContent,
@@ -40,6 +43,7 @@ import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { exportToExcel } from '@/utils/excelExport';
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from 'sonner';
+import { toast as toastHook } from '@/hooks/use-toast';
 import useSWR from 'swr';
 import { cn } from '@/lib/utils';
 import {
@@ -72,6 +76,8 @@ import {
 } from 'lucide-react';
 import { TicketModal } from '@/components/TicketPage/TicketModal';
 import { CreateTicketFloatingButton } from '@/components/TicketPage/CreateTicketFloatingButton';
+import { AssigneeCombobox, type AssignedToOption } from '@/components/TicketPage/AssigneeCombobox';
+import { useAuth } from '@/contexts/AuthContext';
 
 import {
     Dialog,
@@ -98,23 +104,17 @@ export interface TicketItem {
     [key: string]: any;
 }
 
-function useDebounce<T>(value: T, delay: number): T {
-    const [debouncedValue, setDebouncedValue] = React.useState<T>(value);
-
-    React.useEffect(() => {
-        const handler = setTimeout(() => {
-            setDebouncedValue(value);
-        }, delay);
-
-        return () => {
-            clearTimeout(handler);
-        };
-    }, [value, delay]);
-
-    return debouncedValue;
-}
-
 const ITEMS_PER_PAGE = 50;
+
+const parseAssignees = (assignJson?: string | null): string[] => {
+    if (!assignJson) return [];
+    try {
+        const parsed = JSON.parse(assignJson);
+        return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+    } catch {
+        return [];
+    }
+};
 
 const HD_TICKET_FILTER_FIELDS = [
     { value: 'name', label: 'Ticket ID', type: 'string' },
@@ -224,13 +224,123 @@ const postFetcher = async (key: string | [string, string] | { url: string; body:
 
 const GopocketTickets: React.FC = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const { updateDoc } = useFrappeUpdateDoc();
     const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+    const [isBulkAssigning, setIsBulkAssigning] = useState(false);
+
+    const handleBulkAssign = async (option: AssignedToOption) => {
+        const ticketNames = Array.from(selectedRows);
+        if (ticketNames.length === 0) return;
+
+        setIsBulkAssigning(true);
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+        const headers = { 'Content-Type': 'application/json' };
+        let successCount = 0;
+
+        for (const ticketName of ticketNames) {
+            try {
+                await updateDoc('HD Ticket', ticketName, { custom_allocated_to: option.for_value });
+                await fetch(`${API_BASE_URL}/api/method/frappe.desk.form.assign_to.add`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({
+                        doctype: 'HD Ticket',
+                        name: ticketName,
+                        assign_to: [option.user],
+                    })
+                });
+
+                try {
+                    await fetch(`${API_BASE_URL}/api/method/frappe.client.insert`, {
+                        method: 'POST',
+                        headers,
+                        body: JSON.stringify({
+                            doc: {
+                                doctype: 'HD Ticket Activity',
+                                ticket: ticketName,
+                                action: `assigned ${option.user}`,
+                            }
+                        })
+                    });
+                } catch (activityErr) {
+                    console.error(`Failed to log assignment activity for ${ticketName}:`, activityErr);
+                }
+
+                successCount++;
+            } catch (e) {
+                console.error(`Failed to assign ${ticketName}:`, e);
+            }
+        }
+
+        setIsBulkAssigning(false);
+        setSelectedRows(new Set());
+
+        if (successCount > 0) {
+            toast.success(`Assigned ${successCount} ticket(s) to ${option.user}`);
+            refetchTickets();
+        }
+        if (successCount < ticketNames.length) {
+            toast.error(`Failed to assign ${ticketNames.length - successCount} ticket(s).`);
+        }
+    };
 
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const [exportProgress, setExportProgress] = useState({ current: 0, total: 0 });
     const [searchQuery, setSearchQuery] = useState(() => sessionStorage.getItem('ticketsSearchQuery') || '');
+
+    // Global search — hits helpdesk's cross-doctype search index, only on
+    // explicit Search click/Enter (not debounced-as-you-type).
+    const [globalSearchResults, setGlobalSearchResults] = useState<any[]>([]);
+    const [isGlobalSearching, setIsGlobalSearching] = useState(false);
+    const [searchResultsOpen, setSearchResultsOpen] = useState(false);
+    const [searchTotalMatches, setSearchTotalMatches] = useState<number | null>(null);
+    const searchContainerRef = useRef<HTMLDivElement>(null);
+    const { call: searchApi } = useFrappePostCall<{ message: { results: any[]; summary: { total_matches?: number } } }>(
+        'helpdesk.api.search.search'
+    );
+
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+                setSearchResultsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleGlobalSearch = async () => {
+        const query = searchQuery.trim();
+        if (!query) {
+            setSearchResultsOpen(false);
+            return;
+        }
+        setIsGlobalSearching(true);
+        try {
+            const res = await searchApi({ query, filters: '{}', limit: 50 });
+            setGlobalSearchResults(res?.message?.results ?? []);
+            setSearchTotalMatches(res?.message?.summary?.total_matches ?? null);
+            setSearchResultsOpen(true);
+        } catch (err) {
+            console.error('Global search failed:', err);
+            toast.error('Search failed. Please try again.');
+            setGlobalSearchResults([]);
+            setSearchTotalMatches(null);
+            setSearchResultsOpen(true);
+        } finally {
+            setIsGlobalSearching(false);
+        }
+    };
+
+    const handleSearchResultClick = (result: any) => {
+        const ticketId = result.reference_ticket || (result.doctype === 'HD Ticket' ? result.name : null);
+        if (!ticketId) return;
+        setSearchResultsOpen(false);
+        navigate(`/ticketing/${ticketId}`);
+    };
+
     const [dateRange, setDateRange] = useState<[Date, Date] | null>(() => {
         const stored = sessionStorage.getItem('ticketsDateRange');
         if (stored) {
@@ -253,20 +363,46 @@ const GopocketTickets: React.FC = () => {
             const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
             const headers = { 'Content-Type': 'application/json' };
 
-            const createRes = await fetch(`${API_BASE_URL}/api/method/frappe.client.insert`, {
+            // Files must be uploaded (unattached — the ticket doesn't exist yet)
+            // before creating the ticket, then the full File docs are handed to
+            // the create call so it can link them itself.
+            const uploadedFiles: any[] = [];
+            if (ticketData.attachments && ticketData.attachments.length > 0) {
+                for (const file of ticketData.attachments) {
+                    try {
+                        const formData = new FormData();
+                        formData.append('file', file, file.name);
+                        formData.append('is_private', '1');
+
+                        const uploadRes = await fetch(`${API_BASE_URL}/api/method/upload_file`, {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        if (uploadRes.ok) {
+                            const uploadData = await uploadRes.json();
+                            if (uploadData?.message) uploadedFiles.push(uploadData.message);
+                        }
+                    } catch (e) {
+                        console.error(`Error uploading ${file.name}:`, e);
+                    }
+                }
+            }
+
+            const createRes = await fetch(`${API_BASE_URL}/api/method/helpdesk.helpdesk.doctype.hd_ticket.api.new`, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({
                     doc: {
-                        doctype: 'HD Ticket',
                         subject: ticketData.subject,
                         description: ticketData.description,
                         priority: ticketData.priority,
                         custom_allocated_to: ticketData.custom_allocated_to,
                         custom_due_date: ticketData.due_date,
                         via_customer_portal: 1,
-                        status: 'Open'
-                    }
+                        template: '',
+                    },
+                    attachments: uploadedFiles,
                 })
             });
 
@@ -276,8 +412,7 @@ const GopocketTickets: React.FC = () => {
             }
 
             const createData = await createRes.json();
-            const createdDoc = createData.message;
-            const ticketName = createdDoc?.name;
+            const ticketName = createData?.message?.name;
 
             if (ticketData.assigned_user && ticketName) {
                 try {
@@ -295,36 +430,11 @@ const GopocketTickets: React.FC = () => {
                 }
             }
 
-            if (ticketData.attachments && ticketData.attachments.length > 0 && ticketName) {
-                let uploadedCount = 0;
-                for (const file of ticketData.attachments) {
-                    try {
-                        const formData = new FormData();
-                        formData.append('file', file, file.name);
-                        formData.append('doctype', 'HD Ticket');
-                        formData.append('docname', ticketName);
-                        formData.append('is_private', '1');
-
-                        const uploadRes = await fetch(`${API_BASE_URL}/api/method/upload_file`, {
-                            method: 'POST',
-                            body: formData
-                        });
-
-                        if (uploadRes.ok) {
-                            uploadedCount++;
-                        }
-                    } catch (e) {
-                        console.error(`Error uploading ${file.name}:`, e);
-                    }
-                }
-                if (uploadedCount > 0) {
-                    toast.success(`Ticket created with ${uploadedCount} attachment(s)`);
-                } else {
-                    toast.success('Ticket created successfully');
-                }
-            } else {
-                toast.success('Ticket created successfully');
-            }
+            toast.success(
+                uploadedFiles.length > 0
+                    ? `Ticket created with ${uploadedFiles.length} attachment(s)`
+                    : 'Ticket created successfully'
+            );
 
             setIsCreateModalOpen(false);
             refetchTickets();
@@ -622,20 +732,8 @@ const GopocketTickets: React.FC = () => {
         return width;
     }, [columnVisibility, columnWidths]);
 
-    const debouncedSearchQuery = useDebounce(searchQuery, 400);
-
     const totalFilters = useMemo(() => {
         const activeFilters: any[] = [];
-
-        if (debouncedSearchQuery) {
-            if (/^\d+$/.test(debouncedSearchQuery)) {
-                activeFilters.push(['name', 'like', `%${debouncedSearchQuery}%`]);
-            } else if (debouncedSearchQuery.includes('@')) {
-                activeFilters.push(['raised_by', 'like', `%${debouncedSearchQuery}%`]);
-            } else {
-                activeFilters.push(['subject', 'like', `%${debouncedSearchQuery}%`]);
-            }
-        }
 
         if (dateRange?.[0] && dateRange?.[1]) {
             const formatLocal = (d: Date) => {
@@ -660,7 +758,7 @@ const GopocketTickets: React.FC = () => {
         }
 
         return activeFilters;
-    }, [debouncedSearchQuery, dateRange, advancedFilters]);
+    }, [dateRange, advancedFilters]);
 
     const filters = useMemo(() => {
         const activeFilters = [...totalFilters];
@@ -938,7 +1036,7 @@ const GopocketTickets: React.FC = () => {
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [debouncedSearchQuery, statusFilter, dateRange]);
+    }, [statusFilter, dateRange]);
 
     const sortedData = useMemo(() => {
         if (!ticketsData) return [];
@@ -1402,20 +1500,99 @@ const GopocketTickets: React.FC = () => {
                                 {selectedRows.size} Selected
                             </span>
                             <div className="h-4 w-[1px] bg-purple-200 mx-1" />
+                            <div className="w-[220px]">
+                                <AssigneeCombobox
+                                    value={null}
+                                    onChange={handleBulkAssign}
+                                    disabled={isBulkAssigning}
+                                    placeholder={isBulkAssigning ? 'Assigning...' : 'Assign to...'}
+                                    triggerClassName="h-8 text-xs rounded-lg border-purple-200 dark:border-purple-800 bg-white dark:bg-slate-900"
+                                />
+                            </div>
+                            <div className="h-4 w-[1px] bg-purple-200 mx-1" />
                             <Button variant="ghost" size="icon" onClick={() => setSelectedRows(new Set())} className="h-6 w-6 text-purple-700 hover:bg-purple-100 rounded-md" title="Clear selection">
                                 <X className="w-3.5 h-3.5 animate-in" />
                             </Button>
                         </div>
                     )}
 
-                    <div className="relative flex-1 min-w-[240px]">
-                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <Input
-                            placeholder="Search Subject, ID, Email..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 focus:ring-purple-500 rounded-xl h-10"
-                        />
+                    <div className="relative flex-1 min-w-[240px] flex items-center gap-2" ref={searchContainerRef}>
+                        <div className="relative flex-1">
+                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <Input
+                                placeholder="Search tickets, comments, emails..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleGlobalSearch();
+                                    }
+                                }}
+                                className="pl-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 focus:ring-purple-500 rounded-xl h-10"
+                            />
+
+                            {searchResultsOpen && (
+                                <div className="absolute left-0 right-0 top-full mt-2 z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl max-h-[400px] overflow-y-auto">
+                                    <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 dark:border-slate-800">
+                                        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                            {searchTotalMatches ?? globalSearchResults.length} result{(searchTotalMatches ?? globalSearchResults.length) === 1 ? '' : 's'}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSearchResultsOpen(false)}
+                                            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                                        >
+                                            <X className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+
+                                    {globalSearchResults.length === 0 ? (
+                                        <div className="px-4 py-8 text-center text-sm text-slate-400 dark:text-slate-500">
+                                            No results found for "{searchQuery}"
+                                        </div>
+                                    ) : (
+                                        <div className="py-1">
+                                            {globalSearchResults.map((result) => {
+                                                const ticketId = result.reference_ticket || (result.doctype === 'HD Ticket' ? result.name : null);
+                                                return (
+                                                    <button
+                                                        key={`${result.doctype}-${result.name}`}
+                                                        type="button"
+                                                        onClick={() => handleSearchResultClick(result)}
+                                                        disabled={!ticketId}
+                                                        className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed border-b border-slate-50 dark:border-slate-800/60 last:border-0"
+                                                    >
+                                                        <div className="flex items-center gap-2 mb-0.5">
+                                                            <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400 shrink-0">
+                                                                {result.doctype}
+                                                            </span>
+                                                            {ticketId && (
+                                                                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 truncate">{ticketId}</span>
+                                                            )}
+                                                        </div>
+                                                        <div
+                                                            className="text-xs text-slate-600 dark:text-slate-300 truncate [&_mark]:bg-yellow-200 dark:[&_mark]:bg-yellow-500/30 [&_mark]:text-inherit [&_mark]:rounded-sm [&_mark]:px-0.5"
+                                                            dangerouslySetInnerHTML={{ __html: result.title || result.content || '' }}
+                                                        />
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        <Button
+                            type="button"
+                            onClick={handleGlobalSearch}
+                            disabled={isGlobalSearching || !searchQuery.trim()}
+                            className="h-10 px-4 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold gap-2 shrink-0 disabled:opacity-50"
+                        >
+                            {isGlobalSearching ? <RefreshCcw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                            Search
+                        </Button>
                     </div>
                     <Button
                         onClick={handleRefresh}
@@ -1481,7 +1658,7 @@ const GopocketTickets: React.FC = () => {
                             size="sm"
                             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                             disabled={currentPage === 1 || isLoading}
-                            className="h-9 w-9 p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-850"
+                            className="h-7 w-7 p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-850"
                         >
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
@@ -1495,7 +1672,7 @@ const GopocketTickets: React.FC = () => {
                             size="sm"
                             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                             disabled={currentPage === totalPages || totalPages === 0 || isLoading}
-                            className="h-9 w-9 p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-850"
+                            className="h-7 w-7 p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-850"
                         >
                             <ChevronRight className="h-4 w-4" />
                         </Button>
@@ -1742,18 +1919,37 @@ const GopocketTickets: React.FC = () => {
                                                 );
                                             }
                                             if (colId === 'assigned_to') {
+                                                const assignees = parseAssignees(row._assign);
                                                 return (
                                                     <td key={colId} className="py-3 px-4" style={{ width: columnWidths.assigned_to, minWidth: columnWidths.assigned_to, maxWidth: columnWidths.assigned_to }}>
-                                                        <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 font-medium text-xs truncate">
-                                                            <div className="w-5 h-5 rounded bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-[10px] shrink-0">
-                                                                <User className="w-3 h-3" />
+                                                        {assignees.length === 0 ? (
+                                                            <span className="text-xs text-slate-400 dark:text-slate-500">-</span>
+                                                        ) : (
+                                                            <div className="flex items-center -space-x-2">
+                                                                {assignees.slice(0, 4).map((email, idx) => (
+                                                                    <Tooltip key={email}>
+                                                                        <TooltipTrigger asChild>
+                                                                            <Avatar
+                                                                                className="h-7 w-7 border-2 border-white dark:border-slate-900 shadow-sm cursor-default"
+                                                                                style={{ zIndex: assignees.length - idx }}
+                                                                            >
+                                                                                <AvatarFallback className={cn("text-[10px] font-bold text-white", avatarColorClass(email))}>
+                                                                                    {getInitials(email)}
+                                                                                </AvatarFallback>
+                                                                            </Avatar>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent side="top" className="text-[11px]">
+                                                                            {email}
+                                                                        </TooltipContent>
+                                                                    </Tooltip>
+                                                                ))}
+                                                                {assignees.length > 4 && (
+                                                                    <div className="h-7 w-7 rounded-full bg-slate-200 dark:bg-slate-700 border-2 border-white dark:border-slate-900 flex items-center justify-center text-[10px] font-bold text-slate-600 dark:text-slate-300 shrink-0">
+                                                                        +{assignees.length - 4}
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                            <span className="truncate">
-                                                                {row.custom_allocated_person_name || row.custom_allocated_code ? (
-                                                                    `${row.custom_allocated_person_name || ''} ${row.custom_allocated_code ? `(${row.custom_allocated_code})` : ''}`.trim()
-                                                                ) : '-'}
-                                                            </span>
-                                                        </div>
+                                                        )}
                                                     </td>
                                                 );
                                             }
@@ -1796,6 +1992,14 @@ const GopocketTickets: React.FC = () => {
                                                             <DropdownMenuItem
                                                                 key={status}
                                                                 onClick={async () => {
+                                                                    if (status === 'Closed' && row.raised_by !== user?.email) {
+                                                                        toastHook({
+                                                                            variant: "destructive",
+                                                                            title: "Not Allowed",
+                                                                            description: "You are not allowed to close the ticket.",
+                                                                        });
+                                                                        return;
+                                                                    }
                                                                     try {
                                                                         await updateDoc('HD Ticket', row.name, { status });
                                                                         toast.success(`Status updated to ${status === 'Replied' ? 'In Progress' : status}`);

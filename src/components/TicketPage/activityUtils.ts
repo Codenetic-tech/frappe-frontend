@@ -18,6 +18,18 @@ export const getInitials = (value: string | null | undefined): string => {
     return pieces.slice(0, 2).map((p) => p[0]).join('').toUpperCase();
 };
 
+const AVATAR_COLORS = [
+    'bg-purple-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500',
+    'bg-pink-500', 'bg-cyan-500', 'bg-indigo-500', 'bg-rose-500',
+];
+
+/** Deterministic background color for an avatar, keyed off a string (e.g. email). */
+export const avatarColorClass = (value: string): string => {
+    let hash = 0;
+    for (let i = 0; i < value.length; i++) hash = value.charCodeAt(i) + ((hash << 5) - hash);
+    return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+};
+
 export const stripHtml = (html: string | null | undefined): string => {
     if (!html) return '';
     try {

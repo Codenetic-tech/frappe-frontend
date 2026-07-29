@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
-import { Save, RefreshCw, Ticket as TicketIcon } from 'lucide-react';
-import { useFrappeUpdateDoc } from 'frappe-react-sdk';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Save, RefreshCw, Ticket as TicketIcon, X } from 'lucide-react';
+import { useFrappeUpdateDoc, useFrappePostCall } from 'frappe-react-sdk';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { AssigneeCombobox, type AssignedToOption } from '@/components/TicketPage/AssigneeCombobox';
 import {
   Field,
   FieldGroup,
@@ -15,8 +18,19 @@ import {
   FieldSeparator,
   FieldSet,
 } from '@/components/ui/field';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
-import { formatDurationShort, formatFullDateTime } from '@/components/TicketPage/activityUtils';
+import { formatDurationShort, formatFullDateTime, getInitials, avatarColorClass } from '@/components/TicketPage/activityUtils';
+import { cn } from '@/lib/utils';
 
 interface TicketDetailsPanelProps {
   ticket: any;
@@ -70,6 +84,102 @@ const RowField = ({
 const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({ ticket, onTicketUpdate }) => {
   const { updateDoc, loading: updating } = useFrappeUpdateDoc();
   const [editedTicket, setEditedTicket] = useState<Record<string, any>>({});
+
+  const [assignees, setAssignees] = useState<string[]>([]);
+  const [loadingAssignees, setLoadingAssignees] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [pendingRemoveEmail, setPendingRemoveEmail] = useState<string | null>(null);
+  const { call: getTicketAssignees } = useFrappePostCall<{ message: string }>(
+    'helpdesk.helpdesk.doctype.hd_ticket.api.get_ticket_assignees'
+  );
+  const { call: assignToAdd } = useFrappePostCall('frappe.desk.form.assign_to.add');
+  const { call: removeAssignment } = useFrappePostCall('helpdesk.api.doc.remove_assignments');
+  const { call: insertActivity } = useFrappePostCall('frappe.client.insert');
+  const [removingEmail, setRemovingEmail] = useState<string | null>(null);
+
+  const refreshAssignees = useCallback(() => {
+    if (!ticket?.name) return;
+    setLoadingAssignees(true);
+    getTicketAssignees({ ticket: ticket.name })
+      .then((res) => {
+        try {
+          const parsed = res?.message ? JSON.parse(res.message) : [];
+          setAssignees(Array.isArray(parsed) ? parsed.filter(Boolean) : []);
+        } catch {
+          setAssignees([]);
+        }
+      })
+      .catch(() => setAssignees([]))
+      .finally(() => setLoadingAssignees(false));
+  }, [ticket?.name, getTicketAssignees]);
+
+  useEffect(() => {
+    refreshAssignees();
+  }, [refreshAssignees]);
+
+  const handleAssignMore = async (option: AssignedToOption) => {
+    if (!ticket?.name) return;
+    setIsAssigning(true);
+    try {
+      await assignToAdd({
+        doctype: 'HD Ticket',
+        name: ticket.name,
+        assign_to: [option.user],
+      });
+
+      try {
+        await insertActivity({
+          doc: {
+            doctype: 'HD Ticket Activity',
+            ticket: ticket.name,
+            action: `assigned ${option.user}`,
+          },
+        });
+      } catch (activityErr) {
+        console.error('Failed to log assignment activity:', activityErr);
+      }
+
+      toast({ variant: 'success', title: 'Assigned', description: `${option.user} added to this ticket.` });
+      refreshAssignees();
+      onTicketUpdate(ticket);
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Assign Failed', description: err?.message || 'Could not assign user.' });
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
+  const handleRemoveAssignment = async (email: string) => {
+    if (!ticket?.name) return;
+    setRemovingEmail(email);
+    try {
+      await removeAssignment({
+        doctype: 'HD Ticket',
+        name: ticket.name,
+        assignees: [email],
+      });
+
+      try {
+        await insertActivity({
+          doc: {
+            doctype: 'HD Ticket Activity',
+            ticket: ticket.name,
+            action: `unassigned ${email}`,
+          },
+        });
+      } catch (activityErr) {
+        console.error('Failed to log unassignment activity:', activityErr);
+      }
+
+      toast({ variant: 'success', title: 'Unassigned', description: `${email} removed from this ticket.` });
+      refreshAssignees();
+      onTicketUpdate(ticket);
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Remove Failed', description: err?.message || 'Could not remove assignee.' });
+    } finally {
+      setRemovingEmail(null);
+    }
+  };
 
   const handleFieldChange = (field: string, value: any) => {
     setEditedTicket((prev) => ({ ...prev, [field]: value }));
@@ -125,6 +235,58 @@ const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({ ticket, onTicke
                 <RowField label="Subject" value={ticket.subject} editValue={editedTicket.subject} onChange={(val) => handleFieldChange('subject', val)} />
                 <RowField label="Raised By" value={ticket.raised_by} editValue={editedTicket.raised_by} onChange={(val) => handleFieldChange('raised_by', val)} />
                 <RowField label="Priority" value={ticket.priority} editValue={editedTicket.priority} onChange={(val) => handleFieldChange('priority', val)} />
+                <Field className="gap-1">
+                  <FieldLabel className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    Assigned To
+                  </FieldLabel>
+                  {loadingAssignees ? (
+                    <div className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
+                      <RefreshCw className="w-3 h-3 animate-spin" />
+                      Loading...
+                    </div>
+                  ) : assignees.length === 0 ? (
+                    <span className="text-xs text-slate-400 dark:text-slate-500">-</span>
+                  ) : (
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      {assignees.map((email) => (
+                        <div key={email} className="relative group/avatar">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Avatar className="h-7 w-7 border-2 border-white dark:border-slate-900 shadow-sm cursor-default">
+                                <AvatarFallback className={cn("text-[10px] font-bold text-white", avatarColorClass(email))}>
+                                  {getInitials(email)}
+                                </AvatarFallback>
+                              </Avatar>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-[11px]">
+                              {email}
+                            </TooltipContent>
+                          </Tooltip>
+                          <button
+                            type="button"
+                            onClick={() => setPendingRemoveEmail(email)}
+                            disabled={removingEmail === email}
+                            title={`Remove ${email}`}
+                            className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity disabled:opacity-50 shadow"
+                          >
+                            {removingEmail === email ? (
+                              <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                            ) : (
+                              <X className="w-2.5 h-2.5" />
+                            )}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <AssigneeCombobox
+                    value={null}
+                    onChange={handleAssignMore}
+                    disabled={isAssigning}
+                    placeholder={isAssigning ? 'Assigning...' : 'Add assignee...'}
+                    triggerClassName="w-full h-9 text-sm mt-1"
+                  />
+                </Field>
                 <RowField label="Ticket Type" value={ticket.ticket_type} editValue={editedTicket.ticket_type} onChange={(val) => handleFieldChange('ticket_type', val)} />
                 <RowField label="Team" value={ticket.agent_group} editValue={editedTicket.agent_group} onChange={(val) => handleFieldChange('agent_group', val)} />
                 <Field orientation="horizontal">
@@ -167,6 +329,29 @@ const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({ ticket, onTicke
           </FieldGroup>
         </form>
       </ScrollArea>
+
+      <AlertDialog open={!!pendingRemoveEmail} onOpenChange={(open) => !open && setPendingRemoveEmail(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove assignee?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingRemoveEmail} will be unassigned from this ticket.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingRemoveEmail) handleRemoveAssignment(pendingRemoveEmail);
+                setPendingRemoveEmail(null);
+              }}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

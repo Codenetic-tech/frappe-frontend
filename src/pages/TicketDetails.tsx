@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     Ticket,
@@ -8,6 +8,7 @@ import {
     RefreshCw,
 } from 'lucide-react';
 import { useFrappeGetDoc, useFrappeUpdateDoc } from 'frappe-react-sdk';
+import { useAuth } from '@/contexts/AuthContext';
 import TicketActivityTab from '@/components/TicketPage/TicketActivityTab';
 import TicketCommentsTab from '@/components/TicketPage/TicketCommentsTab';
 import TicketComposer from '@/components/TicketPage/TicketComposer';
@@ -48,6 +49,8 @@ const TicketDetails: React.FC = () => {
     const [activeTab, setActiveTab] = useState('activity');
     const { updateDoc } = useFrappeUpdateDoc();
 
+    const { user } = useAuth();
+
     const { data: ticket, isLoading, mutate } = useFrappeGetDoc<any>('HD Ticket', ticketId || '', {
         fields: [
             'name', 'subject', 'raised_by', 'status', 'priority', 'ticket_type', 'agent_group',
@@ -59,6 +62,28 @@ const TicketDetails: React.FC = () => {
 
     const { data: activities, isLoading: isActivitiesLoading, refresh: refreshActivities } = useTicketActivities(ticket?.name);
 
+    // Reply "To" should default to the other party in the most recent email
+    // thread — whoever isn't the current logged-in user in the latest
+    // communication's sender/recipients — falling back to the raiser when
+    // there's no email history yet (e.g. a brand new ticket).
+    const defaultReplyTo = useMemo(() => {
+        const communications = activities?.communications;
+        if (!communications || communications.length === 0) return ticket?.raised_by;
+
+        const latest = [...communications].sort(
+            (a, b) => new Date(b.creation).getTime() - new Date(a.creation).getTime()
+        )[0];
+
+        const currentEmail = user?.email;
+        if (latest.sender && latest.sender !== currentEmail) {
+            return latest.sender;
+        }
+        if (latest.recipients) {
+            return latest.recipients.split(',')[0].trim();
+        }
+        return ticket?.raised_by;
+    }, [activities?.communications, user?.email, ticket?.raised_by]);
+
     const tabs: Tab[] = [
         { id: 'activity', label: 'Activity', icon: ActivityIcon },
         { id: 'emails', label: 'Emails', icon: Mail },
@@ -67,6 +92,14 @@ const TicketDetails: React.FC = () => {
 
     const handleStatusUpdate = async (newStatus: string) => {
         if (!ticket) return;
+        if (newStatus === 'Closed' && user?.email !== ticket.raised_by) {
+            toast({
+                variant: "destructive",
+                title: "Not Allowed",
+                description: "You are not allowed to close the ticket.",
+            });
+            return;
+        }
         try {
             await updateDoc('HD Ticket', ticket.name, { status: newStatus });
             mutate();
@@ -84,7 +117,7 @@ const TicketDetails: React.FC = () => {
         }
     };
 
-    const handleCommentAdded = () => {
+    const handleActivityAdded = () => {
         refreshActivities();
     };
 
@@ -199,7 +232,7 @@ const TicketDetails: React.FC = () => {
                                 <ScrollBar orientation="vertical" />
                             </ScrollArea>
 
-                            <TicketComposer ticketName={ticket.name} onCommentAdded={handleCommentAdded} />
+                            <TicketComposer ticketName={ticket.name} defaultTo={defaultReplyTo} onActivityAdded={handleActivityAdded} />
                         </div>
                     </div>
                 </div>

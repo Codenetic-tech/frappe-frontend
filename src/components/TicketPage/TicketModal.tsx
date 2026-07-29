@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useMemo, useCallback } from 'react';
 import { format, setHours, setMinutes } from 'date-fns';
 import {
     Popover,
@@ -23,28 +23,18 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandItem,
-    CommandList,
-} from "@/components/ui/command";
-import { Command as CommandPrimitive } from "cmdk";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     Loader2,
     Ticket,
     MessageSquare,
     User as UserIcon,
-    Search,
     AlertCircle,
     Paperclip,
     Calendar as CalendarIcon,
     X,
     FileIcon,
     Clock,
-    Check,
     UploadCloud,
     FileImage,
     FileText,
@@ -53,7 +43,6 @@ import {
     Trash2,
     Plus,
 } from "lucide-react";
-import { useFrappePostCall } from 'frappe-react-sdk';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -61,6 +50,7 @@ import TiptapUnderline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
 import Link from '@tiptap/extension-link';
 import { EditorToolbar } from './TiptapEditorToolbar';
+import { AssigneeCombobox, type AssignedToOption } from './AssigneeCombobox';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
@@ -70,12 +60,6 @@ interface TicketModalProps {
     onClose: () => void;
     onSubmit: (ticketData: any) => Promise<void>;
     loading: boolean;
-}
-
-interface AssignedToOption {
-    user: string;
-    code: string;
-    for_value: string;
 }
 
 const MAX_FILE_SIZE_MB = 10;
@@ -113,13 +97,6 @@ export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose, onSub
     const [subject, setSubject] = useState('');
     const [priority, setPriority] = useState('Medium');
     const [assignedTo, setAssignedTo] = useState<AssignedToOption | null>(null);
-    const [openTo, setOpenTo] = useState(false);
-    const [assigneeSearch, setAssigneeSearch] = useState('');
-    const [assignees, setAssignees] = useState<AssignedToOption[]>([]);
-    const [assigneesError, setAssigneesError] = useState('');
-    const { call: getAssignedTo, loading: loadingAssignees } = useFrappePostCall<{ message: AssignedToOption[] }>(
-        'gopocket.api.get_assigned_to'
-    );
     const [date, setDate] = useState<Date | undefined>(undefined);
     const [hours, setHoursState] = useState('05');
     const [minutes, setMinutesState] = useState('00');
@@ -155,28 +132,8 @@ export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose, onSub
                 class: 'prose prose-sm max-w-none focus:outline-none min-h-[180px] px-4 py-3 text-slate-800 leading-relaxed',
             },
         },
+        shouldRerenderOnTransaction: true,
     });
-
-    const fetchAssignees = useCallback((query: string) => {
-        setAssigneesError('');
-        getAssignedTo({ search: query || undefined })
-            .then((res) => {
-                setAssignees(res?.message ?? []);
-            })
-            .catch((err: any) => {
-                setAssigneesError(err?.message || 'Failed to load assignees.');
-                setAssignees([]);
-            });
-    }, [getAssignedTo]);
-
-    // Debounced, server-side search — re-queries on every keystroke (capped at
-    // 50 records server-side), not just on first open. Clicking the search icon
-    // (see below) bypasses the debounce and searches immediately.
-    useEffect(() => {
-        if (!openTo) return;
-        const handle = setTimeout(() => fetchAssignees(assigneeSearch), 300);
-        return () => clearTimeout(handle);
-    }, [openTo, assigneeSearch, fetchAssignees]);
 
     const hours_options = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
     const minutes_options = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
@@ -272,7 +229,6 @@ export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose, onSub
         editor?.commands.clearContent();
         setPriority('Medium');
         setAssignedTo(null);
-        setAssigneeSearch('');
         setDate(undefined);
         setHoursState('05');
         setMinutesState('00');
@@ -341,84 +297,7 @@ export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose, onSub
                                     <UserIcon className="w-3.5 h-3.5 text-purple-500" />
                                     TO <span className="text-red-500">*</span>
                                 </Label>
-                                <Popover open={openTo} onOpenChange={setOpenTo}>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            aria-expanded={openTo}
-                                            className="w-full justify-between border-slate-200 rounded-xl h-10 shadow-sm focus:border-purple-300 font-normal px-3 bg-white hover:bg-slate-50 text-sm"
-                                        >
-                                            <span className={cn("truncate", assignedTo ? "text-slate-900 font-medium" : "text-slate-400 text-xs")}>
-                                                {assignedTo ? `${assignedTo.user} (${assignedTo.code})` : "Select recipient..."}
-                                            </span>
-                                            <UserIcon className="w-3.5 h-3.5 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent
-                                        className="w-[310px] p-0 rounded-2xl border-slate-200 shadow-xl overflow-hidden"
-                                        align="start"
-                                        onWheel={(e) => e.stopPropagation()}
-                                    >
-                                        <Command className="border-none overflow-visible" shouldFilter={false}>
-                                            <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => fetchAssignees(assigneeSearch)}
-                                                    title="Search now"
-                                                    className="mr-2 shrink-0 opacity-50 hover:opacity-100 transition-opacity"
-                                                >
-                                                    <Search className="h-4 w-4" />
-                                                </button>
-                                                <CommandPrimitive.Input
-                                                    placeholder="Search user or code..."
-                                                    className="flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                                                    value={assigneeSearch}
-                                                    onValueChange={setAssigneeSearch}
-                                                />
-                                            </div>
-                                            <CommandList className="max-h-[220px] overflow-y-auto pointer-events-auto p-1">
-                                                {loadingAssignees ? (
-                                                    <div className="flex items-center justify-center gap-2 py-6 text-xs text-slate-400 font-medium">
-                                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                                        Loading...
-                                                    </div>
-                                                ) : assigneesError ? (
-                                                    <div className="px-3 py-4 text-xs text-red-500 font-medium text-center">
-                                                        {assigneesError}
-                                                    </div>
-                                                ) : (
-                                                    <>
-                                                        <CommandEmpty>No recipient found.</CommandEmpty>
-                                                        <CommandGroup>
-                                                            {assignees.map((assignee) => (
-                                                                <CommandItem
-                                                                    key={`${assignee.code}-${assignee.user}`}
-                                                                    value={`${assignee.user} ${assignee.code}`}
-                                                                    onSelect={() => {
-                                                                        setAssignedTo(assignee);
-                                                                        setOpenTo(false);
-                                                                    }}
-                                                                    className="cursor-pointer py-2.5 rounded-lg mx-1"
-                                                                >
-                                                                    <div className="flex items-center justify-between w-full">
-                                                                        <div className="flex flex-col">
-                                                                            <span className="font-bold text-slate-700">{assignee.user}</span>
-                                                                            <span className="text-[10px] text-slate-400 font-mono">{assignee.code}</span>
-                                                                        </div>
-                                                                        {assignedTo?.user === assignee.user && assignedTo?.code === assignee.code && (
-                                                                            <Check className="h-4 w-4 text-purple-600" />
-                                                                        )}
-                                                                    </div>
-                                                                </CommandItem>
-                                                            ))}
-                                                        </CommandGroup>
-                                                    </>
-                                                )}
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
+                                <AssigneeCombobox value={assignedTo} onChange={setAssignedTo} />
                             </div>
 
                             {/* Priority */}

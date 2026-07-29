@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useFrappeAuth, FrappeContext } from 'frappe-react-sdk';
 import { User } from '../utils';
+import { fetchUserProfile } from '../utils/frappeUser';
 
 interface AuthContextType {
   user: User | null;
@@ -126,34 +127,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       sessionStorage.setItem('user', JSON.stringify(userData));
 
       // Fetch full User document from Frappe
-      try {
-        const db = (frappeCtx as any)?.db;
-        if (db?.getDoc) {
-          db.getDoc('User', currentUser).then((doc: any) => {
-            const fullDoc = doc?.data ?? doc;
-            setFrappeUser(fullDoc);
-            sessionStorage.setItem('frappe_user', JSON.stringify(fullDoc));
+      fetchUserProfile(frappeCtx, currentUser).then((fullDoc) => {
+        if (!fullDoc) return;
+        setFrappeUser(fullDoc);
+        sessionStorage.setItem('frappe_user', JSON.stringify(fullDoc));
 
-            // Sync full profile data like user_code and category from the User document
-            setUser(prevUser => {
-              if (!prevUser) return null;
-              const updated = {
-                ...prevUser,
-                user_code: fullDoc.username || fullDoc.name || prevUser.user_code,
-                category: fullDoc.category || prevUser.category,
-                firstName: fullDoc.first_name || prevUser.firstName,
-                email: fullDoc.email || prevUser.email
-              };
-              sessionStorage.setItem('user', JSON.stringify(updated));
-              return updated;
-            });
-          }).catch((err: any) => {
-            console.warn('Could not fetch User doc:', err);
-          });
-        }
-      } catch (err) {
-        console.warn('frappeCtx.db not available:', err);
-      }
+        // Sync full profile data like user_code and category from the User document
+        setUser(prevUser => {
+          if (!prevUser) return null;
+          const updated = {
+            ...prevUser,
+            user_code: fullDoc.username || fullDoc.name || prevUser.user_code,
+            category: fullDoc.category || prevUser.category,
+            firstName: fullDoc.first_name || prevUser.firstName,
+            email: fullDoc.email || prevUser.email
+          };
+          sessionStorage.setItem('user', JSON.stringify(updated));
+          return updated;
+        });
+      });
 
     } else if (currentUser === null && !user) {
       // If SDK says null and we have no local user, ensure we are clean
@@ -266,29 +258,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         };
 
         // Fetch full User document from Frappe FIRST before marking login as complete
-        try {
-          const db = (frappeCtx as any)?.db;
-          if (db?.getDoc && loggedInUserName) {
-            console.log('Fetching User document for:', loggedInUserName);
-            const doc = await db.getDoc('User', loggedInUserName);
-            const fullDoc = doc?.data ?? doc;
-            if (fullDoc) {
-              setFrappeUser(fullDoc);
-              sessionStorage.setItem('frappe_user', JSON.stringify(fullDoc));
+        if (loggedInUserName) {
+          console.log('Fetching User profile for:', loggedInUserName);
+          const fullDoc = await fetchUserProfile(frappeCtx, loggedInUserName);
+          if (fullDoc) {
+            setFrappeUser(fullDoc);
+            sessionStorage.setItem('frappe_user', JSON.stringify(fullDoc));
 
-              // Sync full profile data like user_code and category from the User document
-              userData = {
-                ...userData,
-                id: loggedInUserName,
-                email: fullDoc.email || loggedInUserName,
-                user_code: fullDoc.username || fullDoc.name || userData.user_code,
-                category: fullDoc.category || userData.category,
-                firstName: fullDoc.first_name || userData.firstName
-              };
-            }
+            // Sync full profile data like user_code and category from the User document
+            userData = {
+              ...userData,
+              id: loggedInUserName,
+              email: fullDoc.email || loggedInUserName,
+              user_code: fullDoc.username || fullDoc.name || userData.user_code,
+              category: fullDoc.category || userData.category,
+              firstName: fullDoc.first_name || userData.firstName
+            };
           }
-        } catch (err) {
-          console.warn('Could not fetch User doc after login:', err);
         }
 
         setUser(userData);
@@ -361,28 +347,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
 
       // Fetch full User document from Frappe FIRST before marking login as complete
-      try {
-        const db = (frappeCtx as any)?.db;
-        if (db?.getDoc && loggedInUserName) {
-          console.log('Fetching User document for loginWithoutPassword:', loggedInUserName);
-          const doc = await db.getDoc('User', loggedInUserName);
-          const fullDoc = doc?.data ?? doc;
-          if (fullDoc) {
-            setFrappeUser(fullDoc);
-            sessionStorage.setItem('frappe_user', JSON.stringify(fullDoc));
+      if (loggedInUserName) {
+        console.log('Fetching User profile for loginWithoutPassword:', loggedInUserName);
+        const fullDoc = await fetchUserProfile(frappeCtx, loggedInUserName);
+        if (fullDoc) {
+          setFrappeUser(fullDoc);
+          sessionStorage.setItem('frappe_user', JSON.stringify(fullDoc));
 
-            userData = {
-              ...userData,
-              id: loggedInUserName,
-              email: fullDoc.email || loggedInUserName,
-              user_code: fullDoc.username || fullDoc.name || userData.user_code,
-              category: fullDoc.category || userData.category,
-              firstName: fullDoc.first_name || userData.firstName
-            };
-          }
+          userData = {
+            ...userData,
+            id: loggedInUserName,
+            email: fullDoc.email || loggedInUserName,
+            user_code: fullDoc.username || fullDoc.name || userData.user_code,
+            category: fullDoc.category || userData.category,
+            firstName: fullDoc.first_name || userData.firstName
+          };
         }
-      } catch (err) {
-        console.warn('Could not fetch User doc in loginWithoutPassword:', err);
       }
 
       setUser(userData);

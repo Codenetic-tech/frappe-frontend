@@ -25,6 +25,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/contexts/AuthContext";
 import { FrappeContext, useFrappeFileUpload, useFrappeUpdateDoc } from "frappe-react-sdk";
+import { fetchUserProfile } from "@/utils/frappeUser";
 
 type SettingsTab = "profile";
 
@@ -116,13 +117,14 @@ const Settings = () => {
                     user_image: res.file_url
                 });
 
-                const db = frappeCtx?.db;
-                if (db?.getDoc && (localFrappeUser?.name || user?.email || user?.id)) {
-                    const doc = await db.getDoc('User', localFrappeUser?.name || user?.email || user?.id);
-                    const fullDoc = doc?.data ?? doc;
-                    setLocalFrappeUser(fullDoc);
-                    sessionStorage.setItem('frappe_user', JSON.stringify(fullDoc));
-                    window.dispatchEvent(new Event("frappe-user-updated"));
+                const targetUser = localFrappeUser?.name || user?.email || user?.id;
+                if (targetUser) {
+                    const fullDoc = await fetchUserProfile(frappeCtx, targetUser);
+                    if (fullDoc) {
+                        setLocalFrappeUser(fullDoc);
+                        sessionStorage.setItem('frappe_user', JSON.stringify(fullDoc));
+                        window.dispatchEvent(new Event("frappe-user-updated"));
+                    }
                 }
             }
         } catch (err) {
@@ -201,25 +203,20 @@ const Settings = () => {
         const maxRetries = 4;
 
         const fetchUserDoc = () => {
-            const db = frappeCtx?.db;
             const targetUser = user?.email || user?.id;
-            if (db?.getDoc && targetUser) {
-                db.getDoc('User', targetUser)
-                    .then((doc: any) => {
-                        if (!isMounted) return;
-                        const fullDoc = doc?.data ?? doc;
+            if (targetUser) {
+                fetchUserProfile(frappeCtx, targetUser).then((fullDoc) => {
+                    if (!isMounted) return;
+                    if (fullDoc) {
                         setLocalFrappeUser(fullDoc);
                         sessionStorage.setItem('frappe_user', JSON.stringify(fullDoc));
                         window.dispatchEvent(new Event("frappe-user-updated"));
-                    })
-                    .catch((err: any) => {
-                        console.warn("Settings: failed to fetch user doc:", err);
-                        if (isMounted && retryCount < maxRetries) {
-                            retryCount++;
-                            const delay = retryCount * 1500; // incremental backoff
-                            setTimeout(fetchUserDoc, delay);
-                        }
-                    });
+                    } else if (retryCount < maxRetries) {
+                        retryCount++;
+                        const delay = retryCount * 1500; // incremental backoff
+                        setTimeout(fetchUserDoc, delay);
+                    }
+                });
             } else {
                 if (isMounted && retryCount < maxRetries) {
                     retryCount++;

@@ -3,6 +3,7 @@ import { useFrappePostCall } from 'frappe-react-sdk';
 import useSWR from 'swr';
 import { useAuth } from './AuthContext';
 import { useOrgTree } from './OrgTreeContext';
+import { userHasRole } from '@/utils/frappeUser';
 
 export interface RevenueItem {
     ucc: string;
@@ -123,6 +124,13 @@ export const RevenueProvider: React.FC<{ children: ReactNode }> = ({ children })
     const currentFrappeUser = localFrappeUser || frappeUser;
     const userCode = currentFrappeUser?.username || user?.user_code || '';
 
+    // Helpdesk-only agents aren't permitted to call gopocket.revenue.get_revenue —
+    // skip the fetch entirely for them rather than hitting a permission error.
+    const isHelpdeskOnlyUser = useMemo(
+        () => userHasRole(currentFrappeUser, 'Helpdesk Ho User'),
+        [currentFrappeUser]
+    );
+
     const rootCode = useMemo(() => {
         const isAdmin = userCode.toLowerCase() === 'administrator' || user?.category === 'admin';
         if (isAdmin && orgTreeData && orgTreeData.length > 0) {
@@ -155,7 +163,7 @@ export const RevenueProvider: React.FC<{ children: ReactNode }> = ({ children })
     }, [appliedParams]);
 
     // Setup SWR key and fetcher
-    const swrKey = isAuthenticated && rootCode
+    const swrKey = isAuthenticated && rootCode && !isHelpdeskOnlyUser
         ? ['revenue', appliedParams, currentPage, rootCode]
         : null;
 
@@ -221,7 +229,7 @@ export const RevenueProvider: React.FC<{ children: ReactNode }> = ({ children })
         params: RevenueFetchParams,
         onProgress?: (current: number, total: number) => void
     ): Promise<RevenueItem[]> => {
-        if (!isAuthenticated) return [];
+        if (!isAuthenticated || isHelpdeskOnlyUser) return [];
         const EXPORT_PAGE_SIZE = 20000;
         const MAX_RECORDS = 50000;
         const all: RevenueItem[] = [];
@@ -250,7 +258,7 @@ export const RevenueProvider: React.FC<{ children: ReactNode }> = ({ children })
             page++;
         }
         return all;
-    }, [isAuthenticated, postRevenue]);
+    }, [isAuthenticated, isHelpdeskOnlyUser, postRevenue]);
 
     const clearRevenueData = useCallback(() => {
         setAppliedParams(DEFAULT_REVENUE_PARAMS);

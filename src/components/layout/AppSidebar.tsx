@@ -50,6 +50,7 @@ import {
   Wallet
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { userHasRole } from '@/utils/frappeUser';
 import { toast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { TICKETING_DEPARTMENTS } from '@/constants/departments';
@@ -226,15 +227,19 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname;
-  const { user, logout } = useAuth();
+  const { user, frappeUser, logout } = useAuth();
 
   const branchCategories = ["HO", "ZONE", "REGION", "BRANCH", null, ""];
   const isBranchUser = useMemo(() => {
     return branchCategories.includes(user?.category as any);
   }, [user]);
 
+  // Helpdesk-only agents don't have CRM access — the CRM app is hidden from
+  // their app switcher entirely, not just deprioritized.
+  const isHelpdeskOnlyUser = useMemo(() => userHasRole(frappeUser, 'Helpdesk Ho User'), [frappeUser]);
+
   const computedApps = useMemo(() => {
-    return [
+    const apps = [
       {
         id: 'crm',
         name: 'CRM App',
@@ -263,7 +268,8 @@ export function AppSidebar() {
         url: '/hrms'
       }
     ];
-  }, [isBranchUser]);
+    return isHelpdeskOnlyUser ? apps.filter(app => app.id !== 'crm') : apps;
+  }, [isBranchUser, isHelpdeskOnlyUser]);
 
   const [activeAppId, setActiveAppId] = useState(() => {
     if (currentPath.includes('settings')) return 'settings';
@@ -272,7 +278,7 @@ export function AppSidebar() {
     if (currentPath.includes('hrms')) return 'HRMS';
     if (currentPath.includes('orderbook') || currentPath.includes('positions') || currentPath.includes('holdings') || currentPath.includes('mutualfunds') || currentPath.includes('strategy-builder') || currentPath.includes('dashboard')) return 'Trading';
 
-    return 'crm';
+    return isHelpdeskOnlyUser ? 'Ticketing' : 'crm';
   });
 
   // Sync activeAppId with URL

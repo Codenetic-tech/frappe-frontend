@@ -1,11 +1,40 @@
 import React, { useMemo } from 'react';
-import { Activity, MessageSquare, History as HistoryIcon, Eye } from 'lucide-react';
+import { Activity, MessageSquare, Eye, RefreshCw, UserPlus, UserMinus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import EmailActivityCard from './EmailActivityCard';
-import { formatFullDateTime, formatRelativeTime, getInitials, stripHtml } from './activityUtils';
+import { formatFullDateTime, formatRelativeTime, getInitials, stripHtml, avatarColorClass } from './activityUtils';
 import type { TicketActivitiesResponse } from '@/hooks/useTicketActivities';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
+
+type ParsedHistoryAction =
+    | { kind: 'status'; status: string }
+    | { kind: 'assigned'; email: string }
+    | { kind: 'unassigned'; email: string }
+    | { kind: 'other'; text: string };
+
+const parseHistoryAction = (action: string): ParsedHistoryAction => {
+    const statusMatch = action.match(/^set status to (.+)$/i);
+    if (statusMatch) return { kind: 'status', status: statusMatch[1].trim() };
+    const unassignedMatch = action.match(/^unassigned (.+)$/i);
+    if (unassignedMatch) return { kind: 'unassigned', email: unassignedMatch[1].trim() };
+    const assignedMatch = action.match(/^assigned (.+)$/i);
+    if (assignedMatch) return { kind: 'assigned', email: assignedMatch[1].trim() };
+    return { kind: 'other', text: action };
+};
+
+const statusBadgeClass = (status: string): string => {
+    switch (status) {
+        case 'Open': return 'bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400';
+        case 'Replied':
+        case 'In Progress': return 'bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400';
+        case 'Resolved': return 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400';
+        case 'Closed': return 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400';
+        default: return 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400';
+    }
+};
+
+const statusDisplayLabel = (status: string): string => (status === 'Replied' ? 'In Progress' : status);
 
 interface TicketActivityTabProps {
     data: TicketActivitiesResponse | null;
@@ -100,11 +129,53 @@ const TicketActivityTab: React.FC<TicketActivityTabProps> = ({ data, isLoading, 
 
                 if (entry.type === 'history') {
                     const actor = entry.item.user?.name || entry.item.user?.email || entry.item.owner;
+                    const parsed = parseHistoryAction(entry.item.action);
+
+                    if (parsed.kind === 'assigned' || parsed.kind === 'unassigned') {
+                        const isAssigned = parsed.kind === 'assigned';
+                        return (
+                            <div
+                                key={entry.key}
+                                className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-dashed border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20"
+                            >
+                                <Avatar className="h-7 w-7 border border-slate-100 dark:border-slate-800 shrink-0">
+                                    <AvatarFallback className={cn("text-[10px] font-bold text-white", avatarColorClass(parsed.email))}>
+                                        {getInitials(parsed.email)}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">{parsed.email}</span>
+                                    <span className={cn(
+                                        "flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider shrink-0",
+                                        isAssigned
+                                            ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400"
+                                            : "bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400"
+                                    )}>
+                                        {isAssigned ? <UserPlus size={9} /> : <UserMinus size={9} />}
+                                        {isAssigned ? 'Assigned' : 'Unassigned'}
+                                    </span>
+                                    <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">by {actor}</span>
+                                </div>
+                                <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0" title={formatFullDateTime(entry.item.creation)}>
+                                    {formatRelativeTime(entry.item.creation)}
+                                </span>
+                            </div>
+                        );
+                    }
+
                     return (
                         <div key={entry.key} className="flex items-center gap-3 px-4 py-2 text-xs text-slate-500 dark:text-slate-400">
-                            <HistoryIcon size={13} className="text-slate-300 dark:text-slate-600 shrink-0" />
-                            <span className="truncate">
-                                <span className="font-semibold text-slate-600 dark:text-slate-300">{actor}</span> {entry.item.action}
+                            <RefreshCw size={13} className="text-slate-300 dark:text-slate-600 shrink-0" />
+                            <span className="truncate flex items-center gap-1.5 flex-wrap">
+                                <span className="font-semibold text-slate-600 dark:text-slate-300">{actor}</span>
+                                {parsed.kind === 'status' ? (
+                                    <>
+                                        set status to
+                                        <span className={cn("px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider", statusBadgeClass(parsed.status))}>
+                                            {statusDisplayLabel(parsed.status)}
+                                        </span>
+                                    </>
+                                ) : parsed.text}
                             </span>
                             <span className="ml-auto shrink-0" title={formatFullDateTime(entry.item.creation)}>
                                 {formatRelativeTime(entry.item.creation)}
