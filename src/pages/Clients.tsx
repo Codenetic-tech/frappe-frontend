@@ -22,7 +22,17 @@ import {
     DropdownMenuContent,
     DropdownMenuGroup,
     DropdownMenuTrigger,
+    DropdownMenuItem,
+    DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import {
     Command,
     CommandEmpty,
@@ -57,7 +67,10 @@ import {
     Columns3,
     ExternalLink,
     Plus,
-    X
+    X,
+    MoreHorizontal,
+    MessageSquare,
+    Eye,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
@@ -69,23 +82,25 @@ import { useFrappeGetDocList, useFrappeGetDocCount, FrappeContext } from 'frappe
 import useSWR from 'swr';
 
 export interface ClientItem {
-    name: string;
-    creation: string;
-    modified: string;
+    name?: string;
+    creation?: string;
+    modified?: string;
     client_code: string;
     client_name: string;
-    branch: string;
-    account_opened_date: string;
-    mobile_number: string;
-    parent1: string;
-    activation_status: string;
-    nse: string;
-    bse: string;
-    mcx: string;
-    nfo: string;
-    bfo: string;
-    last_traded_day: string;
-    trade_done: string;
+    branch?: string;
+    account_opened_date?: string;
+    mobile_number?: string;
+    parent1?: string;
+    activation_status?: string;
+    nse?: string;
+    bse?: string;
+    mcx?: string;
+    nfo?: string;
+    bfo?: string;
+    last_traded_day?: string;
+    trade_done?: string;
+    _comments?: string;
+    [key: string]: any;
 }
 
 // Custom debounce hook
@@ -229,10 +244,54 @@ const postFetcher = async (payload: { url: string; body: Record<string, any> }) 
 
 const Clients: React.FC = () => {
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, frappeUser } = useAuth();
     const { selectedHierarchy } = useFilter();
     const { orgTreeData } = useOrgTree();
     const frappe = useContext(FrappeContext);
+
+    const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+    const [activeClientForComment, setActiveClientForComment] = useState<ClientItem | null>(null);
+    const [commentText, setCommentText] = useState('');
+    const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+
+    const handleAddComment = async () => {
+        if (!activeClientForComment || !commentText.trim()) return;
+        setIsSubmittingComment(true);
+        try {
+            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+            const headers = { 'Content-Type': 'application/json' };
+            const commentEmail = user?.email || frappeUser?.email || frappeUser?.name || '';
+            const commentBy = frappeUser?.full_name || [frappeUser?.first_name, frappeUser?.last_name].filter(Boolean).join(' ') || user?.firstName || user?.user_code || user?.id || user?.email || '';
+
+            const res = await fetch(`${API_BASE_URL}/api/method/frappe.desk.form.utils.add_comment`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    reference_doctype: 'Gopocket Client',
+                    reference_name: activeClientForComment.name || activeClientForComment.client_code,
+                    content: `<p>${commentText.replace(/\n/g, '<br>')}</p>`,
+                    comment_email: commentEmail,
+                    comment_by: commentBy
+                })
+            });
+
+            if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+            const data = await res.json();
+            if (data.message) {
+                toast.success('Comment added successfully');
+                setCommentText('');
+                setIsCommentModalOpen(false);
+                mutateList();
+            } else {
+                throw new Error('Failed to insert comment');
+            }
+        } catch (e: any) {
+            console.error('Failed to create comment:', e);
+            toast.error(e.message || 'Failed to add comment');
+        } finally {
+            setIsSubmittingComment(false);
+        }
+    };
 
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
@@ -338,6 +397,7 @@ const Clients: React.FC = () => {
             trade_done: true,
             last_trade: true,
             parent: true,
+            _comments: false,
             nse: false,
             bse: false,
             mcx: false,
@@ -656,6 +716,7 @@ const Clients: React.FC = () => {
             body: {
                 doctype: 'Gopocket Client',
                 fields: [
+                    'name',
                     'client_code',
                     'client_name',
                     'mobile_number',
@@ -668,7 +729,8 @@ const Clients: React.FC = () => {
                     'mcx',
                     'nfo',
                     'bfo',
-                    'activation_status'
+                    'activation_status',
+                    '_comments'
                 ],
                 filters,
                 order_by: `${orderByObj.field} ${orderByObj.order}`,
@@ -884,6 +946,22 @@ const Clients: React.FC = () => {
     const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
     const formatValue = (value: string | null) => value || '-';
+
+    const formatComment = (commentsJson: string | null | undefined) => {
+        if (!commentsJson) return '-';
+        try {
+            const parsed = JSON.parse(commentsJson);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                const latest = parsed[parsed.length - 1];
+                const rawComment = latest?.comment || '';
+                const cleanText = rawComment.replace(/<\/?[^>]+(>|$)/g, "");
+                return cleanText || '-';
+            }
+        } catch (e) {
+            console.error('Failed to parse comment JSON:', e);
+        }
+        return '-';
+    };
 
     const renderExchangeBadge = (status: string | null | undefined) => {
         if (!status) return '-';
@@ -1448,6 +1526,7 @@ const Clients: React.FC = () => {
                                     { id: 'trade_done', label: 'Trade Done' },
                                     { id: 'last_trade', label: 'Last Trade' },
                                     { id: 'parent', label: 'Parent' },
+                                    { id: '_comments', label: 'Comments' },
                                     { id: 'nse', label: 'NSE' },
                                     { id: 'bse', label: 'BSE' },
                                     { id: 'mcx', label: 'MCX' },
@@ -1523,9 +1602,9 @@ const Clients: React.FC = () => {
             )}>
                 <TableWrapper scrollWholePage={scrollWholePage}>
                     <table className="w-full text-sm">
-                        <thead className="sticky top-0 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md z-10">
+                        <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">
                             <tr className="border-b border-slate-100 dark:border-slate-800">
-                                <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('client_code')}>
+                                <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col sticky top-0 bg-slate-50 dark:bg-slate-900 z-30" onClick={() => handleSort('client_code')}>
                                     <div className="flex items-center gap-2">
                                         Client Code
                                         {sortConfig?.key === 'client_code' ? (
@@ -1533,9 +1612,9 @@ const Clients: React.FC = () => {
                                         ) : <ArrowUpDown className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover/col:text-slate-400" />}
                                     </div>
                                 </th>
-                                {columnVisibility.mobile && <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400">Mobile</th>}
+                                {columnVisibility.mobile && <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">Mobile</th>}
                                 {columnVisibility.client_name && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('client_name')}>
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col sticky top-0 bg-slate-50 dark:bg-slate-900 z-30" onClick={() => handleSort('client_name')}>
                                         <div className="flex items-center gap-2">
                                             Client Name
                                             {sortConfig?.key === 'client_name' ? (
@@ -1545,7 +1624,7 @@ const Clients: React.FC = () => {
                                     </th>
                                 )}
                                 {columnVisibility.opened_date && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('account_opened_date')}>
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col sticky top-0 bg-slate-50 dark:bg-slate-900 z-30" onClick={() => handleSort('account_opened_date')}>
                                         <div className="flex items-center gap-2">
                                             Opened Date
                                             {sortConfig?.key === 'account_opened_date' ? (
@@ -1554,9 +1633,9 @@ const Clients: React.FC = () => {
                                         </div>
                                     </th>
                                 )}
-                                {columnVisibility.trade_done && <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400">First Trade</th>}
+                                {columnVisibility.trade_done && <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">First Trade</th>}
                                 {columnVisibility.last_trade && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('last_traded_day')}>
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col sticky top-0 bg-slate-50 dark:bg-slate-900 z-30" onClick={() => handleSort('last_traded_day')}>
                                         <div className="flex items-center gap-2">
                                             Last Trade Date
                                             {sortConfig?.key === 'last_traded_day' ? (
@@ -1566,7 +1645,7 @@ const Clients: React.FC = () => {
                                     </th>
                                 )}
                                 {columnVisibility.parent && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('parent1')}>
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col sticky top-0 bg-slate-50 dark:bg-slate-900 z-30" onClick={() => handleSort('parent1')}>
                                         <div className="flex items-center gap-2">
                                             Parent
                                             {sortConfig?.key === 'parent1' ? (
@@ -1575,13 +1654,13 @@ const Clients: React.FC = () => {
                                         </div>
                                     </th>
                                 )}
-                                {columnVisibility.nse && <th className="text-center py-4 px-4 font-semibold text-slate-600 dark:text-slate-400">NSE</th>}
-                                {columnVisibility.bse && <th className="text-center py-4 px-4 font-semibold text-slate-600 dark:text-slate-400">BSE</th>}
-                                {columnVisibility.mcx && <th className="text-center py-4 px-4 font-semibold text-slate-600 dark:text-slate-400">MCX</th>}
-                                {columnVisibility.nfo && <th className="text-center py-4 px-4 font-semibold text-slate-600 dark:text-slate-400">NFO</th>}
-                                {columnVisibility.bfo && <th className="text-center py-4 px-4 font-semibold text-slate-600 dark:text-slate-400">BFO</th>}
+                                {columnVisibility.nse && <th className="text-center py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">NSE</th>}
+                                {columnVisibility.bse && <th className="text-center py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">BSE</th>}
+                                {columnVisibility.mcx && <th className="text-center py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">MCX</th>}
+                                {columnVisibility.nfo && <th className="text-center py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">NFO</th>}
+                                {columnVisibility.bfo && <th className="text-center py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">BFO</th>}
                                 {columnVisibility.status && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('activation_status')}>
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col sticky top-0 bg-slate-50 dark:bg-slate-900 z-30" onClick={() => handleSort('activation_status')}>
                                         <div className="flex items-center gap-2">
                                             Status
                                             {sortConfig?.key === 'activation_status' ? (
@@ -1590,13 +1669,15 @@ const Clients: React.FC = () => {
                                         </div>
                                     </th>
                                 )}
+                                {columnVisibility._comments && <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">Comments</th>}
+                                <th className="text-right py-4 px-4 font-semibold text-slate-600 dark:text-slate-300 sticky top-0 right-0 bg-slate-50 dark:bg-slate-900 border-l border-l-slate-100 dark:border-l-slate-800/50 z-40" style={{ width: 80, minWidth: 80, maxWidth: 80 }}>Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50 dark:divide-slate-800/40">
                             {isLoading ? (
                                 Array.from({ length: 10 }).map((_, i) => (
                                     <tr key={i}>
-                                        <td colSpan={visibleColumnCount} className="p-4">
+                                        <td colSpan={visibleColumnCount + 1} className="p-4">
                                             <Skeleton className="h-8 w-full rounded-lg" />
                                         </td>
                                     </tr>
@@ -1691,11 +1772,46 @@ const Clients: React.FC = () => {
                                                 })()}
                                             </td>
                                         )}
+                                        {columnVisibility._comments && (
+                                            <td className="py-4 px-4 text-slate-600 dark:text-slate-400 truncate max-w-[200px]" title={formatComment(row._comments)}>
+                                                {formatComment(row._comments)}
+                                            </td>
+                                        )}
+                                        <td className="py-4 px-4 text-right sticky right-0 bg-white dark:bg-slate-900 border-l border-l-slate-100 dark:border-l-slate-800/50 z-10 group-hover:bg-slate-50 dark:group-hover:bg-slate-800" onClick={(e) => e.stopPropagation()} style={{ width: 80, minWidth: 80, maxWidth: 80 }}>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
+                                                        <MoreHorizontal className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end" className="w-48 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-xl p-1.5">
+                                                    <DropdownMenuItem
+                                                        onClick={() => navigate(`/clients/${row.client_code}`)}
+                                                        className="text-sm py-2 px-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2"
+                                                    >
+                                                        <Eye className="w-4 h-4 text-slate-500" />
+                                                        View Details
+                                                    </DropdownMenuItem>
+                                                    <div className="h-[1px] bg-slate-100 dark:bg-slate-800 my-1.5" />
+                                                    <DropdownMenuItem
+                                                        onClick={() => {
+                                                            setActiveClientForComment(row);
+                                                            setCommentText('');
+                                                            setIsCommentModalOpen(true);
+                                                        }}
+                                                        className="text-sm py-2 px-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer font-semibold text-purple-600 dark:text-purple-400 flex items-center gap-2"
+                                                    >
+                                                        <MessageSquare className="w-4 h-4" />
+                                                        Add Comment
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </td>
                                     </tr>
                                 ))
                             ) : !isLoading && (
                                 <tr>
-                                    <td colSpan={visibleColumnCount} className="h-48 text-center text-slate-400 dark:text-slate-500">
+                                    <td colSpan={visibleColumnCount + 1} className="h-48 text-center text-slate-400 dark:text-slate-500">
                                         <div className="flex flex-col items-center justify-center">
                                             <Users className="w-10 h-10 mb-2 opacity-10" />
                                             <p className="text-sm font-medium">No results found matching your filters</p>
@@ -1714,6 +1830,46 @@ const Clients: React.FC = () => {
                     </p>
                 </div>
             </Card>
+
+            {/* Add Comment Modal */}
+            <Dialog open={isCommentModalOpen} onOpenChange={setIsCommentModalOpen}>
+                <DialogContent className="sm:max-w-[425px] rounded-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-lg font-bold flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                            <MessageSquare className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                            Add Comment
+                        </DialogTitle>
+                        <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
+                            Adding comment for <span className="font-semibold text-slate-700 dark:text-slate-300">{activeClientForComment?.client_name || activeClientForComment?.client_code}</span> ({activeClientForComment?.client_code})
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-2">
+                        <textarea
+                            value={commentText}
+                            onChange={(e) => setCommentText(e.target.value)}
+                            placeholder="Type your comment here..."
+                            rows={4}
+                            className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 text-sm resize-none"
+                        />
+                    </div>
+                    <DialogFooter className="flex sm:justify-end gap-2 border-t border-slate-100 dark:border-slate-800/80 pt-4">
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsCommentModalOpen(false)}
+                            className="rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleAddComment}
+                            disabled={isSubmittingComment || !commentText.trim()}
+                            className="rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold px-4"
+                        >
+                            {isSubmittingComment ? 'Adding...' : 'Add Comment'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

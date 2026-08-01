@@ -29,9 +29,10 @@ export interface CommunicationItem {
 interface EmailActivityCardProps {
     item: CommunicationItem;
     defaultExpanded?: boolean;
+    isCurrentUser?: boolean;
 }
 
-const EmailActivityCard: React.FC<EmailActivityCardProps> = ({ item, defaultExpanded = false }) => {
+const EmailActivityCard: React.FC<EmailActivityCardProps> = ({ item, defaultExpanded = false, isCurrentUser = false }) => {
     const [expanded, setExpanded] = useState(defaultExpanded);
 
     const displayName = item.user?.name && item.user.name !== item.user?.email ? item.user.name : item.sender;
@@ -39,7 +40,14 @@ const EmailActivityCard: React.FC<EmailActivityCardProps> = ({ item, defaultExpa
     const bodyHtml = collapseQuotedHtml(item.content);
 
     return (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+        <div
+            className={cn(
+                "rounded-2xl border shadow-sm overflow-hidden transition-all w-[90%] sm:w-[82%]",
+                isCurrentUser
+                    ? "ml-auto bg-purple-50/40 dark:bg-purple-950/25 border-purple-200/80 dark:border-purple-900/50"
+                    : "mr-auto bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800"
+            )}
+        >
             <button
                 type="button"
                 onClick={() => setExpanded((prev) => !prev)}
@@ -55,6 +63,11 @@ const EmailActivityCard: React.FC<EmailActivityCardProps> = ({ item, defaultExpa
                 <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-baseline gap-x-1.5">
                         <span className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">{displayName}</span>
+                        {isCurrentUser && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 shrink-0">
+                                You
+                            </span>
+                        )}
                         <span className="text-xs text-slate-400 dark:text-slate-500 truncate">&lt;{item.sender}&gt;</span>
                     </div>
                     {expanded && item.recipients && (

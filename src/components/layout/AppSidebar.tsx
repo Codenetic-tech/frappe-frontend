@@ -246,7 +246,7 @@ export function AppSidebar() {
         icon: Building2,
         color: 'text-emerald-600',
         gradient: 'from-emerald-600 to-teal-700',
-        items: ['Dashboard', 'Leads', 'KYC Status', 'Clients', 'Live Orders', 'Client Holdings', 'Revenue', 'Subscription', 'Announcement', "What's New", 'Activity Log', 'Comments'],
+        items: ['Dashboard', 'Leads', 'KYC Status', 'Clients', 'Live Orders', 'Client Holdings', 'Revenue', 'Subscription', 'Announcement', "What's New"],
         url: '/leads'
       },
       {

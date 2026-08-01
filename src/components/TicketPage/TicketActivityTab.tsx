@@ -6,6 +6,7 @@ import { formatFullDateTime, formatRelativeTime, getInitials, stripHtml, avatarC
 import type { TicketActivitiesResponse } from '@/hooks/useTicketActivities';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/contexts/AuthContext';
 
 type ParsedHistoryAction =
     | { kind: 'status'; status: string }
@@ -78,6 +79,8 @@ const buildFeed = (data: TicketActivitiesResponse | null, filter: 'all' | 'commu
 };
 
 const TicketActivityTab: React.FC<TicketActivityTabProps> = ({ data, isLoading, filter = 'all' }) => {
+    const { user } = useAuth();
+    const currentUserEmail = user?.email;
     const feed = useMemo(() => buildFeed(data, filter), [data, filter]);
 
     if (isLoading) {
@@ -124,7 +127,10 @@ const TicketActivityTab: React.FC<TicketActivityTabProps> = ({ data, isLoading, 
         <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-3">
             {feed.map((entry) => {
                 if (entry.type === 'communication') {
-                    return <EmailActivityCard key={entry.key} item={entry.item} defaultExpanded />;
+                    const isMe = Boolean(
+                        currentUserEmail && (entry.item.user?.email === currentUserEmail || entry.item.sender === currentUserEmail)
+                    );
+                    return <EmailActivityCard key={entry.key} item={entry.item} defaultExpanded isCurrentUser={isMe} />;
                 }
 
                 if (entry.type === 'history') {
@@ -201,10 +207,19 @@ const TicketActivityTab: React.FC<TicketActivityTabProps> = ({ data, isLoading, 
 
                 const actor = entry.item.user?.name || entry.item.user?.email || entry.item.commented_by || 'Someone';
                 const text = stripHtml(entry.item.content) || 'left a comment';
+                const isMe = Boolean(
+                    currentUserEmail && (entry.item.user?.email === currentUserEmail || entry.item.commented_by === currentUserEmail)
+                );
+
                 return (
                     <div
                         key={entry.key}
-                        className="flex items-start gap-3 p-4 rounded-2xl border border-dashed border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20"
+                        className={cn(
+                            "flex items-start gap-3 p-4 rounded-2xl border border-dashed transition-all w-[90%] sm:w-[82%]",
+                            isMe
+                                ? "ml-auto bg-indigo-50/40 dark:bg-indigo-950/25 border-indigo-200/70 dark:border-indigo-900/50"
+                                : "mr-auto bg-slate-50/40 dark:bg-slate-800/20 border-slate-100 dark:border-slate-800"
+                        )}
                     >
                         <Avatar className="h-8 w-8 border border-slate-100 dark:border-slate-800 shrink-0">
                             <AvatarFallback className="bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold">
@@ -214,6 +229,11 @@ const TicketActivityTab: React.FC<TicketActivityTabProps> = ({ data, isLoading, 
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                                 <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{actor}</span>
+                                {isMe && (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 shrink-0">
+                                        You
+                                    </span>
+                                )}
                                 <span className={cn(
                                     "px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider",
                                     "bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400"

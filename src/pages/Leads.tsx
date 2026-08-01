@@ -307,7 +307,7 @@ const Leads: React.FC = () => {
         },
         dismiss: (id?: string) => dismiss(id)
     };
-    const { user } = useAuth();
+    const { user, frappeUser } = useAuth();
     const { selectedHierarchy } = useFilter();
     const { orgTreeData } = useOrgTree();
     const frappe = useContext(FrappeContext);
@@ -692,7 +692,7 @@ const Leads: React.FC = () => {
             }}
             className="absolute right-0 top-0 h-full w-3 cursor-col-resize z-20 group/resize flex items-center justify-center -mr-1.5"
         >
-            <div className="w-[1px] h-5 bg-slate-200 dark:bg-slate-800 group-hover/resize:bg-purple-500/80 active:bg-purple-600 transition-colors" />
+            <div className="w-[1px] h-3.5 bg-slate-200 dark:bg-slate-800 group-hover/resize:bg-purple-500/80 active:bg-purple-600 transition-colors" />
         </div>
     );
 
@@ -771,17 +771,18 @@ const Leads: React.FC = () => {
         try {
             const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
             const headers = { 'Content-Type': 'application/json' };
-            const res = await fetch(`${API_BASE_URL}/api/method/frappe.client.insert`, {
+            const commentEmail = user?.email || frappeUser?.email || frappeUser?.name || '';
+            const commentBy = frappeUser?.full_name || [frappeUser?.first_name, frappeUser?.last_name].filter(Boolean).join(' ') || user?.firstName || user?.user_code || user?.id || user?.email || '';
+
+            const res = await fetch(`${API_BASE_URL}/api/method/frappe.desk.form.utils.add_comment`, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({
-                    doc: {
-                        doctype: 'Comment',
-                        comment_type: 'Comment',
-                        reference_doctype: 'CRM Lead',
-                        reference_name: activeLeadForComment.name,
-                        content: `<p>${commentText.replace(/\n/g, '<br>')}</p>`
-                    }
+                    reference_doctype: 'CRM Lead',
+                    reference_name: activeLeadForComment.name,
+                    content: `<p>${commentText.replace(/\n/g, '<br>')}</p>`,
+                    comment_email: commentEmail,
+                    comment_by: commentBy
                 })
             });
 
@@ -2112,9 +2113,9 @@ const Leads: React.FC = () => {
             )}>
                 <TableWrapper scrollWholePage={scrollWholePage}>
                     <table className="text-sm table-fixed" style={{ width: '100%', minWidth: totalTableWidth }}>
-                        <thead className="sticky top-0 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md z-10">
+                        <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">
                             <tr className="border-b border-slate-100 dark:border-slate-800 whitespace-nowrap">
-                                <th className="text-left py-4 px-4 sticky left-0 bg-slate-50 dark:bg-slate-900 border-r border-r-slate-100 dark:border-r-slate-800/50 z-20" style={{ width: 48, minWidth: 48, maxWidth: 48 }}>
+                                <th className="text-left py-4 px-4 sticky top-0 left-0 bg-slate-50 dark:bg-slate-900 border-r border-r-slate-100 dark:border-r-slate-800/50 z-40" style={{ width: 48, minWidth: 48, maxWidth: 48 }}>
                                     <Checkbox
                                         checked={sortedData.length > 0 && sortedData.every(row => selectedRows.has(row.name))}
                                         onCheckedChange={(checked) => {
@@ -2127,7 +2128,7 @@ const Leads: React.FC = () => {
                                     />
                                 </th>
                                 {columnVisibility.first_name && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col relative" onClick={() => handleSort('first_name')} style={{ width: columnWidths.first_name, minWidth: columnWidths.first_name, maxWidth: columnWidths.first_name }}>
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col relative sticky top-0 bg-slate-50 dark:bg-slate-900 z-30" onClick={() => handleSort('first_name')} style={{ width: columnWidths.first_name, minWidth: columnWidths.first_name, maxWidth: columnWidths.first_name }}>
                                         <div className="flex items-center gap-2 truncate pr-2">
                                             First Name
                                             {sortConfig?.key === 'first_name' ? (
@@ -2221,7 +2222,7 @@ const Leads: React.FC = () => {
                                             }}
                                             onDrop={(e) => handleDrop(e, index)}
                                             className={cn(
-                                                "text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-grab active:cursor-grabbing select-none group/col relative transition-all duration-150 hover:bg-slate-100/50 dark:hover:bg-slate-800/30",
+                                                "text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-grab active:cursor-grabbing select-none group/col relative transition-all duration-150 hover:bg-slate-100/50 dark:hover:bg-slate-800/30 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30",
                                                 draggedIndex !== null && draggedIndex !== index && draggedOverIndex === index && "bg-purple-50/50 dark:bg-purple-950/10"
                                             )}
                                             onClick={onClickHandler}
@@ -2242,8 +2243,8 @@ const Leads: React.FC = () => {
                                         </th>
                                     );
                                 })}
-                                <th className="p-0 m-0 border-none w-auto" style={{ minWidth: 0 }} />
-                                <th className="text-right py-4 px-4 font-semibold text-slate-600 dark:text-slate-300 sticky right-0 bg-slate-50 dark:bg-slate-900 border-l border-l-slate-100 dark:border-l-slate-800/50 z-20" style={{ width: 80, minWidth: 80, maxWidth: 80 }}>Actions</th>
+                                <th className="p-0 m-0 border-none w-auto sticky top-0 bg-slate-50 dark:bg-slate-900 z-30" style={{ minWidth: 0 }} />
+                                <th className="text-right py-4 px-4 font-semibold text-slate-600 dark:text-slate-300 sticky top-0 right-0 bg-slate-50 dark:bg-slate-900 border-l border-l-slate-100 dark:border-l-slate-800/50 z-40" style={{ width: 80, minWidth: 80, maxWidth: 80 }}>Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
@@ -2419,7 +2420,7 @@ const Leads: React.FC = () => {
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end" className="w-48 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-xl p-1.5">
                                                     <DropdownMenuLabel className="text-sm font-bold text-slate-500 dark:text-slate-400 px-3 py-1.5">Change Status</DropdownMenuLabel>
-                                                    {['New', 'Followup', 'Not Interested', 'Call Back', 'Switch off', 'RNR']
+                                                    {['Followup', 'Not Interested', 'Call Back', 'Switch off', 'RNR']
                                                         .filter(s => s !== row.status)
                                                         .map((status) => (
                                                             <DropdownMenuItem

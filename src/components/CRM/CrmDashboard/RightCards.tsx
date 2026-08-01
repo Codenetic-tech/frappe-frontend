@@ -1,6 +1,6 @@
 import { Info, Settings, ChevronDown } from "lucide-react";
 import { useFrappeGetDocCount } from 'frappe-react-sdk';
-import { useRevenue } from "@/contexts/RevenueContext";
+import { useRevenue, getSegmentValue } from "@/contexts/RevenueContext";
 
 export function Deprioritization() {
   const { data: dormantCount = 0 } = useFrappeGetDocCount('Gopocket Client', [['activation_status', '=', 'DORMANT']]);
@@ -24,8 +24,8 @@ export function Deprioritization() {
 export function RoiCalculator() {
   const { summary } = useRevenue();
 
-  const directBrokerage = summary?.brokerageDirect || 0;
-  const totalNetIncome = summary?.incomeTotal || 0;
+  const directBrokerage = getSegmentValue(summary?.brokerageDirect);
+  const totalNetIncome = getSegmentValue(summary?.incomeTotal);
 
   const formatCurrency = (val: number) => {
     return val.toLocaleString('en-IN', {

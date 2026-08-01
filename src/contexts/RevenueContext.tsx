@@ -5,6 +5,17 @@ import { useAuth } from './AuthContext';
 import { useOrgTree } from './OrgTreeContext';
 import { userHasRole } from '@/utils/frappeUser';
 
+export interface SegmentBreakdown {
+    total: number;
+    mcx?: number;
+    nse?: number;
+    nfo?: number;
+    cnfo?: number;
+    ncom?: number;
+    bse?: number;
+    bfo?: number;
+}
+
 export interface RevenueItem {
     ucc: string;
     name: string;
@@ -12,21 +23,54 @@ export interface RevenueItem {
     parent: string;
     path?: string;
     level?: number;
-    brokerage: number;
-    payout: number;
-    income: number;
+    brokerage: number | SegmentBreakdown;
+    payout: number | SegmentBreakdown;
+    income: number | SegmentBreakdown;
 }
 
 export interface RevenueSummary {
-    brokerageDirect: number;
-    brokerageInDirect: number;
-    brokerageTotal: number;
-    payoutDirect: number;
-    payoutInDirect: number;
-    payoutTotal: number;
-    incomeDirect: number;
-    incomeInDirect: number;
-    incomeTotal: number;
+    brokerageDirect: number | SegmentBreakdown;
+    brokerageInDirect: number | SegmentBreakdown;
+    brokerageTotal: number | SegmentBreakdown;
+    payoutDirect: number | SegmentBreakdown;
+    payoutInDirect: number | SegmentBreakdown;
+    payoutTotal: number | SegmentBreakdown;
+    incomeDirect: number | SegmentBreakdown;
+    incomeInDirect: number | SegmentBreakdown;
+    incomeTotal: number | SegmentBreakdown;
+}
+
+export function getSegmentValue(val: number | SegmentBreakdown | null | undefined): number {
+    if (val == null) return 0;
+    if (typeof val === 'number') return val;
+    if (typeof val === 'object' && typeof val.total === 'number') return val.total;
+    return 0;
+}
+
+export function getSegmentDetails(val: number | SegmentBreakdown | null | undefined): SegmentBreakdown {
+    if (val && typeof val === 'object') {
+        return {
+            total: val.total ?? 0,
+            mcx: val.mcx ?? 0,
+            nse: val.nse ?? 0,
+            nfo: val.nfo ?? 0,
+            cnfo: val.cnfo ?? 0,
+            ncom: val.ncom ?? 0,
+            bse: val.bse ?? 0,
+            bfo: val.bfo ?? 0,
+        };
+    }
+    const num = typeof val === 'number' ? val : 0;
+    return {
+        total: num,
+        mcx: 0,
+        nse: 0,
+        nfo: 0,
+        cnfo: 0,
+        ncom: 0,
+        bse: 0,
+        bfo: 0,
+    };
 }
 
 export interface RevenueFetchParams {

@@ -592,7 +592,7 @@ const GopocketTickets: React.FC = () => {
             }}
             className="absolute right-0 top-0 h-full w-3 cursor-col-resize z-20 group/resize flex items-center justify-center -mr-1.5"
         >
-            <div className="w-[1px] h-5 bg-slate-200 dark:bg-slate-800 group-hover/resize:bg-purple-500/80 active:bg-purple-600 transition-colors" />
+            <div className="w-[1px] h-3.5 bg-slate-200 dark:bg-slate-800 group-hover/resize:bg-purple-500/80 active:bg-purple-600 transition-colors" />
         </div>
     );
 
@@ -1694,9 +1694,9 @@ const GopocketTickets: React.FC = () => {
             )}>
                 <TableWrapper scrollWholePage={scrollWholePage}>
                     <table className="text-sm table-fixed" style={{ width: '100%', minWidth: totalTableWidth }}>
-                        <thead className="sticky top-0 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md z-10">
+                        <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">
                             <tr className="border-b border-slate-100 dark:border-slate-800 whitespace-nowrap">
-                                <th className="text-left py-3 px-4 sticky left-0 bg-slate-50 dark:bg-slate-900 border-r border-r-slate-100 dark:border-r-slate-800/50 z-20" style={{ width: 48, minWidth: 48, maxWidth: 48 }}>
+                                <th className="text-left py-3 px-4 sticky top-0 left-0 bg-slate-50 dark:bg-slate-900 border-r border-r-slate-100 dark:border-r-slate-800/50 z-40" style={{ width: 48, minWidth: 48, maxWidth: 48 }}>
                                     <Checkbox
                                         checked={sortedData.length > 0 && sortedData.every(row => selectedRows.has(row.name))}
                                         onCheckedChange={(checked) => {
@@ -1708,7 +1708,7 @@ const GopocketTickets: React.FC = () => {
                                         }}
                                     />
                                 </th>
-                                <th className="text-left py-3 px-4 sticky left-[48px] bg-slate-50 dark:bg-slate-900 border-r border-r-slate-100 dark:border-r-slate-800/50 z-20 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('name')} style={{ width: 200, minWidth: 200, maxWidth: 200 }}>
+                                <th className="text-left py-3 px-4 sticky top-0 left-[48px] bg-slate-50 dark:bg-slate-900 border-r border-r-slate-100 dark:border-r-slate-800/50 z-40 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('name')} style={{ width: 200, minWidth: 200, maxWidth: 200 }}>
                                     <div className="flex items-center gap-2 truncate pr-2">
                                         Ticket ID
                                         {sortConfig?.key === 'name' ? (
@@ -1806,7 +1806,7 @@ const GopocketTickets: React.FC = () => {
                                             }}
                                             onDrop={(e) => handleDrop(e, index)}
                                             className={cn(
-                                                "text-left py-3 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-grab active:cursor-grabbing select-none group/col relative transition-all duration-150 hover:bg-slate-100/50 dark:hover:bg-slate-800/30",
+                                                "text-left py-3 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-grab active:cursor-grabbing select-none group/col relative transition-all duration-150 hover:bg-slate-100/50 dark:hover:bg-slate-800/30 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30",
                                                 draggedIndex !== null && draggedIndex !== index && draggedOverIndex === index && "bg-purple-50/50 dark:bg-purple-950/10"
                                             )}
                                             onClick={onClickHandler}
@@ -1827,8 +1827,8 @@ const GopocketTickets: React.FC = () => {
                                         </th>
                                     );
                                 })}
-                                <th className="p-0 m-0 border-none w-auto" style={{ minWidth: 0 }} />
-                                <th className="text-right py-3 px-4 font-semibold text-slate-600 dark:text-slate-300 sticky right-0 bg-slate-50 dark:bg-slate-900 border-l border-l-slate-100 dark:border-l-slate-800/50 z-20" style={{ width: 80, minWidth: 80, maxWidth: 80 }}>Actions</th>
+                                <th className="p-0 m-0 border-none w-auto sticky top-0 bg-slate-50 dark:bg-slate-900 z-30" style={{ minWidth: 0 }} />
+                                <th className="text-right py-3 px-4 font-semibold text-slate-600 dark:text-slate-300 sticky top-0 right-0 bg-slate-50 dark:bg-slate-900 border-l border-l-slate-100 dark:border-l-slate-800/50 z-40" style={{ width: 80, minWidth: 80, maxWidth: 80 }}>Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">

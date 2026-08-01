@@ -1,11 +1,12 @@
 import React, { useMemo, useState, useEffect, useCallback, useContext } from 'react';
+import useSWR from 'swr';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFilter } from '@/contexts/FilterContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import {
     Select,
     SelectContent,
@@ -181,11 +182,81 @@ interface AdvancedFilter {
     value: string | [string, string];
 }
 
+const postFetcher = async (key: string | [string, string] | { url: string; body: Record<string, any> }) => {
+    let url = '';
+    let bodyStr = '';
+
+    if (Array.isArray(key)) {
+        url = key[0];
+        bodyStr = key[1];
+    } else if (typeof key === 'object' && key !== null) {
+        url = key.url;
+        bodyStr = JSON.stringify(key.body);
+    } else {
+        url = key as string;
+    }
+
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: bodyStr || undefined
+    });
+    if (!response.ok) {
+        let errData;
+        try {
+            errData = await response.json();
+        } catch (e) {
+            errData = { message: response.statusText || 'Fetch failed' };
+        }
+        const error: any = new Error(errData.message || 'Fetch failed');
+        error.status = response.status;
+        error.info = errData;
+        throw error;
+    }
+    const data = await response.json();
+    return data.message;
+};
+
+const TableWrapper = ({ scrollWholePage, children }: { scrollWholePage: boolean; children: React.ReactNode }) => {
+    if (scrollWholePage) {
+        return (
+            <ScrollArea className="w-full">
+                {children}
+                <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+        );
+    }
+    return (
+        <ScrollArea className="flex-1 w-full">
+            {children}
+            <ScrollBar orientation="horizontal" />
+        </ScrollArea>
+    );
+};
+
 const Kyc: React.FC = () => {
-    const { user } = useAuth();
+    const { user, frappeUser } = useAuth();
     const { orgTreeData } = useOrgTree();
     const { selectedHierarchy } = useFilter();
     const frappe = useContext(FrappeContext);
+
+    const [scrollWholePage, setScrollWholePage] = useState<boolean>(() => {
+        return localStorage.getItem("scroll-whole-page") === "true";
+    });
+
+    const [highlightedRowIds, setHighlightedRowIds] = useState<Set<string>>(new Set());
+
+    useEffect(() => {
+        const handleLayoutChange = () => {
+            setScrollWholePage(localStorage.getItem("scroll-whole-page") === "true");
+        };
+        window.addEventListener("layout-changed", handleLayoutChange);
+        return () => {
+            window.removeEventListener("layout-changed", handleLayoutChange);
+        };
+    }, []);
 
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
@@ -225,31 +296,6 @@ const Kyc: React.FC = () => {
         return stored ? JSON.parse(stored).length === 0 : true;
     });
     const [listError, setListError] = useState<any>(null);
-
-    const [totalCount, setTotalCount] = useState<number>(() => {
-        const stored = sessionStorage.getItem('kycTotalCount');
-        return stored ? Number(stored) : 0;
-    });
-    const [approvedCount, setApprovedCount] = useState<number>(() => {
-        const stored = sessionStorage.getItem('kycApprovedCount');
-        return stored ? Number(stored) : 0;
-    });
-    const [openedCount, setOpenedCount] = useState<number>(() => {
-        const stored = sessionStorage.getItem('kycOpenedCount');
-        return stored ? Number(stored) : 0;
-    });
-    const [pendingCount, setPendingCount] = useState<number>(() => {
-        const stored = sessionStorage.getItem('kycPendingCount');
-        return stored ? Number(stored) : 0;
-    });
-    const [progressCount, setProgressCount] = useState<number>(() => {
-        const stored = sessionStorage.getItem('kycProgressCount');
-        return stored ? Number(stored) : 0;
-    });
-    const [rejectedCount, setRejectedCount] = useState<number>(() => {
-        const stored = sessionStorage.getItem('kycRejectedCount');
-        return stored ? Number(stored) : 0;
-    });
 
     // Advanced Filters State
     const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilter[]>([]);
@@ -486,16 +532,6 @@ const Kyc: React.FC = () => {
 
     const hasPermissionError = !!permissionError;
 
-    // Counts Queries resolved via fetchData
-
-    const statusCount = useMemo(() => ({
-        'APPROVED': approvedCount,
-        'ACCOUNT OPENED': openedCount,
-        'PENDING FOR APPROVAL': pendingCount,
-        'IN PROGRESS': progressCount,
-        'REJECTED': rejectedCount
-    }), [approvedCount, openedCount, pendingCount, progressCount, rejectedCount]);
-
     // Rows Query
     const limit_start = (currentPage - 1) * ITEMS_PER_PAGE;
     const limit = ITEMS_PER_PAGE;
@@ -560,23 +596,46 @@ const Kyc: React.FC = () => {
         }
     }, [swrListError]);
 
-    // Counts queries
-    const { data: sTotalCount = 0, error: totalCountErr, mutate: mutateTotalCount } = useFrappeGetDocCount('KYC', totalFilters, false, hasPermissionError ? null : undefined);
-    const { data: sApprovedCount = 0, error: approvedCountErr, mutate: mutateApprovedCount } = useFrappeGetDocCount('KYC', [...totalFilters, ['application_status', '=', 'APPROVED']], false, hasPermissionError ? null : undefined);
-    const { data: sOpenedCount = 0, error: openedCountErr, mutate: mutateOpenedCount } = useFrappeGetDocCount('KYC', [...totalFilters, ['application_status', '=', 'ACCOUNT OPENED']], false, hasPermissionError ? null : undefined);
-    const { data: sPendingCount = 0, error: pendingCountErr, mutate: mutatePendingCount } = useFrappeGetDocCount('KYC', [...totalFilters, ['application_status', '=', 'PENDING FOR APPROVAL']], false, hasPermissionError ? null : undefined);
-    const { data: sProgressCount = 0, error: progressCountErr, mutate: mutateProgressCount } = useFrappeGetDocCount('KYC', [...totalFilters, ['application_status', '=', 'IN PROGRESS']], false, hasPermissionError ? null : undefined);
-    const { data: sRejectedCount = 0, error: rejectedCountErr, mutate: mutateRejectedCount } = useFrappeGetDocCount('KYC', [...totalFilters, ['application_status', '=', 'REJECTED']], false, hasPermissionError ? null : undefined);
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
-    // Sync counts to state
-    useEffect(() => {
-        if (sTotalCount !== undefined) setTotalCount(sTotalCount);
-        if (sApprovedCount !== undefined) setApprovedCount(sApprovedCount);
-        if (sOpenedCount !== undefined) setOpenedCount(sOpenedCount);
-        if (sPendingCount !== undefined) setPendingCount(sPendingCount);
-        if (sProgressCount !== undefined) setProgressCount(sProgressCount);
-        if (sRejectedCount !== undefined) setRejectedCount(sRejectedCount);
-    }, [sTotalCount, sApprovedCount, sOpenedCount, sPendingCount, sProgressCount, sRejectedCount]);
+    // Fetch dashboard chart data for status breakdown (1 API call instead of 6 separate ones)
+    const { data: chartData, error: chartError, mutate: mutateChart } = useSWR<any>(
+        hasPermissionError ? null : [`${API_BASE_URL}/api/method/frappe.desk.doctype.dashboard_chart.dashboard_chart.get`, JSON.stringify({
+            chart_name: 'Kyc Status',
+            filters: JSON.stringify(totalFilters),
+            refresh: 1
+        })],
+        postFetcher,
+        { revalidateOnFocus: false, revalidateOnReconnect: true, dedupingInterval: 0 }
+    );
+
+    const { statusCount, totalCount } = useMemo(() => {
+        const counts: Record<string, number> = {
+            'APPROVED': 0,
+            'ACCOUNT OPENED': 0,
+            'PENDING FOR APPROVAL': 0,
+            'IN PROGRESS': 0,
+            'REJECTED': 0
+        };
+        let total = 0;
+
+        if (chartData && chartData.labels && chartData.datasets?.[0]?.values) {
+            const labels = chartData.labels;
+            const values = chartData.datasets[0].values;
+
+            for (let i = 0; i < labels.length; i++) {
+                const label = labels[i];
+                const value = Number(values[i]) || 0;
+                total += value;
+
+                if (label) {
+                    counts[label] = value;
+                }
+            }
+        }
+
+        return { statusCount: counts, totalCount: total };
+    }, [chartData]);
 
     // Fetch full timeline document details when a row is clicked
     const { data: selectedKycDoc, isLoading: isDocLoading, error: docError } = useFrappeGetDoc<any>(
@@ -587,7 +646,7 @@ const Kyc: React.FC = () => {
 
     // Watch for permission errors
     useEffect(() => {
-        const errors = [swrListError, totalCountErr, approvedCountErr, openedCountErr, pendingCountErr, progressCountErr, rejectedCountErr, docError];
+        const errors = [swrListError, chartError, docError];
         for (const err of errors) {
             if (err) {
                 const errAny = err as any;
@@ -605,7 +664,7 @@ const Kyc: React.FC = () => {
                 }
             }
         }
-    }, [swrListError, totalCountErr, approvedCountErr, openedCountErr, pendingCountErr, progressCountErr, rejectedCountErr, docError]);
+    }, [swrListError, chartError, docError]);
 
     // Save logs to sessionStorage when loaded
     useEffect(() => {
@@ -613,30 +672,6 @@ const Kyc: React.FC = () => {
             sessionStorage.setItem('kycData', JSON.stringify(kycData));
         }
     }, [kycData]);
-
-    useEffect(() => {
-        sessionStorage.setItem('kycTotalCount', String(totalCount));
-    }, [totalCount]);
-
-    useEffect(() => {
-        sessionStorage.setItem('kycApprovedCount', String(approvedCount));
-    }, [approvedCount]);
-
-    useEffect(() => {
-        sessionStorage.setItem('kycOpenedCount', String(openedCount));
-    }, [openedCount]);
-
-    useEffect(() => {
-        sessionStorage.setItem('kycPendingCount', String(pendingCount));
-    }, [pendingCount]);
-
-    useEffect(() => {
-        sessionStorage.setItem('kycProgressCount', String(progressCount));
-    }, [progressCount]);
-
-    useEffect(() => {
-        sessionStorage.setItem('kycRejectedCount', String(rejectedCount));
-    }, [rejectedCount]);
 
     const error = listError ? (listError.message || 'An error occurred') : permissionError;
 
@@ -653,12 +688,7 @@ const Kyc: React.FC = () => {
         try {
             await Promise.all([
                 mutateList(),
-                mutateTotalCount(),
-                mutateApprovedCount(),
-                mutateOpenedCount(),
-                mutatePendingCount(),
-                mutateProgressCount(),
-                mutateRejectedCount(),
+                mutateChart(),
             ]);
             toast.success('KYC data refreshed successfully');
         } finally {
@@ -677,17 +707,18 @@ const Kyc: React.FC = () => {
         try {
             const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
             const headers = { 'Content-Type': 'application/json' };
-            const res = await fetch(`${API_BASE_URL}/api/method/frappe.client.insert`, {
+            const commentEmail = user?.email || frappeUser?.email || frappeUser?.name || '';
+            const commentBy = frappeUser?.full_name || [frappeUser?.first_name, frappeUser?.last_name].filter(Boolean).join(' ') || user?.firstName || user?.user_code || user?.id || user?.email || '';
+
+            const res = await fetch(`${API_BASE_URL}/api/method/frappe.desk.form.utils.add_comment`, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({
-                    doc: {
-                        doctype: 'Comment',
-                        comment_type: 'Comment',
-                        reference_doctype: 'KYC',
-                        reference_name: activeKycForComment.name,
-                        content: `<p>${commentText.replace(/\n/g, '<br>')}</p>`
-                    }
+                    reference_doctype: 'KYC',
+                    reference_name: activeKycForComment.name,
+                    content: `<p>${commentText.replace(/\n/g, '<br>')}</p>`,
+                    comment_email: commentEmail,
+                    comment_by: commentBy
                 })
             });
 
@@ -713,15 +744,20 @@ const Kyc: React.FC = () => {
     const handleListUpdate = useCallback((eventData: any) => {
         console.log('Realtime KYC event:', eventData);
         mutateList();
-        mutateTotalCount();
-        mutateApprovedCount();
-        mutateOpenedCount();
-        mutatePendingCount();
-        mutateProgressCount();
-        mutateRejectedCount();
+        mutateChart();
 
-        toast.success(`KYC record "${eventData.name}" was modified. List updated automatically.`);
-    }, [mutateList, mutateTotalCount, mutateApprovedCount, mutateOpenedCount, mutatePendingCount, mutateProgressCount, mutateRejectedCount]);
+        const modId = eventData?.name || eventData?.doc?.name || eventData?.application_id || eventData?.mobile_number;
+        if (modId) {
+            setHighlightedRowIds(prev => new Set(prev).add(String(modId)));
+            setTimeout(() => {
+                setHighlightedRowIds(prev => {
+                    const next = new Set(prev);
+                    next.delete(String(modId));
+                    return next;
+                });
+            }, 3000);
+        }
+    }, [mutateList, mutateChart]);
 
     // Unsubscribe from KYC doctype room to avoid broad, noisy updates
     useEffect(() => {
@@ -858,12 +894,19 @@ const Kyc: React.FC = () => {
     const formatValue = (value: string | null) => value || '-';
 
     return (
-        <div className="p-4 h-full flex flex-col overflow-hidden space-y-6">
+        <div className={cn("p-4 space-y-6 flex flex-col", scrollWholePage ? "" : "h-full overflow-hidden")}>
             {/* Header & Summary Section */}
             <div className="shrink-0 space-y-4">
                 {/* Status Summary Grid */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                    <Card className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
+                    <Card
+                        onClick={() => setStatusFilter('ALL')}
+                        className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-all cursor-pointer group relative overflow-hidden rounded-2xl"
+                    >
+                        <div className={cn(
+                            "absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-purple-500 to-indigo-600 transition-opacity",
+                            statusFilter === 'ALL' ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                        )}></div>
                         <div className="flex items-center justify-between mb-2">
                             <span className="text-[12px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Total</span>
                             <div className="p-2 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
@@ -879,7 +922,14 @@ const Kyc: React.FC = () => {
                         </div>
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
+                    <Card
+                        onClick={() => setStatusFilter(prev => prev === 'APPROVED' ? 'ALL' : 'APPROVED')}
+                        className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-all cursor-pointer group relative overflow-hidden rounded-2xl"
+                    >
+                        <div className={cn(
+                            "absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-green-500 to-emerald-600 transition-opacity",
+                            statusFilter === 'APPROVED' ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                        )}></div>
                         <div className="flex items-center justify-between mb-2">
                             <span className="text-[12px] font-bold text-green-600 dark:text-green-455 uppercase tracking-wider">Approved</span>
                             <div className="p-2 bg-green-50 dark:bg-green-950/20 rounded-lg">
@@ -895,7 +945,14 @@ const Kyc: React.FC = () => {
                         </div>
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
+                    <Card
+                        onClick={() => setStatusFilter(prev => prev === 'ACCOUNT OPENED' ? 'ALL' : 'ACCOUNT OPENED')}
+                        className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-all cursor-pointer group relative overflow-hidden rounded-2xl"
+                    >
+                        <div className={cn(
+                            "absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-purple-500 to-violet-600 transition-opacity",
+                            statusFilter === 'ACCOUNT OPENED' ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                        )}></div>
                         <div className="flex items-center justify-between mb-2">
                             <span className="text-[12px] font-bold text-purple-600 dark:text-purple-455 uppercase tracking-wider">Opened</span>
                             <div className="p-2 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
@@ -911,7 +968,14 @@ const Kyc: React.FC = () => {
                         </div>
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
+                    <Card
+                        onClick={() => setStatusFilter(prev => prev === 'PENDING FOR APPROVAL' ? 'ALL' : 'PENDING FOR APPROVAL')}
+                        className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-all cursor-pointer group relative overflow-hidden rounded-2xl"
+                    >
+                        <div className={cn(
+                            "absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-violet-500 to-purple-600 transition-opacity",
+                            statusFilter === 'PENDING FOR APPROVAL' ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                        )}></div>
                         <div className="flex items-center justify-between mb-2">
                             <span className="text-[12px] font-bold text-violet-600 dark:text-violet-455 uppercase tracking-wider">Pending</span>
                             <div className="p-2 bg-violet-50 dark:bg-violet-950/20 rounded-lg">
@@ -927,7 +991,14 @@ const Kyc: React.FC = () => {
                         </div>
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
+                    <Card
+                        onClick={() => setStatusFilter(prev => prev === 'IN PROGRESS' ? 'ALL' : 'IN PROGRESS')}
+                        className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-all cursor-pointer group relative overflow-hidden rounded-2xl"
+                    >
+                        <div className={cn(
+                            "absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-amber-500 to-orange-600 transition-opacity",
+                            statusFilter === 'IN PROGRESS' ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                        )}></div>
                         <div className="flex items-center justify-between mb-2">
                             <span className="text-[12px] font-bold text-amber-600 dark:text-amber-455 uppercase tracking-wider">Progress</span>
                             <div className="p-2 bg-amber-50 dark:bg-amber-950/20 rounded-lg">
@@ -943,7 +1014,14 @@ const Kyc: React.FC = () => {
                         </div>
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
+                    <Card
+                        onClick={() => setStatusFilter(prev => prev === 'REJECTED' ? 'ALL' : 'REJECTED')}
+                        className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-all cursor-pointer group relative overflow-hidden rounded-2xl"
+                    >
+                        <div className={cn(
+                            "absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-red-500 to-rose-600 transition-opacity",
+                            statusFilter === 'REJECTED' ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                        )}></div>
                         <div className="flex items-center justify-between mb-2">
                             <span className="text-[12px] font-bold text-red-600 dark:text-red-455 uppercase tracking-wider">Rejected</span>
                             <div className="p-2 bg-red-50 dark:bg-red-950/20 rounded-lg">
@@ -1375,13 +1453,18 @@ const Kyc: React.FC = () => {
                     <AlertCircle className="w-3.5 h-3.5" />
                     {error}
                 </div>
-            )}            {/* Table Section */}
-            <Card className="flex-1 min-h-0 flex flex-col border-none shadow-sm overflow-hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
-                <ScrollArea className="flex-1">
+            )}
+
+            {/* Table Section */}
+            <Card className={cn(
+                "border-none shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl flex flex-col",
+                scrollWholePage ? "" : "flex-1 min-h-0 overflow-hidden"
+            )}>
+                <TableWrapper scrollWholePage={scrollWholePage}>
                     <table className="w-full text-sm">
-                        <thead className="sticky top-0 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md z-10">
+                        <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">
                             <tr className="border-b border-slate-100 dark:border-slate-800">
-                                <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('application_id')}>
+                                <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400 cursor-pointer select-none group/col sticky top-0 bg-slate-50 dark:bg-slate-900 z-30" onClick={() => handleSort('application_id')}>
                                     <div className="flex items-center gap-2">
                                         App ID
                                         {sortConfig?.key === 'application_id' ? (
@@ -1389,8 +1472,8 @@ const Kyc: React.FC = () => {
                                         ) : <ArrowUpDown className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover/col:text-slate-450" />}
                                     </div>
                                 </th>
-                                <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400">Number</th>
-                                <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('ucc')}>
+                                <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">Number</th>
+                                <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400 cursor-pointer select-none group/col sticky top-0 bg-slate-50 dark:bg-slate-900 z-30" onClick={() => handleSort('ucc')}>
                                     <div className="flex items-center gap-2">
                                         UCC
                                         {sortConfig?.key === 'ucc' ? (
@@ -1398,7 +1481,7 @@ const Kyc: React.FC = () => {
                                         ) : <ArrowUpDown className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover/col:text-slate-450" />}
                                     </div>
                                 </th>
-                                <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('user_name')}>
+                                <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400 cursor-pointer select-none group/col sticky top-0 bg-slate-50 dark:bg-slate-900 z-30" onClick={() => handleSort('user_name')}>
                                     <div className="flex items-center gap-2">
                                         User Name
                                         {sortConfig?.key === 'user_name' ? (
@@ -1406,12 +1489,12 @@ const Kyc: React.FC = () => {
                                         ) : <ArrowUpDown className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover/col:text-slate-450" />}
                                     </div>
                                 </th>
-                                <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400">Refer</th>
-                                <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400">Stage</th>
-                                <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400">Status</th>
-                                <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400">Comments</th>
-                                <th className="text-center py-3 px-4 font-semibold text-slate-655 dark:text-slate-400">Ready</th>
-                                <th className="text-right py-3 px-4 font-semibold text-slate-655 dark:text-slate-400" style={{ width: 80, minWidth: 80, maxWidth: 80 }}>Actions</th>
+                                <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">Refer</th>
+                                <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">Stage</th>
+                                <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">Status</th>
+                                <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">Comments</th>
+                                <th className="text-center py-3 px-4 font-semibold text-slate-655 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">Ready</th>
+                                <th className="text-right py-3 px-4 font-semibold text-slate-655 dark:text-slate-400 sticky top-0 right-0 bg-slate-50 dark:bg-slate-900 border-l border-l-slate-100 dark:border-l-slate-800/50 z-40" style={{ width: 80, minWidth: 80, maxWidth: 80 }}>Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50 dark:divide-slate-800/40">
@@ -1427,70 +1510,85 @@ const Kyc: React.FC = () => {
                                         <td className="py-3 px-4"><Skeleton className="h-5 w-20 rounded-full bg-slate-200 dark:bg-slate-800" /></td>
                                         <td className="py-3 px-4"><Skeleton className="h-4 w-32 bg-slate-200 dark:bg-slate-800" /></td>
                                         <td className="py-3 px-4 text-center"><Skeleton className="w-2 h-2 rounded-full mx-auto bg-slate-200 dark:bg-slate-800" /></td>
-                                        <td className="py-3 px-4 text-right"><Skeleton className="h-8 w-8 rounded-lg ml-auto bg-slate-200 dark:bg-slate-800" /></td>
+                                        <td className="py-3 px-4 text-right sticky right-0 bg-white dark:bg-slate-900 border-l border-l-slate-100 dark:border-l-slate-800/50 z-10"><Skeleton className="h-8 w-8 rounded-lg ml-auto bg-slate-200 dark:bg-slate-800" /></td>
                                     </tr>
                                 ))
                             ) : kycData && kycData.length > 0 ? (
-                                kycData.map((row: any, index: number) => (
-                                    <tr
-                                        key={index}
-                                        className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group"
-                                        onClick={() => setSelectedAppId(row.name || row.application_id)}
-                                    >
-                                        <td className="py-3 px-4 font-medium text-slate-900 dark:text-slate-100">{formatValue(row.application_id)}</td>
-                                        <td className="py-3 px-4 font-medium text-slate-900 dark:text-slate-100">
-                                            {row.mobile_number}
-                                        </td>
-                                        <td className="py-3 px-4 font-mono text-xs text-slate-600 dark:text-slate-400">{row.ucc || '-'}</td>
-                                        <td className="py-3 px-4 text-slate-700 dark:text-slate-300">{formatValue(row.user_name)}</td>
-                                        <td className="py-3 px-4 text-slate-700 dark:text-slate-300">{row.refer ? (referCodeMap.get(row.refer) || row.refer) : '-'}</td>
-                                        <td className="py-3 px-4">
-                                            <div className="flex items-center gap-2">
-                                                <div className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 bg-purple-100 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400">
-                                                    <div className="w-1.5 h-1.5 rounded-full animate-pulse bg-purple-500" />
-                                                    {row.kyc_stage === 'END PAGE' ? 'ESIGN COMPLETED' : formatValue(row.kyc_stage)}
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="py-3 px-4">
-                                            {(() => {
-                                                const status = row.application_status || 'IN PROGRESS';
-                                                const isApproved = status === 'ACCOUNT OPENED' || status === 'APPROVED';
-                                                const isRejected = status === 'REJECTED';
-                                                const isPending = status === 'PENDING FOR APPROVAL';
-                                                
-                                                const currentStyle = isApproved 
-                                                    ? "bg-green-100 dark:bg-green-950/20 text-green-700 dark:text-green-400" 
-                                                    : isRejected 
-                                                        ? "bg-red-100 dark:bg-red-950/20 text-red-700 dark:text-red-400" 
-                                                        : isPending 
-                                                            ? "bg-purple-100 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400" 
-                                                            : "bg-amber-100 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400";
-                                                const currentDot = isApproved ? "bg-green-500" : isRejected ? "bg-red-500" : isPending ? "bg-purple-500" : "bg-amber-500";
-                                                
-                                                return (
-                                                    <div className="flex items-center gap-2">
-                                                        <div className={cn(
-                                                            "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5",
-                                                            currentStyle
-                                                        )}>
-                                                            <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", currentDot)} />
-                                                            {status}
-                                                        </div>
+                                kycData.map((row: any, index: number) => {
+                                    const isHighlighted = highlightedRowIds.has(String(row.name)) ||
+                                                          highlightedRowIds.has(String(row.application_id)) ||
+                                                          highlightedRowIds.has(String(row.mobile_number)) ||
+                                                          (row.ucc && highlightedRowIds.has(String(row.ucc)));
+                                    return (
+                                        <tr
+                                            key={index}
+                                            className={cn(
+                                                "transition-colors duration-700 cursor-pointer group",
+                                                isHighlighted
+                                                    ? "bg-emerald-50/80 dark:bg-emerald-950/30 border-l-2 border-l-emerald-400"
+                                                    : "hover:bg-slate-50/50 dark:hover:bg-slate-800/40"
+                                            )}
+                                            onClick={() => setSelectedAppId(row.name || row.application_id)}
+                                        >
+                                            <td className="py-3 px-4 font-medium text-slate-900 dark:text-slate-100">{formatValue(row.application_id)}</td>
+                                            <td className="py-3 px-4 font-medium text-slate-900 dark:text-slate-100">
+                                                {row.mobile_number}
+                                            </td>
+                                            <td className="py-3 px-4 font-mono text-xs text-slate-600 dark:text-slate-400">{row.ucc || '-'}</td>
+                                            <td className="py-3 px-4 text-slate-700 dark:text-slate-300">{formatValue(row.user_name)}</td>
+                                            <td className="py-3 px-4 text-slate-700 dark:text-slate-300">{row.refer ? (referCodeMap.get(row.refer) || row.refer) : '-'}</td>
+                                            <td className="py-3 px-4">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 bg-purple-100 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400 whitespace-nowrap shrink-0">
+                                                        <div className="w-1.5 h-1.5 rounded-full animate-pulse bg-purple-500 shrink-0" />
+                                                        {row.kyc_stage === 'END PAGE' ? 'ESIGN COMPLETED' : formatValue(row.kyc_stage)}
                                                     </div>
-                                                );
-                                            })()}
-                                        </td>
-                                        <td className="py-3 px-4 text-slate-600 dark:text-slate-400 truncate max-w-[200px]" title={formatComment(row._comments)}>
-                                            {formatComment(row._comments)}
-                                        </td>
-                                        <td className="py-3 px-4 text-center">
-                                            <div className={cn(
-                                                "w-2 h-2 rounded-full mx-auto",
-                                                row.client_mapping ? "bg-green-500" : "bg-red-400 opacity-30"
-                                            )} />
-                                        </td>
-                                        <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()} style={{ width: 80, minWidth: 80, maxWidth: 80 }}>
+                                                </div>
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                {(() => {
+                                                    const status = row.application_status || 'IN PROGRESS';
+                                                    const isApproved = status === 'ACCOUNT OPENED' || status === 'APPROVED';
+                                                    const isRejected = status === 'REJECTED';
+                                                    const isPending = status === 'PENDING FOR APPROVAL';
+                                                    
+                                                    const currentStyle = isApproved 
+                                                        ? "bg-green-100 dark:bg-green-950/20 text-green-700 dark:text-green-400" 
+                                                        : isRejected 
+                                                            ? "bg-red-100 dark:bg-red-950/20 text-red-700 dark:text-red-400" 
+                                                            : isPending 
+                                                                ? "bg-purple-100 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400" 
+                                                                : "bg-amber-100 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400";
+                                                    const currentDot = isApproved ? "bg-green-500" : isRejected ? "bg-red-500" : isPending ? "bg-purple-500" : "bg-amber-500";
+                                                    
+                                                    return (
+                                                        <div className="flex items-center gap-2">
+                                                            <div className={cn(
+                                                                "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 whitespace-nowrap shrink-0",
+                                                                currentStyle
+                                                            )}>
+                                                                <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse shrink-0", currentDot)} />
+                                                                {status}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </td>
+                                            <td className="py-3 px-4 text-slate-600 dark:text-slate-400 truncate max-w-[200px]" title={formatComment(row._comments)}>
+                                                {formatComment(row._comments)}
+                                            </td>
+                                            <td className="py-3 px-4 text-center">
+                                                <div className={cn(
+                                                    "w-2 h-2 rounded-full mx-auto",
+                                                    row.client_mapping ? "bg-green-500" : "bg-red-400 opacity-30"
+                                                )} />
+                                            </td>
+                                            <td className={cn(
+                                                "py-3 px-4 text-right sticky right-0 border-l border-l-slate-100 dark:border-l-slate-800/50 z-10 transition-colors duration-700",
+                                                isHighlighted
+                                                    ? "bg-emerald-50/80 dark:bg-emerald-950/30"
+                                                    : "bg-white dark:bg-slate-900 group-hover:bg-slate-50 dark:group-hover:bg-slate-800"
+                                            )} onClick={(e) => e.stopPropagation()} style={{ width: 80, minWidth: 80, maxWidth: 80 }}>
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                     <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
@@ -1511,9 +1609,10 @@ const Kyc: React.FC = () => {
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
-                                        </td>
-                                    </tr>
-                                ))
+                                            </td>
+                                        </tr>
+                                    );
+                                })
                             ) : !isLoading && (
                                 <tr>
                                     <td colSpan={10} className="h-72 text-center">
@@ -1546,7 +1645,7 @@ const Kyc: React.FC = () => {
                             )}
                         </tbody>
                     </table>
-                </ScrollArea>
+                </TableWrapper>
 
                 {/* Status Info Footer */}
                 <div className="shrink-0 py-2 px-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex justify-center">

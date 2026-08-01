@@ -32,7 +32,7 @@ interface LeadFormTabProps {
 
 // CRM Lead Status is a dynamic Link field; these are the values observed in
 // production activity logs (New -> Followup -> RNR -> Call Back -> Won / Not Interested / Switch off).
-const statusOptions = ['New', 'Followup', 'RNR', 'Call Back', 'Won', 'Not Interested', 'Switch off'];
+const statusOptions = ['Followup', 'RNR', 'Call Back', 'Won', 'Not Interested', 'Switch off'];
 const noOfEmployeesOptions = ['1-10', '11-50', '51-200', '201-500', '501-1000', '1000+'];
 const slaStatusOptions = ['First Response Due', 'Rolling Response Due', 'Failed', 'Fulfilled'];
 

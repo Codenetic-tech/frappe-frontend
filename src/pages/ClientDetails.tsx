@@ -155,8 +155,8 @@ const ClientDetails: React.FC = () => {
         <Badge className={cn(
           "text-[10px] font-extrabold px-2.5 py-0.5 h-5 border-none rounded-full",
           isAct ? "bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50" :
-          isDor ? "bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/50" :
-          "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+            isDor ? "bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/50" :
+              "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
         )}>
           {status || 'INACTIVE'}
         </Badge>
@@ -181,7 +181,7 @@ const ClientDetails: React.FC = () => {
 
   return (
     <div className="h-full flex flex-col overflow-hidden bg-stone-200/50 dark:bg-slate-950/50">
-      <div className="space-y-6 flex-1 flex flex-col min-h-0 p-4">
+      <div className="space-y-6 flex-1 flex flex-col min-h-0">
         {/* Breadcrumbs & Navigation */}
         <div className="flex flex-wrap items-center justify-between gap-4 shrink-0 px-1">
           <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 font-medium font-sans">

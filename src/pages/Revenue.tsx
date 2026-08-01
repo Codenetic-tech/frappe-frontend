@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useRevenue, RevenueFetchParams } from '@/contexts/RevenueContext';
+import { useRevenue, RevenueFetchParams, RevenueItem, SegmentBreakdown, getSegmentValue, getSegmentDetails } from '@/contexts/RevenueContext';
 import { useOrgTree } from '@/contexts/OrgTreeContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -21,6 +21,15 @@ import {
     CommandList,
 } from '@/components/ui/command';
 import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuCheckboxItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
     TrendingUp,
     IndianRupee,
     Users,
@@ -35,10 +44,114 @@ import {
     Search,
     Network,
     X,
+    Info,
+    Columns3,
 } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { toast } from '@/hooks/use-toast';
 import { exportToExcel } from '@/utils/excelExport';
+import { cn } from '@/lib/utils';
+
+// ── all revenue columns config ───────────────────────────────────────────────
+
+export interface ColumnDef {
+    id: string;
+    label: string;
+    defaultVisible: boolean;
+    defaultWidth: number;
+    align: 'left' | 'right';
+}
+
+const ALL_REVENUE_COLUMNS: ColumnDef[] = [
+    { id: 'ucc', label: 'UCC', defaultVisible: true, defaultWidth: 140, align: 'left' },
+    { id: 'name', label: 'Name', defaultVisible: true, defaultWidth: 220, align: 'left' },
+    { id: 'branch', label: 'Branch', defaultVisible: true, defaultWidth: 140, align: 'left' },
+    { id: 'parent', label: 'Parent', defaultVisible: true, defaultWidth: 140, align: 'left' },
+    { id: 'brokerage', label: 'Brokerage', defaultVisible: true, defaultWidth: 160, align: 'right' },
+    { id: 'nfo', label: 'NFO Brokerage', defaultVisible: false, defaultWidth: 150, align: 'right' },
+    { id: 'nse', label: 'NSE Brokerage', defaultVisible: false, defaultWidth: 150, align: 'right' },
+    { id: 'mcx', label: 'MCX Brokerage', defaultVisible: false, defaultWidth: 150, align: 'right' },
+    { id: 'bse', label: 'BSE Brokerage', defaultVisible: false, defaultWidth: 150, align: 'right' },
+    { id: 'bfo', label: 'BFO Brokerage', defaultVisible: false, defaultWidth: 150, align: 'right' },
+    { id: 'cnfo', label: 'CNFO Brokerage', defaultVisible: false, defaultWidth: 150, align: 'right' },
+    { id: 'ncom', label: 'NCOM Brokerage', defaultVisible: false, defaultWidth: 150, align: 'right' },
+    { id: 'payout', label: 'Payout', defaultVisible: true, defaultWidth: 160, align: 'right' },
+    { id: 'income', label: 'Income', defaultVisible: true, defaultWidth: 160, align: 'right' },
+];
+
+// ── segment breakdown popover helper ──────────────────────────────────────────
+
+const SEGMENT_KEYS: { key: keyof Omit<SegmentBreakdown, 'total'>; label: string }[] = [
+    { key: 'nfo', label: 'NFO' },
+    { key: 'nse', label: 'NSE' },
+    { key: 'mcx', label: 'MCX' },
+    { key: 'bse', label: 'BSE' },
+    { key: 'bfo', label: 'BFO' },
+    { key: 'cnfo', label: 'CNFO' },
+    { key: 'ncom', label: 'NCOM' },
+];
+
+const SegmentBreakdownPopover: React.FC<{
+    title: string;
+    data: number | SegmentBreakdown | null | undefined;
+    trigger?: React.ReactNode;
+}> = ({ title, data, trigger }) => {
+    const details = getSegmentDetails(data);
+    const hasData = typeof data === 'object' && data !== null;
+
+    if (!hasData) return null;
+
+    const formatVal = (v: number) =>
+        v.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    return (
+        <Popover>
+            <PopoverTrigger asChild>
+                {trigger || (
+                    <button
+                        className="inline-flex items-center justify-center w-5 h-5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors cursor-pointer shrink-0 ml-1"
+                        title="View Segment Breakdown"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <Info className="w-3.5 h-3.5" />
+                    </button>
+                )}
+            </PopoverTrigger>
+            <PopoverContent
+                className="w-64 p-3 rounded-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl z-50"
+                align="end"
+            >
+                <div className="space-y-2">
+                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate pr-2">{title}</span>
+                        <Badge variant="outline" className="text-[10px] font-mono font-bold bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-900/30 shrink-0">
+                            ₹{formatVal(details.total)}
+                        </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+                        {SEGMENT_KEYS.map(({ key, label }) => {
+                            const val = details[key] ?? 0;
+                            const isNonZero = val !== 0;
+                            return (
+                                <div
+                                    key={key}
+                                    className={`flex items-center justify-between px-2 py-1 rounded-lg text-xs font-mono transition-colors ${
+                                        isNonZero
+                                            ? 'bg-slate-100 dark:bg-slate-800/80 font-bold text-slate-900 dark:text-slate-100'
+                                            : 'text-slate-400 dark:text-slate-600 opacity-50'
+                                    }`}
+                                >
+                                    <span className="text-[10px] font-sans font-semibold uppercase tracking-wider">{label}</span>
+                                    <span>₹{formatVal(val)}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </PopoverContent>
+        </Popover>
+    );
+};
 
 // ── category helpers (same as KYC) ──────────────────────────────────────────
 
@@ -190,6 +303,23 @@ const parseDate = (s: string) => {
 const formatDate = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
+const TableWrapper = ({ scrollWholePage = false, children }: { scrollWholePage?: boolean; children: React.ReactNode }) => {
+    if (scrollWholePage) {
+        return (
+            <ScrollArea className="w-full">
+                {children}
+                <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+        );
+    }
+    return (
+        <ScrollArea className="flex-1 w-full">
+            {children}
+            <ScrollBar orientation="horizontal" />
+        </ScrollArea>
+    );
+};
+
 // ── page ─────────────────────────────────────────────────────────────────────
 
 const Revenue: React.FC = () => {
@@ -209,7 +339,136 @@ const Revenue: React.FC = () => {
     const [selectedClientCodes, setSelectedClientCodes] = useState<string[]>(appliedParams.client_codes);
     const [selectedSubCodes, setSelectedSubCodes] = useState<string[]>(appliedParams.sub_codes);
 
-    const [sortConfig, setSortConfig] = useState<{ key: keyof typeof revenueData[0]; direction: 'asc' | 'desc' } | null>(null);
+    const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
+        const stored = localStorage.getItem('revenueColumnVisibility');
+        const defaults: Record<string, boolean> = {};
+        ALL_REVENUE_COLUMNS.forEach(c => { defaults[c.id] = c.defaultVisible; });
+        return stored ? { ...defaults, ...JSON.parse(stored) } : defaults;
+    });
+
+    useEffect(() => {
+        localStorage.setItem('revenueColumnVisibility', JSON.stringify(columnVisibility));
+    }, [columnVisibility]);
+
+    const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
+        const stored = localStorage.getItem('revenueColumnWidths');
+        const defaults: Record<string, number> = {};
+        ALL_REVENUE_COLUMNS.forEach(c => { defaults[c.id] = c.defaultWidth; });
+        return stored ? { ...defaults, ...JSON.parse(stored) } : defaults;
+    });
+
+    useEffect(() => {
+        localStorage.setItem('revenueColumnWidths', JSON.stringify(columnWidths));
+    }, [columnWidths]);
+
+    const [columnOrder, setColumnOrder] = useState<string[]>(() => {
+        const stored = localStorage.getItem('revenueColumnOrder');
+        const defaultOrder = ALL_REVENUE_COLUMNS.map(c => c.id);
+        if (stored) {
+            try {
+                const parsed = JSON.parse(stored);
+                const filtered = parsed.filter((c: string) => defaultOrder.includes(c));
+                defaultOrder.forEach(col => {
+                    if (!filtered.includes(col)) {
+                        filtered.push(col);
+                    }
+                });
+                return filtered;
+            } catch {
+                return defaultOrder;
+            }
+        }
+        return defaultOrder;
+    });
+
+    useEffect(() => {
+        localStorage.setItem('revenueColumnOrder', JSON.stringify(columnOrder));
+    }, [columnOrder]);
+
+    const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+    const [draggedOverIndex, setDraggedOverIndex] = useState<number | null>(null);
+
+    const handleResizeStart = (e: React.MouseEvent, columnId: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const startX = e.clientX;
+        const startWidth = columnWidths[columnId] || 150;
+
+        const handleMouseMove = (moveEvent: MouseEvent) => {
+            const deltaX = moveEvent.clientX - startX;
+            const newWidth = Math.max(80, startWidth + deltaX);
+            setColumnWidths(prev => {
+                const updated = {
+                    ...prev,
+                    [columnId]: newWidth
+                };
+                localStorage.setItem('revenueColumnWidths', JSON.stringify(updated));
+                return updated;
+            });
+        };
+
+        const handleMouseUp = () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+    };
+
+    const renderResizeHandle = (columnId: string) => (
+        <div
+            onMouseDown={(e) => handleResizeStart(e, columnId)}
+            onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+            }}
+            className="absolute right-0 top-0 h-full w-3 cursor-col-resize z-20 group/resize flex items-center justify-center -mr-1.5"
+        >
+            <div className="w-[1px] h-3.5 bg-slate-200 dark:bg-slate-800 group-hover/resize:bg-purple-500/80 active:bg-purple-600 transition-colors" />
+        </div>
+    );
+
+    const handleDragStart = (e: React.DragEvent, index: number) => {
+        e.dataTransfer.setData('text/plain', index.toString());
+        setDraggedIndex(index);
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+    };
+
+    const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+        e.preventDefault();
+        const sourceIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
+        setDraggedIndex(null);
+        setDraggedOverIndex(null);
+        if (isNaN(sourceIndex) || sourceIndex === targetIndex) return;
+
+        setColumnOrder(prev => {
+            const next = [...prev];
+            const [dragged] = next.splice(sourceIndex, 1);
+            next.splice(targetIndex, 0, dragged);
+            localStorage.setItem('revenueColumnOrder', JSON.stringify(next));
+            return next;
+        });
+    };
+
+    const totalTableWidth = useMemo(() => {
+        return columnOrder.reduce((acc, colId) => {
+            if (columnVisibility[colId]) {
+                return acc + (columnWidths[colId] || 150);
+            }
+            return acc;
+        }, 0);
+    }, [columnOrder, columnVisibility, columnWidths]);
+
+    const visibleColumnCount = useMemo(() => {
+        return Object.values(columnVisibility).filter(Boolean).length;
+    }, [columnVisibility]);
+
+    const [sortConfig, setSortConfig] = useState<{ key: RKey; direction: 'asc' | 'desc' } | null>(null);
     const [isExporting, setIsExporting] = useState(false);
     const [exportProgress, setExportProgress] = useState({ current: 0, total: 0 });
 
@@ -295,8 +554,45 @@ const Revenue: React.FC = () => {
                 setExportProgress({ current, total })
             );
             if (all.length === 0) { toast({ variant: "destructive", title: "No Records", description: "No records found to export" }); return; }
+            
+            const exportRows = all.map(r => {
+                const b = getSegmentDetails(r.brokerage);
+                const p = getSegmentDetails(r.payout);
+                const inc = getSegmentDetails(r.income);
+                return {
+                    'UCC': r.ucc,
+                    'Name': r.name,
+                    'Branch': r.branch,
+                    'Parent': r.parent,
+                    'Brokerage Total': b.total,
+                    'Brokerage NFO': b.nfo,
+                    'Brokerage NSE': b.nse,
+                    'Brokerage MCX': b.mcx,
+                    'Brokerage BSE': b.bse,
+                    'Brokerage BFO': b.bfo,
+                    'Brokerage CNFO': b.cnfo,
+                    'Brokerage NCOM': b.ncom,
+                    'Payout Total': p.total,
+                    'Payout NFO': p.nfo,
+                    'Payout NSE': p.nse,
+                    'Payout MCX': p.mcx,
+                    'Payout BSE': p.bse,
+                    'Payout BFO': p.bfo,
+                    'Payout CNFO': p.cnfo,
+                    'Payout NCOM': p.ncom,
+                    'Income Total': inc.total,
+                    'Income NFO': inc.nfo,
+                    'Income NSE': inc.nse,
+                    'Income MCX': inc.mcx,
+                    'Income BSE': inc.bse,
+                    'Income BFO': inc.bfo,
+                    'Income CNFO': inc.cnfo,
+                    'Income NCOM': inc.ncom,
+                };
+            });
+
             exportToExcel(
-                all.map(r => ({ 'UCC': r.ucc, 'Name': r.name, 'Branch': r.branch, 'Parent': r.parent, 'Brokerage': r.brokerage, 'Payout': r.payout, 'Income': r.income })),
+                exportRows,
                 `Revenue_Export_${formatDate(new Date())}`
             );
             toast({ variant: "success", title: "Exported", description: `Exported ${all.length} records successfully` });
@@ -310,7 +606,7 @@ const Revenue: React.FC = () => {
 
     // ── sort ─────────────────────────────────────────────────────────────────
 
-    type RKey = 'ucc' | 'name' | 'branch' | 'parent' | 'brokerage' | 'payout' | 'income';
+    type RKey = 'ucc' | 'name' | 'branch' | 'parent' | 'brokerage' | 'payout' | 'income' | 'nfo' | 'nse' | 'mcx' | 'bse' | 'bfo' | 'cnfo' | 'ncom';
 
     const handleSort = (key: RKey) => {
         setSortConfig(prev => ({ key, direction: prev?.key === key && prev.direction === 'asc' ? 'desc' : 'asc' }));
@@ -318,9 +614,20 @@ const Revenue: React.FC = () => {
 
     const sortedData = useMemo(() => {
         if (!revenueData || !sortConfig) return revenueData ?? [];
+        const segKeys = ['nfo', 'nse', 'mcx', 'bse', 'bfo', 'cnfo', 'ncom'];
+
         return [...revenueData].sort((a, b) => {
-            const av = a[sortConfig.key as RKey];
-            const bv = b[sortConfig.key as RKey];
+            let av: any = a[sortConfig.key as keyof RevenueItem];
+            let bv: any = b[sortConfig.key as keyof RevenueItem];
+
+            if (segKeys.includes(sortConfig.key)) {
+                av = getSegmentDetails(a.brokerage)[sortConfig.key as keyof Omit<SegmentBreakdown, 'total'>] ?? 0;
+                bv = getSegmentDetails(b.brokerage)[sortConfig.key as keyof Omit<SegmentBreakdown, 'total'>] ?? 0;
+            } else if (sortConfig.key === 'brokerage' || sortConfig.key === 'payout' || sortConfig.key === 'income') {
+                av = getSegmentValue(av);
+                bv = getSegmentValue(bv);
+            }
+
             if (typeof av === 'number' && typeof bv === 'number')
                 return sortConfig.direction === 'asc' ? av - bv : bv - av;
             return sortConfig.direction === 'asc'
@@ -447,52 +754,67 @@ const Revenue: React.FC = () => {
                         directColor: 'text-teal-700 dark:text-teal-300',
                         indirectColor: 'text-teal-500 dark:text-teal-400',
                     },
-                ] as const).map(({ label, total, direct, indirect, accent, iconBg, iconColor, labelColor, directColor, indirectColor }) => (
-                    <Card key={label} className={`bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow overflow-hidden border-l-4 ${accent}`}>
-                        <div className="p-4">
-                            {/* Header — label + total inline */}
-                            <div className="flex items-center justify-between mb-3">
-                                <div className="flex items-center gap-2">
-                                    <div className={`p-1.5 ${iconBg} rounded-lg`}>
-                                        <IndianRupee className={`w-3.5 h-3.5 ${iconColor}`} />
-                                    </div>
-                                    <span className={`text-xs font-bold ${labelColor} uppercase tracking-widest`}>{label}</span>
-                                    {isLoading ? (
-                                        <Skeleton className="h-5 w-28 ml-1 bg-slate-200 dark:bg-slate-850" />
-                                    ) : (
-                                        <span className="text-xl font-bold text-slate-900 dark:text-slate-100 tabular-nums ml-1">
-                                            ₹{total != null ? formatCurrency(total) : '—'}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
+                ] as const).map(({ label, total, direct, indirect, accent, iconBg, iconColor, labelColor, directColor, indirectColor }) => {
+                    const totalVal = total != null ? getSegmentValue(total) : null;
+                    const directVal = direct != null ? getSegmentValue(direct) : null;
+                    const indirectVal = indirect != null ? getSegmentValue(indirect) : null;
 
-                            {/* Direct / Indirect breakdown */}
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Direct</p>
-                                    {isLoading ? (
-                                        <Skeleton className="h-4 w-24 bg-slate-200 dark:bg-slate-850" />
-                                    ) : (
-                                        <p className={`text-sm font-bold ${directColor} tabular-nums`}>
-                                            ₹{direct != null ? formatCurrency(direct) : '—'}
-                                        </p>
-                                    )}
+                    return (
+                        <Card key={label} className={`bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow overflow-hidden border-l-4 ${accent}`}>
+                            <div className="p-4">
+                                {/* Header — label + total inline */}
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <div className={`p-1.5 ${iconBg} rounded-lg shrink-0`}>
+                                            <IndianRupee className={`w-3.5 h-3.5 ${iconColor}`} />
+                                        </div>
+                                        <span className={`text-xs font-bold ${labelColor} uppercase tracking-widest shrink-0`}>{label}</span>
+                                        {isLoading ? (
+                                            <Skeleton className="h-5 w-28 ml-1 bg-slate-200 dark:bg-slate-850" />
+                                        ) : (
+                                            <div className="flex items-center gap-1 min-w-0 ml-1">
+                                                <span className="text-xl font-bold text-slate-900 dark:text-slate-100 tabular-nums truncate">
+                                                    ₹{totalVal != null ? formatCurrency(totalVal) : '—'}
+                                                </span>
+                                                <SegmentBreakdownPopover title={`Total ${label}`} data={total} />
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Indirect</p>
-                                    {isLoading ? (
-                                        <Skeleton className="h-4 w-24 bg-slate-200 dark:bg-slate-850" />
-                                    ) : (
-                                        <p className={`text-sm font-bold ${indirectColor} tabular-nums`}>
-                                            ₹{indirect != null ? formatCurrency(indirect) : '—'}
-                                        </p>
-                                    )}
+
+                                {/* Direct / Indirect breakdown */}
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Direct</p>
+                                            <SegmentBreakdownPopover title={`Direct ${label}`} data={direct} />
+                                        </div>
+                                        {isLoading ? (
+                                            <Skeleton className="h-4 w-24 bg-slate-200 dark:bg-slate-850" />
+                                        ) : (
+                                            <p className={`text-sm font-bold ${directColor} tabular-nums`}>
+                                                ₹{directVal != null ? formatCurrency(directVal) : '—'}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Indirect</p>
+                                            <SegmentBreakdownPopover title={`Indirect ${label}`} data={indirect} />
+                                        </div>
+                                        {isLoading ? (
+                                            <Skeleton className="h-4 w-24 bg-slate-200 dark:bg-slate-850" />
+                                        ) : (
+                                            <p className={`text-sm font-bold ${indirectColor} tabular-nums`}>
+                                                ₹{indirectVal != null ? formatCurrency(indirectVal) : '—'}
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </Card>
-                ))}
+                        </Card>
+                    );
+                })}
             </div>
 
             {/* Filter bar */}
@@ -585,6 +907,56 @@ const Revenue: React.FC = () => {
                     </Button>
                 )}
 
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button
+                            variant="outline"
+                            className="rounded-xl h-10 px-3.5 font-semibold gap-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-850 transition-all shrink-0"
+                        >
+                            <Columns3 className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                            <span className="text-xs">Columns</span>
+                            <ChevronDown className="w-3.5 h-3.5 opacity-50 ml-0.5" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl p-1 z-50 max-h-[360px] overflow-y-auto">
+                        <DropdownMenuLabel className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-2 py-1.5">
+                            Standard Columns
+                        </DropdownMenuLabel>
+                        <DropdownMenuGroup>
+                            {ALL_REVENUE_COLUMNS.filter(c => !['nfo', 'nse', 'mcx', 'bse', 'bfo', 'cnfo', 'ncom'].includes(c.id)).map((col) => (
+                                <DropdownMenuCheckboxItem
+                                    key={col.id}
+                                    className="text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 focus:bg-slate-50 dark:focus:bg-slate-800 rounded-lg py-1.5"
+                                    checked={columnVisibility[col.id]}
+                                    onCheckedChange={(checked) =>
+                                        setColumnVisibility(prev => ({ ...prev, [col.id]: checked }))
+                                    }
+                                >
+                                    {col.label}
+                                </DropdownMenuCheckboxItem>
+                            ))}
+                        </DropdownMenuGroup>
+                        <DropdownMenuSeparator className="bg-slate-100 dark:bg-slate-800 my-1" />
+                        <DropdownMenuLabel className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-2 py-1.5">
+                            Segment Columns
+                        </DropdownMenuLabel>
+                        <DropdownMenuGroup>
+                            {ALL_REVENUE_COLUMNS.filter(c => ['nfo', 'nse', 'mcx', 'bse', 'bfo', 'cnfo', 'ncom'].includes(c.id)).map((col) => (
+                                <DropdownMenuCheckboxItem
+                                    key={col.id}
+                                    className="text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 focus:bg-slate-50 dark:focus:bg-slate-800 rounded-lg py-1.5"
+                                    checked={columnVisibility[col.id]}
+                                    onCheckedChange={(checked) =>
+                                        setColumnVisibility(prev => ({ ...prev, [col.id]: checked }))
+                                    }
+                                >
+                                    {col.label}
+                                </DropdownMenuCheckboxItem>
+                            ))}
+                        </DropdownMenuGroup>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+
                 <Button
                     variant="outline"
                     size="sm"
@@ -639,59 +1011,185 @@ const Revenue: React.FC = () => {
 
             {/* Table */}
             <Card className="flex-1 min-h-0 flex flex-col border-none shadow-sm overflow-hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
-                <ScrollArea className="flex-1">
-                    <table className="w-full text-sm">
-                        <thead className="sticky top-0 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md z-10">
-                            <tr className="border-b border-slate-100 dark:border-slate-800">
-                                <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('ucc')}>
-                                    <div className="flex items-center gap-2">UCC <SortIcon col="ucc" /></div>
-                                </th>
-                                <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('name')}>
-                                    <div className="flex items-center gap-2">Name <SortIcon col="name" /></div>
-                                </th>
-                                <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('branch')}>
-                                    <div className="flex items-center gap-2">Branch <SortIcon col="branch" /></div>
-                                </th>
-                                <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('parent')}>
-                                    <div className="flex items-center gap-2">Parent <SortIcon col="parent" /></div>
-                                </th>
-                                <th className="text-right py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('brokerage')}>
-                                    <div className="flex items-center justify-end gap-2">Brokerage <SortIcon col="brokerage" /></div>
-                                </th>
-                                <th className="text-right py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('payout')}>
-                                    <div className="flex items-center justify-end gap-2">Payout <SortIcon col="payout" /></div>
-                                </th>
-                                <th className="text-right py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('income')}>
-                                    <div className="flex items-center justify-end gap-2">Income <SortIcon col="income" /></div>
-                                </th>
+                <TableWrapper scrollWholePage={false}>
+                    <table className="text-sm table-fixed" style={{ width: '100%', minWidth: totalTableWidth }}>
+                        <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">
+                            <tr className="border-b border-slate-100 dark:border-slate-800 whitespace-nowrap">
+                                {columnOrder.filter(colId => colId !== 'income').map((colId, index) => {
+                                    if (!columnVisibility[colId]) return null;
+
+                                    const colDef = ALL_REVENUE_COLUMNS.find(c => c.id === colId);
+                                    if (!colDef) return null;
+
+                                    const isRight = colDef.align === 'right';
+                                    const isSegment = ['nfo', 'nse', 'mcx', 'bse', 'bfo', 'cnfo', 'ncom'].includes(colId);
+
+                                    return (
+                                        <th
+                                            key={colId}
+                                            draggable
+                                            onDragStart={(e) => handleDragStart(e, index)}
+                                            onDragOver={(e) => {
+                                                handleDragOver(e);
+                                                setDraggedOverIndex(index);
+                                            }}
+                                            onDragLeave={() => setDraggedOverIndex(null)}
+                                            onDragEnd={() => {
+                                                setDraggedIndex(null);
+                                                setDraggedOverIndex(null);
+                                            }}
+                                            onDrop={(e) => handleDrop(e, index)}
+                                            className={cn(
+                                                "py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-grab active:cursor-grabbing select-none group/col relative transition-all duration-150 hover:bg-slate-100/50 dark:hover:bg-slate-800/30 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30",
+                                                isRight ? "text-right" : "text-left",
+                                                isSegment && "text-purple-600 dark:text-purple-400",
+                                                draggedIndex !== null && draggedIndex !== index && draggedOverIndex === index && "bg-purple-50/50 dark:bg-purple-950/10"
+                                            )}
+                                            onClick={() => handleSort(colId as RKey)}
+                                            style={{
+                                                width: columnWidths[colId] || colDef.defaultWidth,
+                                                minWidth: columnWidths[colId] || colDef.defaultWidth,
+                                                maxWidth: columnWidths[colId] || colDef.defaultWidth,
+                                            }}
+                                        >
+                                            <div className={cn("flex items-center gap-2 truncate pr-2", isRight && "justify-end")}>
+                                                <span>{colDef.label}</span>
+                                                <SortIcon col={colId as RKey} />
+                                            </div>
+                                            {renderResizeHandle(colId)}
+                                            {draggedOverIndex === index && draggedIndex !== null && draggedIndex !== index && (
+                                                <div className={cn(
+                                                    "absolute top-0 bottom-0 w-1 bg-purple-600 z-30 pointer-events-none animate-pulse",
+                                                    draggedIndex < index ? "right-0" : "left-0"
+                                                )} />
+                                            )}
+                                        </th>
+                                    );
+                                })}
+                                {/* Spacer Column so table expands to fill container seamlessly */}
+                                <th className="p-0 m-0 border-none w-auto sticky top-0 bg-slate-50 dark:bg-slate-900 z-30" style={{ minWidth: 0 }} />
+                                {/* Fixed Sticky Income Column on Right */}
+                                {columnVisibility.income && (
+                                    <th
+                                        className="text-right py-4 px-4 font-semibold text-teal-600 dark:text-teal-400 sticky top-0 right-0 bg-slate-50 dark:bg-slate-900 border-l border-l-slate-100 dark:border-l-slate-800/50 z-40 cursor-pointer select-none group/col relative"
+                                        onClick={() => handleSort('income')}
+                                        style={{
+                                            width: columnWidths.income || 160,
+                                            minWidth: columnWidths.income || 160,
+                                            maxWidth: columnWidths.income || 160,
+                                        }}
+                                    >
+                                        <div className="flex items-center justify-end gap-2 truncate pr-2">
+                                            <span>Income</span>
+                                            <SortIcon col="income" />
+                                        </div>
+                                        {renderResizeHandle('income')}
+                                    </th>
+                                )}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50 dark:divide-slate-800/40">
                             {isLoading ? (
                                 Array.from({ length: 10 }).map((_, i) => (
-                                    <tr key={i}><td colSpan={7} className="p-4"><Skeleton className="h-8 w-full rounded-lg bg-slate-200 dark:bg-slate-800" /></td></tr>
+                                    <tr key={i}>
+                                        <td colSpan={visibleColumnCount + 1} className="p-4">
+                                            <Skeleton className="h-8 w-full rounded-lg bg-slate-200 dark:bg-slate-800" />
+                                        </td>
+                                    </tr>
                                 ))
                             ) : sortedData.length > 0 ? (
                                 sortedData.map((row, idx) => (
-                                    <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/45 transition-colors">
-                                        <td className="py-4 px-4 font-bold text-slate-900 dark:text-slate-100 font-mono text-sm">{row.ucc}</td>
-                                        <td className="py-4 px-4 text-slate-700 dark:text-slate-200 text-sm max-w-xs truncate" title={row.name}>{row.name}</td>
-                                        <td className="py-4 px-4 text-slate-650 dark:text-slate-350 text-sm">{row.branch}</td>
-                                        <td className="py-4 px-4 text-slate-650 dark:text-slate-350 text-sm font-mono">{row.parent}</td>
-                                        <td className="py-4 px-4 text-right font-mono font-semibold text-emerald-705 dark:text-emerald-400">
-                                            ₹{formatCurrency(row.brokerage)}
-                                        </td>
-                                        <td className="py-4 px-4 text-right font-mono font-semibold text-orange-605 dark:text-orange-400">
-                                            ₹{formatCurrency(row.payout)}
-                                        </td>
-                                        <td className="py-4 px-4 text-right font-mono font-semibold text-teal-705 dark:text-teal-400">
-                                            ₹{formatCurrency(row.income)}
-                                        </td>
+                                    <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/45 transition-colors whitespace-nowrap">
+                                        {columnOrder.filter(colId => colId !== 'income').map((colId) => {
+                                            if (!columnVisibility[colId]) return null;
+
+                                            const colDef = ALL_REVENUE_COLUMNS.find(c => c.id === colId);
+                                            const w = columnWidths[colId] || colDef?.defaultWidth || 150;
+                                            const widthStyle = {
+                                                width: w,
+                                                minWidth: w,
+                                                maxWidth: w,
+                                            };
+
+                                            if (colId === 'ucc') {
+                                                return (
+                                                    <td key={colId} style={widthStyle} className="py-4 px-4 font-bold text-slate-900 dark:text-slate-100 font-mono text-sm truncate">
+                                                        {row.ucc}
+                                                    </td>
+                                                );
+                                            }
+                                            if (colId === 'name') {
+                                                return (
+                                                    <td key={colId} style={widthStyle} className="py-4 px-4 text-slate-700 dark:text-slate-200 text-sm truncate" title={row.name}>
+                                                        {row.name}
+                                                    </td>
+                                                );
+                                            }
+                                            if (colId === 'branch') {
+                                                return (
+                                                    <td key={colId} style={widthStyle} className="py-4 px-4 text-slate-650 dark:text-slate-350 text-sm truncate">
+                                                        {row.branch}
+                                                    </td>
+                                                );
+                                            }
+                                            if (colId === 'parent') {
+                                                return (
+                                                    <td key={colId} style={widthStyle} className="py-4 px-4 text-slate-650 dark:text-slate-350 text-sm font-mono truncate">
+                                                        {row.parent}
+                                                    </td>
+                                                );
+                                            }
+                                            if (colId === 'brokerage') {
+                                                return (
+                                                    <td key={colId} style={widthStyle} className="py-4 px-4 text-right font-mono font-semibold text-emerald-705 dark:text-emerald-400">
+                                                        <div className="flex items-center justify-end gap-1">
+                                                            <span>₹{formatCurrency(getSegmentValue(row.brokerage))}</span>
+                                                            <SegmentBreakdownPopover title={`${row.name || row.ucc} - Brokerage`} data={row.brokerage} />
+                                                        </div>
+                                                    </td>
+                                                );
+                                            }
+                                            if (colId === 'payout') {
+                                                return (
+                                                    <td key={colId} style={widthStyle} className="py-4 px-4 text-right font-mono font-semibold text-orange-605 dark:text-orange-400">
+                                                        <div className="flex items-center justify-end gap-1">
+                                                            <span>₹{formatCurrency(getSegmentValue(row.payout))}</span>
+                                                            <SegmentBreakdownPopover title={`${row.name || row.ucc} - Payout`} data={row.payout} />
+                                                        </div>
+                                                    </td>
+                                                );
+                                            }
+                                            // Segment columns (nfo, nse, mcx, bse, bfo, cnfo, ncom)
+                                            const segVal = (getSegmentDetails(row.brokerage) as any)[colId] ?? 0;
+                                            return (
+                                                <td key={colId} style={widthStyle} className="py-4 px-4 text-right font-mono font-medium text-slate-700 dark:text-slate-200 text-xs truncate">
+                                                    ₹{formatCurrency(segVal)}
+                                                </td>
+                                            );
+                                        })}
+                                        {/* Spacer Column */}
+                                        <td className="p-0 m-0 border-none w-auto" style={{ minWidth: 0 }} />
+                                        {/* Fixed Sticky Income Cell on Right */}
+                                        {columnVisibility.income && (
+                                            <td
+                                                className="py-4 px-4 text-right font-mono font-semibold text-teal-705 dark:text-teal-400 sticky right-0 bg-white dark:bg-slate-900 border-l border-l-slate-100 dark:border-l-slate-800/50 z-10 group-hover:bg-slate-50 dark:group-hover:bg-slate-800"
+                                                style={{
+                                                    width: columnWidths.income || 160,
+                                                    minWidth: columnWidths.income || 160,
+                                                    maxWidth: columnWidths.income || 160,
+                                                }}
+                                            >
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <span>₹{formatCurrency(getSegmentValue(row.income))}</span>
+                                                    <SegmentBreakdownPopover title={`${row.name || row.ucc} - Income`} data={row.income} />
+                                                </div>
+                                            </td>
+                                        )}
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={7} className="h-48 text-center text-slate-400 dark:text-slate-600">
+                                    <td colSpan={visibleColumnCount + 1} className="h-48 text-center text-slate-400 dark:text-slate-600">
                                         <div className="flex flex-col items-center justify-center">
                                             <IndianRupee className="w-10 h-10 mb-2 opacity-10" />
                                             <p className="text-sm font-medium">No revenue records found</p>
@@ -701,7 +1199,7 @@ const Revenue: React.FC = () => {
                             )}
                         </tbody>
                     </table>
-                </ScrollArea>
+                </TableWrapper>
 
                 <div className="shrink-0 py-2 px-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex justify-center">
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
