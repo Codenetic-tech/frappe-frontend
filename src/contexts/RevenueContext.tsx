@@ -80,7 +80,7 @@ export interface RevenueFetchParams {
     sub_codes: string[];
 }
 
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 250;
 
 const today = new Date();
 const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -239,7 +239,7 @@ export const RevenueProvider: React.FC<{ children: ReactNode }> = ({ children })
                 try {
                     const parsed = JSON.parse(msg.response);
                     if (parsed.reason) reason = parsed.reason;
-                } catch (_) {}
+                } catch (_) { }
             } else if (msg?.message) {
                 reason = typeof msg.message === 'object' ? (msg.message.message || JSON.stringify(msg.message)) : String(msg.message);
             }

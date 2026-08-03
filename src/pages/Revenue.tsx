@@ -67,6 +67,7 @@ const INCOME_SEGMENT_IDS = ['nfo_income', 'nse_income', 'mcx_income', 'bse_incom
 const ALL_SEGMENT_IDS = [...BROKERAGE_SEGMENT_IDS, ...INCOME_SEGMENT_IDS];
 
 const ALL_REVENUE_COLUMNS: ColumnDef[] = [
+    { id: 'sr_no', label: 'S.No.', defaultVisible: true, defaultWidth: 80, align: 'left' },
     { id: 'ucc', label: 'UCC', defaultVisible: true, defaultWidth: 140, align: 'left' },
     { id: 'name', label: 'Name', defaultVisible: true, defaultWidth: 220, align: 'left' },
     { id: 'branch', label: 'Branch', defaultVisible: true, defaultWidth: 140, align: 'left' },
@@ -393,6 +394,20 @@ const Revenue: React.FC = () => {
         localStorage.setItem('revenueColumnOrder', JSON.stringify(columnOrder));
     }, [columnOrder]);
 
+    const [scrollWholePage, setScrollWholePage] = useState<boolean>(() => {
+        return localStorage.getItem("scroll-whole-page") === "true";
+    });
+
+    useEffect(() => {
+        const handleLayoutChange = () => {
+            setScrollWholePage(localStorage.getItem("scroll-whole-page") === "true");
+        };
+        window.addEventListener("layout-changed", handleLayoutChange);
+        return () => {
+            window.removeEventListener("layout-changed", handleLayoutChange);
+        };
+    }, []);
+
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
     const [draggedOverIndex, setDraggedOverIndex] = useState<number | null>(null);
 
@@ -563,11 +578,12 @@ const Revenue: React.FC = () => {
             );
             if (all.length === 0) { toast({ variant: "destructive", title: "No Records", description: "No records found to export" }); return; }
             
-            const exportRows = all.map(r => {
+            const exportRows = all.map((r, idx) => {
                 const b = getSegmentDetails(r.brokerage);
                 const p = getSegmentDetails(r.payout);
                 const inc = getSegmentDetails(r.income);
                 return {
+                    'S.No.': idx + 1,
                     'UCC': r.ucc,
                     'Name': r.name,
                     'Branch': r.branch,
@@ -611,7 +627,7 @@ const Revenue: React.FC = () => {
 
     // ── sort ─────────────────────────────────────────────────────────────────
 
-    type RKey = 'ucc' | 'name' | 'branch' | 'parent' | 'brokerage' | 'payout' | 'income' | 'nfo' | 'nse' | 'mcx' | 'bse' | 'bfo' | 'ncom' | 'nfo_income' | 'nse_income' | 'mcx_income' | 'bse_income' | 'bfo_income' | 'ncom_income';
+    type RKey = 'sr_no' | 'ucc' | 'name' | 'branch' | 'parent' | 'brokerage' | 'payout' | 'income' | 'nfo' | 'nse' | 'mcx' | 'bse' | 'bfo' | 'ncom' | 'nfo_income' | 'nse_income' | 'mcx_income' | 'bse_income' | 'bfo_income' | 'ncom_income';
 
     const handleSort = (key: RKey) => {
         setSortConfig(prev => ({ key, direction: prev?.key === key && prev.direction === 'asc' ? 'desc' : 'asc' }));
@@ -619,6 +635,10 @@ const Revenue: React.FC = () => {
 
     const sortedData = useMemo(() => {
         if (!revenueData || !sortConfig) return revenueData ?? [];
+
+        if (sortConfig.key === 'sr_no') {
+            return sortConfig.direction === 'asc' ? revenueData : [...revenueData].reverse();
+        }
 
         return [...revenueData].sort((a, b) => {
             let av: any = a[sortConfig.key as keyof RevenueItem];
@@ -720,7 +740,10 @@ const Revenue: React.FC = () => {
     // ── render ───────────────────────────────────────────────────────────────
 
     return (
-        <div className="p-4 h-full flex flex-col overflow-hidden space-y-4">
+        <div className={cn(
+            "p-4 flex flex-col space-y-4",
+            scrollWholePage ? "min-h-full" : "h-full overflow-hidden"
+        )}>
             {isLoading && <LoadingOverlay />}
 
             {/* Summary cards */}
@@ -1033,8 +1056,11 @@ const Revenue: React.FC = () => {
             )}
 
             {/* Table */}
-            <Card className="flex-1 min-h-0 flex flex-col border-none shadow-sm overflow-hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
-                <TableWrapper scrollWholePage={false}>
+            <Card className={cn(
+                "border-none shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl flex flex-col",
+                scrollWholePage ? "" : "flex-1 min-h-0 overflow-hidden"
+            )}>
+                <TableWrapper scrollWholePage={scrollWholePage}>
                     <table className="text-sm table-fixed" style={{ width: '100%', minWidth: totalTableWidth }}>
                         <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">
                             <tr className="border-b border-slate-100 dark:border-slate-800 whitespace-nowrap">
@@ -1123,18 +1149,28 @@ const Revenue: React.FC = () => {
                                     </tr>
                                 ))
                             ) : sortedData.length > 0 ? (
-                                sortedData.map((row, idx) => (
-                                    <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/45 transition-colors whitespace-nowrap">
-                                        {columnOrder.filter(colId => colId !== 'income').map((colId) => {
-                                            if (!columnVisibility[colId]) return null;
+                                sortedData.map((row, idx) => {
+                                    const srNo = (currentPage - 1) * (pageSize || 100) + idx + 1;
+                                    return (
+                                        <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/45 transition-colors whitespace-nowrap">
+                                            {columnOrder.filter(colId => colId !== 'income').map((colId) => {
+                                                if (!columnVisibility[colId]) return null;
 
-                                            const colDef = ALL_REVENUE_COLUMNS.find(c => c.id === colId);
-                                            const w = columnWidths[colId] || colDef?.defaultWidth || 150;
-                                            const widthStyle = {
-                                                width: w,
-                                                minWidth: w,
-                                                maxWidth: w,
-                                            };
+                                                const colDef = ALL_REVENUE_COLUMNS.find(c => c.id === colId);
+                                                const w = columnWidths[colId] || colDef?.defaultWidth || 150;
+                                                const widthStyle = {
+                                                    width: w,
+                                                    minWidth: w,
+                                                    maxWidth: w,
+                                                };
+
+                                                if (colId === 'sr_no') {
+                                                    return (
+                                                        <td key={colId} style={widthStyle} className="py-4 px-4 font-mono text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
+                                                            {srNo}
+                                                        </td>
+                                                    );
+                                                }
 
                                             if (colId === 'ucc') {
                                                 return (
@@ -1222,8 +1258,9 @@ const Revenue: React.FC = () => {
                                             </td>
                                         )}
                                     </tr>
-                                ))
-                            ) : (
+                                );
+                            })
+                        ) : (
                                 <tr>
                                     <td colSpan={visibleColumnCount + 1} className="h-48 text-center text-slate-400 dark:text-slate-600">
                                         <div className="flex flex-col items-center justify-center">

@@ -67,7 +67,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
-  // Listen for user updates from other contexts / components
+  // Listen for user updates & session expiry from global interceptor
   useEffect(() => {
     const handleUserUpdate = () => {
       try {
@@ -79,9 +79,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.warn('AuthContext: failed to sync user update:', e);
       }
     };
+    const handleSessionExpired = () => {
+      console.warn('AuthContext: Received frappe-session-expired event, logging out...');
+      logout();
+    };
+
     window.addEventListener('frappe-user-updated', handleUserUpdate);
+    window.addEventListener('frappe-session-expired', handleSessionExpired);
     return () => {
       window.removeEventListener('frappe-user-updated', handleUserUpdate);
+      window.removeEventListener('frappe-session-expired', handleSessionExpired);
     };
   }, []);
 
