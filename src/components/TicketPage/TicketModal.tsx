@@ -42,8 +42,18 @@ import {
     FileCode,
     Trash2,
     Plus,
+    Building2,
 } from "lucide-react";
 import { useEditor, EditorContent } from '@tiptap/react';
+
+export const DEPARTMENT_EMAIL_MAP: { label: string; email: string }[] = [
+    { label: 'OPERATIONS', email: 'operations@gopocket.in' },
+    { label: 'KYC', email: 'ekyc@gopocket.in' },
+    { label: 'RMS', email: 'rms@gopocket.in' },
+    { label: 'IT', email: 'it@gopocket.in' },
+    { label: 'DP', email: 'dp@gopocket.in' },
+    { label: 'DIGITAL MARKETING', email: 'digitalmarketing@gopocket.in' },
+];
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import TiptapUnderline from '@tiptap/extension-underline';
@@ -95,8 +105,21 @@ export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose, onSub
     const { toast } = useToast();
     const { user } = useAuth();
     const [subject, setSubject] = useState('');
+    const [department, setDepartment] = useState('');
     const [priority, setPriority] = useState('Medium');
     const [assignedTo, setAssignedTo] = useState<AssignedToOption | null>(null);
+
+    const handleDepartmentChange = (deptLabel: string) => {
+        setDepartment(deptLabel);
+        const found = DEPARTMENT_EMAIL_MAP.find(d => d.label === deptLabel);
+        if (found) {
+            setAssignedTo({
+                user: found.email,
+                code: found.label,
+                for_value: found.email,
+            });
+        }
+    };
     const [date, setDate] = useState<Date | undefined>(undefined);
     const [hours, setHoursState] = useState('05');
     const [minutes, setMinutesState] = useState('00');
@@ -195,11 +218,11 @@ export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose, onSub
         const descHtml = getEditorHtml();
         const descEmpty = isDescriptionEmpty();
 
-        if (!subject.trim() || descEmpty || !date || !assignedTo?.for_value) {
+        if (!subject.trim() || descEmpty || !assignedTo?.for_value) {
             toast({
                 variant: "destructive",
                 title: "Required Fields Missing",
-                description: "Please fill in all mandatory fields (Subject, Description, To, and Due Date). If you already picked a TO recipient, reopen the field and re-select it.",
+                description: "Please fill in all mandatory fields (Subject, Description, and To). If you already picked a TO recipient, reopen the field and re-select it.",
             });
             return;
         }
@@ -217,6 +240,7 @@ export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose, onSub
             subject,
             description: descHtml,
             priority,
+            department,
             custom_allocated_to: assignedTo.for_value,
             assigned_user: assignedTo.user,
             due_date: due_date_str,
@@ -226,6 +250,7 @@ export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose, onSub
 
         // Reset form
         setSubject('');
+        setDepartment('');
         editor?.commands.clearContent();
         setPriority('Medium');
         setAssignedTo(null);
@@ -289,8 +314,28 @@ export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose, onSub
                             </div>
                         </div>
 
-                        {/* Metadata Row — 3 columns on larger screens */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Metadata Row — 4 columns on larger screens */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {/* Department */}
+                            <div className="space-y-2">
+                                <Label className="text-slate-700 font-bold text-xs ml-0.5 flex items-center gap-1.5">
+                                    <Building2 className="w-3.5 h-3.5 text-purple-500" />
+                                    Department
+                                </Label>
+                                <Select value={department} onValueChange={handleDepartmentChange}>
+                                    <SelectTrigger className="border-slate-200 rounded-xl h-10 shadow-sm focus:border-purple-300 font-medium text-sm">
+                                        <SelectValue placeholder="Select department" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                                        {DEPARTMENT_EMAIL_MAP.map((dept) => (
+                                            <SelectItem key={dept.label} value={dept.label}>
+                                                {dept.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
                             {/* Assign To */}
                             <div className="space-y-2">
                                 <Label className="text-slate-700 font-bold text-xs ml-0.5 flex items-center gap-1.5">
@@ -323,7 +368,7 @@ export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose, onSub
                             <div className="space-y-2">
                                 <Label className="text-slate-700 font-bold text-xs ml-0.5 flex items-center gap-1.5">
                                     <CalendarIcon className="w-3.5 h-3.5 text-purple-500" />
-                                    Due Date & Time <span className="text-red-500">*</span>
+                                    Due Date & Time
                                 </Label>
                                 <Popover>
                                     <PopoverTrigger asChild>
@@ -504,7 +549,7 @@ export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose, onSub
                         </Button>
                         <Button
                             type="submit"
-                            disabled={loading || !subject.trim() || isDescriptionEmpty() || !date || !assignedTo?.for_value}
+                            disabled={loading || !subject.trim() || isDescriptionEmpty() || !assignedTo?.for_value}
                             className="bg-purple-600 hover:bg-purple-700 text-white rounded-xl h-10 px-6 font-bold shadow-lg shadow-purple-200 transition-all active:scale-95 min-w-[130px] text-sm"
                         >
                             {loading ? (

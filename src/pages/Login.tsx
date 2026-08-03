@@ -377,7 +377,7 @@ const Login = () => {
             toast({
                 variant: "destructive",
                 title: "Credentials required",
-                description: "Please enter both your Username / Employee ID and Password to sign in with TOTP.",
+                description: "Please enter both your Email / Branch Code / Employee ID and Password to sign in with TOTP.",
             });
             return;
         }
@@ -468,7 +468,7 @@ const Login = () => {
                             <CardContent className="space-y-5 px-8">
                                 {/* Username Field */}
                                 <div className="space-y-2">
-                                    <Label htmlFor="username" className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Username / Employee ID</Label>
+                                    <Label htmlFor="username" className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Email / Branch Code / Employee ID</Label>
                                     <div className="relative group">
                                         <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 transition-colors group-focus-within:text-purple-600" />
                                         <Input

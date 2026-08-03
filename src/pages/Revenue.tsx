@@ -62,6 +62,10 @@ export interface ColumnDef {
     align: 'left' | 'right';
 }
 
+const BROKERAGE_SEGMENT_IDS = ['nfo', 'nse', 'mcx', 'bse', 'bfo', 'ncom'];
+const INCOME_SEGMENT_IDS = ['nfo_income', 'nse_income', 'mcx_income', 'bse_income', 'bfo_income', 'ncom_income'];
+const ALL_SEGMENT_IDS = [...BROKERAGE_SEGMENT_IDS, ...INCOME_SEGMENT_IDS];
+
 const ALL_REVENUE_COLUMNS: ColumnDef[] = [
     { id: 'ucc', label: 'UCC', defaultVisible: true, defaultWidth: 140, align: 'left' },
     { id: 'name', label: 'Name', defaultVisible: true, defaultWidth: 220, align: 'left' },
@@ -73,10 +77,15 @@ const ALL_REVENUE_COLUMNS: ColumnDef[] = [
     { id: 'mcx', label: 'MCX Brokerage', defaultVisible: false, defaultWidth: 150, align: 'right' },
     { id: 'bse', label: 'BSE Brokerage', defaultVisible: false, defaultWidth: 150, align: 'right' },
     { id: 'bfo', label: 'BFO Brokerage', defaultVisible: false, defaultWidth: 150, align: 'right' },
-    { id: 'cnfo', label: 'CNFO Brokerage', defaultVisible: false, defaultWidth: 150, align: 'right' },
     { id: 'ncom', label: 'NCOM Brokerage', defaultVisible: false, defaultWidth: 150, align: 'right' },
     { id: 'payout', label: 'Payout', defaultVisible: true, defaultWidth: 160, align: 'right' },
     { id: 'income', label: 'Income', defaultVisible: true, defaultWidth: 160, align: 'right' },
+    { id: 'nfo_income', label: 'NFO Income', defaultVisible: false, defaultWidth: 150, align: 'right' },
+    { id: 'nse_income', label: 'NSE Income', defaultVisible: false, defaultWidth: 150, align: 'right' },
+    { id: 'mcx_income', label: 'MCX Income', defaultVisible: false, defaultWidth: 150, align: 'right' },
+    { id: 'bse_income', label: 'BSE Income', defaultVisible: false, defaultWidth: 150, align: 'right' },
+    { id: 'bfo_income', label: 'BFO Income', defaultVisible: false, defaultWidth: 150, align: 'right' },
+    { id: 'ncom_income', label: 'NCOM Income', defaultVisible: false, defaultWidth: 150, align: 'right' },
 ];
 
 // ── segment breakdown popover helper ──────────────────────────────────────────
@@ -87,7 +96,6 @@ const SEGMENT_KEYS: { key: keyof Omit<SegmentBreakdown, 'total'>; label: string 
     { key: 'mcx', label: 'MCX' },
     { key: 'bse', label: 'BSE' },
     { key: 'bfo', label: 'BFO' },
-    { key: 'cnfo', label: 'CNFO' },
     { key: 'ncom', label: 'NCOM' },
 ];
 
@@ -368,9 +376,9 @@ const Revenue: React.FC = () => {
             try {
                 const parsed = JSON.parse(stored);
                 const filtered = parsed.filter((c: string) => defaultOrder.includes(c));
-                defaultOrder.forEach(col => {
+                defaultOrder.forEach((col, idx) => {
                     if (!filtered.includes(col)) {
-                        filtered.push(col);
+                        filtered.splice(idx, 0, col);
                     }
                 });
                 return filtered;
@@ -570,7 +578,6 @@ const Revenue: React.FC = () => {
                     'Brokerage MCX': b.mcx,
                     'Brokerage BSE': b.bse,
                     'Brokerage BFO': b.bfo,
-                    'Brokerage CNFO': b.cnfo,
                     'Brokerage NCOM': b.ncom,
                     'Payout Total': p.total,
                     'Payout NFO': p.nfo,
@@ -578,7 +585,6 @@ const Revenue: React.FC = () => {
                     'Payout MCX': p.mcx,
                     'Payout BSE': p.bse,
                     'Payout BFO': p.bfo,
-                    'Payout CNFO': p.cnfo,
                     'Payout NCOM': p.ncom,
                     'Income Total': inc.total,
                     'Income NFO': inc.nfo,
@@ -586,7 +592,6 @@ const Revenue: React.FC = () => {
                     'Income MCX': inc.mcx,
                     'Income BSE': inc.bse,
                     'Income BFO': inc.bfo,
-                    'Income CNFO': inc.cnfo,
                     'Income NCOM': inc.ncom,
                 };
             });
@@ -606,7 +611,7 @@ const Revenue: React.FC = () => {
 
     // ── sort ─────────────────────────────────────────────────────────────────
 
-    type RKey = 'ucc' | 'name' | 'branch' | 'parent' | 'brokerage' | 'payout' | 'income' | 'nfo' | 'nse' | 'mcx' | 'bse' | 'bfo' | 'cnfo' | 'ncom';
+    type RKey = 'ucc' | 'name' | 'branch' | 'parent' | 'brokerage' | 'payout' | 'income' | 'nfo' | 'nse' | 'mcx' | 'bse' | 'bfo' | 'ncom' | 'nfo_income' | 'nse_income' | 'mcx_income' | 'bse_income' | 'bfo_income' | 'ncom_income';
 
     const handleSort = (key: RKey) => {
         setSortConfig(prev => ({ key, direction: prev?.key === key && prev.direction === 'asc' ? 'desc' : 'asc' }));
@@ -614,15 +619,18 @@ const Revenue: React.FC = () => {
 
     const sortedData = useMemo(() => {
         if (!revenueData || !sortConfig) return revenueData ?? [];
-        const segKeys = ['nfo', 'nse', 'mcx', 'bse', 'bfo', 'cnfo', 'ncom'];
 
         return [...revenueData].sort((a, b) => {
             let av: any = a[sortConfig.key as keyof RevenueItem];
             let bv: any = b[sortConfig.key as keyof RevenueItem];
 
-            if (segKeys.includes(sortConfig.key)) {
+            if (BROKERAGE_SEGMENT_IDS.includes(sortConfig.key)) {
                 av = getSegmentDetails(a.brokerage)[sortConfig.key as keyof Omit<SegmentBreakdown, 'total'>] ?? 0;
                 bv = getSegmentDetails(b.brokerage)[sortConfig.key as keyof Omit<SegmentBreakdown, 'total'>] ?? 0;
+            } else if (INCOME_SEGMENT_IDS.includes(sortConfig.key)) {
+                const rawKey = sortConfig.key.replace('_income', '') as keyof Omit<SegmentBreakdown, 'total'>;
+                av = getSegmentDetails(a.income)[rawKey] ?? 0;
+                bv = getSegmentDetails(b.income)[rawKey] ?? 0;
             } else if (sortConfig.key === 'brokerage' || sortConfig.key === 'payout' || sortConfig.key === 'income') {
                 av = getSegmentValue(av);
                 bv = getSegmentValue(bv);
@@ -909,24 +917,21 @@ const Revenue: React.FC = () => {
 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button
-                            variant="outline"
-                            className="rounded-xl h-10 px-3.5 font-semibold gap-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-850 transition-all shrink-0"
-                        >
-                            <Columns3 className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                            <span className="text-xs">Columns</span>
-                            <ChevronDown className="w-3.5 h-3.5 opacity-50 ml-0.5" />
+                        <Button variant="outline" className="rounded-xl h-10 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 gap-2 ml-auto shrink-0">
+                            <Columns3 className="w-4 h-4" />
+                            Columns
+                            <ChevronDown className="w-3.5 h-3.5 opacity-50" />
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl p-1 z-50 max-h-[360px] overflow-y-auto">
+                    <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 p-1 z-50 max-h-[360px] overflow-y-auto">
                         <DropdownMenuLabel className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-2 py-1.5">
                             Standard Columns
                         </DropdownMenuLabel>
                         <DropdownMenuGroup>
-                            {ALL_REVENUE_COLUMNS.filter(c => !['nfo', 'nse', 'mcx', 'bse', 'bfo', 'cnfo', 'ncom'].includes(c.id)).map((col) => (
+                            {ALL_REVENUE_COLUMNS.filter(c => !ALL_SEGMENT_IDS.includes(c.id)).map((col) => (
                                 <DropdownMenuCheckboxItem
                                     key={col.id}
-                                    className="text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 focus:bg-slate-50 dark:focus:bg-slate-800 rounded-lg py-1.5"
+                                    className="capitalize cursor-pointer"
                                     checked={columnVisibility[col.id]}
                                     onCheckedChange={(checked) =>
                                         setColumnVisibility(prev => ({ ...prev, [col.id]: checked }))
@@ -938,13 +943,31 @@ const Revenue: React.FC = () => {
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator className="bg-slate-100 dark:bg-slate-800 my-1" />
                         <DropdownMenuLabel className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-2 py-1.5">
-                            Segment Columns
+                            Brokerage Segments
                         </DropdownMenuLabel>
                         <DropdownMenuGroup>
-                            {ALL_REVENUE_COLUMNS.filter(c => ['nfo', 'nse', 'mcx', 'bse', 'bfo', 'cnfo', 'ncom'].includes(c.id)).map((col) => (
+                            {ALL_REVENUE_COLUMNS.filter(c => BROKERAGE_SEGMENT_IDS.includes(c.id)).map((col) => (
                                 <DropdownMenuCheckboxItem
                                     key={col.id}
-                                    className="text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 focus:bg-slate-50 dark:focus:bg-slate-800 rounded-lg py-1.5"
+                                    className="capitalize cursor-pointer"
+                                    checked={columnVisibility[col.id]}
+                                    onCheckedChange={(checked) =>
+                                        setColumnVisibility(prev => ({ ...prev, [col.id]: checked }))
+                                    }
+                                >
+                                    {col.label}
+                                </DropdownMenuCheckboxItem>
+                            ))}
+                        </DropdownMenuGroup>
+                        <DropdownMenuSeparator className="bg-slate-100 dark:bg-slate-800 my-1" />
+                        <DropdownMenuLabel className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-2 py-1.5">
+                            Income Segments
+                        </DropdownMenuLabel>
+                        <DropdownMenuGroup>
+                            {ALL_REVENUE_COLUMNS.filter(c => INCOME_SEGMENT_IDS.includes(c.id)).map((col) => (
+                                <DropdownMenuCheckboxItem
+                                    key={col.id}
+                                    className="capitalize cursor-pointer"
                                     checked={columnVisibility[col.id]}
                                     onCheckedChange={(checked) =>
                                         setColumnVisibility(prev => ({ ...prev, [col.id]: checked }))
@@ -962,7 +985,7 @@ const Revenue: React.FC = () => {
                     size="sm"
                     onClick={() => fetchRevenue(appliedParams, currentPage)}
                     disabled={isLoading}
-                    className="h-9 w-9 p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-500 dark:text-slate-405 ml-auto shrink-0"
+                    className="h-10 w-10 p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 shrink-0"
                     title="Refresh"
                 >
                     <RefreshCcw className={`w-4 h-4 text-slate-500 ${isLoading ? 'animate-spin' : ''}`} />
@@ -1022,7 +1045,8 @@ const Revenue: React.FC = () => {
                                     if (!colDef) return null;
 
                                     const isRight = colDef.align === 'right';
-                                    const isSegment = ['nfo', 'nse', 'mcx', 'bse', 'bfo', 'cnfo', 'ncom'].includes(colId);
+                                    const isBrokerageSeg = BROKERAGE_SEGMENT_IDS.includes(colId);
+                                    const isIncomeSeg = INCOME_SEGMENT_IDS.includes(colId);
 
                                     return (
                                         <th
@@ -1042,7 +1066,8 @@ const Revenue: React.FC = () => {
                                             className={cn(
                                                 "py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-grab active:cursor-grabbing select-none group/col relative transition-all duration-150 hover:bg-slate-100/50 dark:hover:bg-slate-800/30 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30",
                                                 isRight ? "text-right" : "text-left",
-                                                isSegment && "text-purple-600 dark:text-purple-400",
+                                                isBrokerageSeg && "text-purple-600 dark:text-purple-400",
+                                                isIncomeSeg && "text-teal-600 dark:text-teal-400",
                                                 draggedIndex !== null && draggedIndex !== index && draggedOverIndex === index && "bg-purple-50/50 dark:bg-purple-950/10"
                                             )}
                                             onClick={() => handleSort(colId as RKey)}
@@ -1149,6 +1174,23 @@ const Revenue: React.FC = () => {
                                                     </td>
                                                 );
                                             }
+                                            if (BROKERAGE_SEGMENT_IDS.includes(colId)) {
+                                                const segVal = (getSegmentDetails(row.brokerage) as any)[colId] ?? 0;
+                                                return (
+                                                    <td key={colId} style={widthStyle} className="py-4 px-4 text-right font-mono font-medium text-slate-700 dark:text-slate-200 text-xs truncate">
+                                                        ₹{formatCurrency(segVal)}
+                                                    </td>
+                                                );
+                                            }
+                                            if (INCOME_SEGMENT_IDS.includes(colId)) {
+                                                const rawKey = colId.replace('_income', '');
+                                                const segVal = (getSegmentDetails(row.income) as any)[rawKey] ?? 0;
+                                                return (
+                                                    <td key={colId} style={widthStyle} className="py-4 px-4 text-right font-mono font-medium text-teal-700 dark:text-teal-300 text-xs truncate">
+                                                        ₹{formatCurrency(segVal)}
+                                                    </td>
+                                                );
+                                            }
                                             if (colId === 'payout') {
                                                 return (
                                                     <td key={colId} style={widthStyle} className="py-4 px-4 text-right font-mono font-semibold text-orange-605 dark:text-orange-400">
@@ -1159,13 +1201,7 @@ const Revenue: React.FC = () => {
                                                     </td>
                                                 );
                                             }
-                                            // Segment columns (nfo, nse, mcx, bse, bfo, cnfo, ncom)
-                                            const segVal = (getSegmentDetails(row.brokerage) as any)[colId] ?? 0;
-                                            return (
-                                                <td key={colId} style={widthStyle} className="py-4 px-4 text-right font-mono font-medium text-slate-700 dark:text-slate-200 text-xs truncate">
-                                                    ₹{formatCurrency(segVal)}
-                                                </td>
-                                            );
+                                            return null;
                                         })}
                                         {/* Spacer Column */}
                                         <td className="p-0 m-0 border-none w-auto" style={{ minWidth: 0 }} />
