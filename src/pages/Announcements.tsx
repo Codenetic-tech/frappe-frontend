@@ -114,11 +114,19 @@ const AnnouncementPage = () => {
         }
     );
 
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://pulse.gopocket.in';
+
     const classes = useMemo<TradingClass[]>(() => {
         if (!seminarsData) return [];
         return seminarsData.map((item: any) => {
             const dateAndTime = item.date_and_time || '';
             const [datePart = '', timePart = ''] = dateAndTime.split(' ');
+
+            let imageUrl = item.image || '';
+            if (imageUrl && !imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+                const cleanPath = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+                imageUrl = `${API_BASE_URL}${cleanPath}`;
+            }
 
             return {
                 id: item.name,
@@ -127,13 +135,13 @@ const AnnouncementPage = () => {
                 instructor: 'GoPocket Team',
                 date: datePart,
                 time: timePart,
-                image: item.image ? (item.image.startsWith('http') ? item.image : (item.image.startsWith('/') ? item.image : `/${item.image}`)) : '',
+                image: imageUrl,
                 type: item.type || 'Online',
                 cost: item.cost || 'Free',
                 language: item.language || ''
             };
         });
-    }, [seminarsData]);
+    }, [seminarsData, API_BASE_URL]);
 
     const [activeTab, setActiveTab] = useState<'classes' | 'announcements' | 'content'>('classes');
     const [copiedClassId, setCopiedClassId] = useState<string | null>(null);
