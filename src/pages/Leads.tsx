@@ -885,16 +885,55 @@ const Leads: React.FC = () => {
     // Filtered hierarchy for parent selection, sorted by category order
     const parentOptions = useMemo(() => {
         const tree = orgTreeData;
-        if (!tree) return [];
-        return (tree as Array<any>)
-            .filter(item => item.is_group === 1)
-            .sort((a, b) => {
-                const pa = CATEGORY_ORDER[a.category?.toUpperCase() || ''] || 99;
-                const pb = CATEGORY_ORDER[b.category?.toUpperCase() || ''] || 99;
-                if (pa !== pb) return pa - pb;
-                return a.name.localeCompare(b.name);
+        const loggedInCode = user?.user_code || user?.id || frappeUser?.username || frappeUser?.name;
+
+        let list: any[] = [];
+        if (tree && Array.isArray(tree)) {
+            list = tree.filter(item => {
+                if (item.is_group === 1) return true;
+                if (loggedInCode && (
+                    item.name === loggedInCode ||
+                    item.code === loggedInCode ||
+                    item.org_code === loggedInCode
+                )) {
+                    return true;
+                }
+                return false;
             });
-    }, [orgTreeData]);
+        }
+
+        // Ensure logged-in user's code is present even if not in orgTreeData or marked as group
+        if (loggedInCode && !list.some(item => item.name === loggedInCode || item.code === loggedInCode || item.org_code === loggedInCode)) {
+            const userNode = tree && Array.isArray(tree) ? tree.find((item: any) =>
+                item.name === loggedInCode || item.code === loggedInCode || item.org_code === loggedInCode
+            ) : null;
+
+            if (userNode) {
+                list.push(userNode);
+            } else {
+                list.push({
+                    name: loggedInCode,
+                    code: loggedInCode,
+                    org_code: loggedInCode,
+                    name1: frappeUser?.full_name || [frappeUser?.first_name, frappeUser?.last_name].filter(Boolean).join(' ') || user?.firstName || loggedInCode,
+                    category: 'USER',
+                    is_group: 0
+                });
+            }
+        }
+
+        return list.sort((a, b) => {
+            const isALoggedIn = Boolean(loggedInCode && (a.name === loggedInCode || a.code === loggedInCode || a.org_code === loggedInCode));
+            const isBLoggedIn = Boolean(loggedInCode && (b.name === loggedInCode || b.code === loggedInCode || b.org_code === loggedInCode));
+            if (isALoggedIn && !isBLoggedIn) return -1;
+            if (!isALoggedIn && isBLoggedIn) return 1;
+
+            const pa = CATEGORY_ORDER[a.category?.toUpperCase() || ''] || 99;
+            const pb = CATEGORY_ORDER[b.category?.toUpperCase() || ''] || 99;
+            if (pa !== pb) return pa - pb;
+            return a.name.localeCompare(b.name);
+        });
+    }, [orgTreeData, user, frappeUser]);
 
     const userNameMap = useMemo(() => {
         if (!orgTreeData) return new Map<string, string>();
@@ -903,16 +942,24 @@ const Leads: React.FC = () => {
 
     const userCodeMap = useMemo(() => {
         const tree = orgTreeData;
-        if (!tree) return new Map<string, string>();
-        return new Map(
-            (tree as any[]).map(node => {
+        const map = new Map<string, string>();
+        if (tree && Array.isArray(tree)) {
+            tree.forEach((node: any) => {
                 const code = node.code || node.org_code || node.name;
                 const isRM = node.org_type === 'RM' || node.category === 'RM';
                 const displayName = isRM ? `${code} ${node.name1 || ''}`.trim() : code;
-                return [node.name, displayName];
-            })
-        );
-    }, [orgTreeData]);
+                map.set(node.name, displayName);
+                if (node.code) map.set(node.code, displayName);
+                if (node.org_code) map.set(node.org_code, displayName);
+            });
+        }
+        const loggedInCode = user?.user_code || user?.id || frappeUser?.username || frappeUser?.name;
+        if (loggedInCode && !map.has(loggedInCode)) {
+            const name1 = frappeUser?.full_name || [frappeUser?.first_name, frappeUser?.last_name].filter(Boolean).join(' ') || user?.firstName || loggedInCode;
+            map.set(loggedInCode, `${loggedInCode} ${name1}`.trim());
+        }
+        return map;
+    }, [orgTreeData, user, frappeUser]);
 
     const visibleParentOptions = useMemo(() => {
         if (!parentOptions) return [];
