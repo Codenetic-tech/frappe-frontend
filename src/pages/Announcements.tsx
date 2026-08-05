@@ -808,7 +808,7 @@ const AnnouncementPage = () => {
 
     return (
         <div className="h-full flex flex-col overflow-hidden bg-stone-200/50 dark:bg-slate-950/50 pt-1">
-            <div className="space-y-6 flex-1 flex flex-col min-h-0 p-4">
+            <div className="space-y-6 flex-1 flex flex-col min-h-0">
                 {/* Tabs & Actions Navigation */}
                 <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden shrink-0 flex items-center justify-between">
                     <div className="flex overflow-x-auto no-scrollbar flex-1">

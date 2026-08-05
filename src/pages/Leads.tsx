@@ -524,6 +524,8 @@ const Leads: React.FC = () => {
     const [isExporting, setIsExporting] = useState(false);
     const [exportProgress, setExportProgress] = useState({ current: 0, total: 0 });
     const [searchQuery, setSearchQuery] = useState(() => sessionStorage.getItem('leadsSearchQuery') || '');
+    const [campaignSearchQuery, setCampaignSearchQuery] = useState(() => sessionStorage.getItem('leadsCampaignSearchQuery') || '');
+    const debouncedCampaignSearchQuery = useDebounce(campaignSearchQuery, 400);
     const [dateRange, setDateRange] = useState<[Date, Date] | null>(() => {
         const stored = sessionStorage.getItem('leadsDateRange');
         if (stored) {
@@ -812,6 +814,10 @@ const Leads: React.FC = () => {
     }, [searchQuery]);
 
     useEffect(() => {
+        sessionStorage.setItem('leadsCampaignSearchQuery', campaignSearchQuery);
+    }, [campaignSearchQuery]);
+
+    useEffect(() => {
         if (dateRange) {
             sessionStorage.setItem('leadsDateRange', JSON.stringify([dateRange[0].toISOString(), dateRange[1].toISOString()]));
         } else {
@@ -970,6 +976,11 @@ const Leads: React.FC = () => {
             }
         }
 
+        // Campaign Search Query
+        if (debouncedCampaignSearchQuery) {
+            activeFilters.push(['custom_campaign_name', 'like', `%${debouncedCampaignSearchQuery}%`]);
+        }
+
         // Date Range
         if (dateRange?.[0] && dateRange?.[1]) {
             const formatLocal = (d: Date) => {
@@ -995,7 +1006,7 @@ const Leads: React.FC = () => {
         }
 
         return activeFilters;
-    }, [selectedHierarchy, parentFilter, expandBranches, getHierarchyCodes, debouncedSearchQuery, dateRange, advancedFilters]);
+    }, [selectedHierarchy, parentFilter, expandBranches, getHierarchyCodes, debouncedSearchQuery, debouncedCampaignSearchQuery, dateRange, advancedFilters]);
 
     const filters = useMemo(() => {
         const activeFilters = [...totalFilters];
@@ -1285,6 +1296,7 @@ const Leads: React.FC = () => {
 
     const handleResetFilters = () => {
         setSearchQuery('');
+        setCampaignSearchQuery('');
         setStatusFilter('ALL');
         setParentFilter('ALL');
         setDateRange(null);
@@ -1852,6 +1864,26 @@ const Leads: React.FC = () => {
                         </Select>
                     </div>
 
+                    {/* Campaign Search Input */}
+                    <div className="relative w-[180px]">
+                        <Tag className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <Input
+                            placeholder="Campaign..."
+                            value={campaignSearchQuery}
+                            onChange={(e) => setCampaignSearchQuery(e.target.value)}
+                            className="pl-9 pr-7 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 focus:ring-purple-500 rounded-xl h-10 text-sm"
+                        />
+                        {campaignSearchQuery && (
+                            <button
+                                type="button"
+                                onClick={() => setCampaignSearchQuery('')}
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                            >
+                                <X className="w-3.5 h-3.5" />
+                            </button>
+                        )}
+                    </div>
+
                     {/* Parent Filter Combobox */}
                     <div className="w-[200px]">
                         <Popover open={openParentBox} onOpenChange={setOpenParentBox}>
@@ -2073,7 +2105,7 @@ const Leads: React.FC = () => {
                         </DropdownMenuContent>
                     </DropdownMenu>
 
-                    {(searchQuery || statusFilter !== 'ALL' || parentFilter !== 'ALL' || dateRange !== null || advancedFilters.length > 0) && (
+                    {(searchQuery || campaignSearchQuery || statusFilter !== 'ALL' || parentFilter !== 'ALL' || dateRange !== null || advancedFilters.length > 0) && (
                         <Button
                             type="button"
                             variant="ghost"
