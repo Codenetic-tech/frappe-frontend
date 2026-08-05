@@ -96,7 +96,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     console.log('AuthContext: currentUser changed to:', currentUser);
 
-    if (currentUser) {
+    if (currentUser && currentUser !== 'Guest') {
       // Check if we already have this user in session storage to avoid race conditions
       const savedUser = sessionStorage.getItem('user');
       const savedFrappeUser = sessionStorage.getItem('frappe_user');
@@ -154,10 +154,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         });
       });
 
-    } else if (currentUser === null && !user) {
-      // If SDK says null and we have no local user, ensure we are clean
-      // Note: We don't clear if we have a user but SDK is null (refresh race),
-      // UNLESS there is an error.
+    } else if ((currentUser === null || currentUser === 'Guest') && !user) {
+      // If SDK says null or Guest and we have no local user, ensure we are clean
       setUser(null);
       setFrappeUser(null);
       sessionStorage.removeItem('user');
@@ -234,7 +232,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         await updateCurrentUser();
         const fetchRes = await fetch('/api/method/frappe.auth.get_logged_user');
         const data = await fetchRes.json();
-        if (data?.message) {
+        if (data?.message && data.message !== 'Guest') {
           loggedInUserName = data.message;
         }
       } catch (sdkErr) {
@@ -242,7 +240,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
           const fetchRes = await fetch('/api/method/frappe.auth.get_logged_user');
           const data = await fetchRes.json();
-          if (data?.message) {
+          if (data?.message && data.message !== 'Guest') {
             loggedInUserName = data.message;
           }
         } catch (innerErr) {
