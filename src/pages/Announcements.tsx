@@ -114,7 +114,7 @@ const AnnouncementPage = () => {
         }
     );
 
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://pulse.gopocket.in';
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
     const classes = useMemo<TradingClass[]>(() => {
         if (!seminarsData) return [];
@@ -125,7 +125,7 @@ const AnnouncementPage = () => {
             let imageUrl = item.image || '';
             if (imageUrl && !imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
                 const cleanPath = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
-                imageUrl = `${API_BASE_URL}${cleanPath}`;
+                imageUrl = API_BASE_URL ? `${API_BASE_URL}${cleanPath}` : cleanPath;
             }
 
             return {
@@ -312,7 +312,14 @@ const AnnouncementPage = () => {
     const handleDownloadImage = async (e: React.MouseEvent, imageUrl: string, title: string) => {
         e.stopPropagation();
         try {
-            const response = await fetch(imageUrl);
+            // Prefer proxied relative path for same-origin download (works with Vite & Nginx proxies)
+            let fetchUrl = imageUrl;
+            if (fetchUrl.includes('/files/')) {
+                fetchUrl = `/files/${fetchUrl.split('/files/')[1]}`;
+            }
+
+            const response = await fetch(fetchUrl);
+            if (!response.ok) throw new Error(`HTTP error ${response.status}`);
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
@@ -329,11 +336,11 @@ const AnnouncementPage = () => {
             });
         } catch (error) {
             console.error("Error downloading image, opening in new tab:", error);
-            // Fallback: Open in new tab if CORS prevents blob download
+            // Fallback: Open in new tab if CORS or fetch fails
             window.open(imageUrl, '_blank');
             toast({
                 title: "Opening Image",
-                description: "Direct download failed (CORS). Opening image in a new tab instead.",
+                description: "Direct download failed. Opening image in a new tab instead.",
                 className: "bg-amber-50 border-amber-200 text-amber-900"
             });
         }
