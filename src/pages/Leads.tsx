@@ -6,6 +6,7 @@ import { useOrgTree } from '@/contexts/OrgTreeContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -88,7 +89,8 @@ import {
     PhoneForwarded,
     Headphones,
     Signal,
-    Tag
+    Tag,
+    Loader2
 } from 'lucide-react';
 
 import {
@@ -769,6 +771,34 @@ const Leads: React.FC = () => {
     const [commentText, setCommentText] = useState('');
     const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
+    // Not Interested Modal State
+    const [isNotInterestedModalOpen, setIsNotInterestedModalOpen] = useState(false);
+    const [selectedLeadForNotInterested, setSelectedLeadForNotInterested] = useState<LeadItem | null>(null);
+    const [lostNotesText, setLostNotesText] = useState('');
+    const [isSubmittingNotInterested, setIsSubmittingNotInterested] = useState(false);
+
+    const handleConfirmNotInterested = async () => {
+        if (!selectedLeadForNotInterested || !lostNotesText.trim()) return;
+        setIsSubmittingNotInterested(true);
+        try {
+            await updateDoc('CRM Lead', selectedLeadForNotInterested.name, {
+                status: 'Not Interested',
+                lost_reason: 'Other',
+                lost_notes: lostNotesText.trim()
+            });
+            toast.success('Status updated to Not Interested');
+            setIsNotInterestedModalOpen(false);
+            setSelectedLeadForNotInterested(null);
+            setLostNotesText('');
+            refetchLeads();
+        } catch (err: any) {
+            console.error('Failed to update status:', err);
+            toast.error(err?.message || 'Failed to update status');
+        } finally {
+            setIsSubmittingNotInterested(false);
+        }
+    };
+
     const handleAddComment = async () => {
         if (!activeLeadForComment || !commentText.trim()) return;
         setIsSubmittingComment(true);
@@ -1012,7 +1042,7 @@ const Leads: React.FC = () => {
         const activeFilters = [...totalFilters];
         if (statusFilter !== 'ALL') {
             if (statusFilter === 'Others') {
-                activeFilters.push(['status', 'not in', ['New', 'Followup', 'won', 'Not Interested']]);
+                activeFilters.push(['status', 'not in', ['New', 'Followup', 'won', 'Client', 'Not Interested']]);
             } else {
                 activeFilters.push(['status', '=', statusFilter]);
             }
@@ -1435,27 +1465,43 @@ const Leads: React.FC = () => {
 
     const renderStatusBadge = (status: string | null | undefined) => {
         if (!status) return '-';
+        const s = status.toLowerCase();
+
+        const badgeClass = s === 'won'
+            ? "bg-green-100 dark:bg-green-950/20 text-green-700 dark:text-green-400"
+            : s === 'new'
+                ? "bg-purple-100 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400"
+                : s === 'rnr'
+                    ? "bg-orange-100 dark:bg-orange-950/20 text-orange-700 dark:text-orange-400"
+                    : s === 'followup'
+                        ? "bg-amber-100 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400"
+                        : s === 'not interested'
+                            ? "bg-red-100 dark:bg-red-950/20 text-red-700 dark:text-red-400"
+                            : s === 'client'
+                                ? "bg-blue-100 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400"
+                                : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300";
+
+        const dotClass = s === 'won'
+            ? "bg-green-500"
+            : s === 'new'
+                ? "bg-purple-500"
+                : s === 'rnr'
+                    ? "bg-orange-500"
+                    : s === 'followup'
+                        ? "bg-amber-500"
+                        : s === 'not interested'
+                            ? "bg-red-500"
+                            : s === 'client'
+                                ? "bg-blue-500"
+                                : "bg-slate-500";
+
         return (
             <div className="flex items-center gap-2">
                 <div className={cn(
                     "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5",
-                    status === 'won' ? "bg-green-100 dark:bg-green-950/20 text-green-700 dark:text-green-400" :
-                        status === 'New' ? "bg-purple-100 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400" :
-                            status === 'RNR' ? "bg-orange-100 dark:bg-orange-950/20 text-orange-700 dark:text-orange-400" :
-                                status === 'Followup' ? "bg-amber-100 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400" :
-                                    status === 'Not Interested' ? "bg-red-100 dark:bg-red-950/20 text-red-700 dark:text-red-400" :
-                                        status === 'Client' ? "bg-blue-100 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400" :
-                                            "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                    badgeClass
                 )}>
-                    <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse",
-                        status === 'won' ? "bg-green-500" :
-                            status === 'New' ? "bg-purple-500" :
-                                status === 'RNR' ? "bg-orange-500" :
-                                    status === 'Followup' ? "bg-amber-500" :
-                                        status === 'Not Interested' ? "bg-red-500" :
-                                            status === 'Client' ? "bg-blue-500" :
-                                                "bg-slate-500"
-                    )} />
+                    <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", dotClass)} />
                     {status}
                 </div>
             </div>
@@ -1858,6 +1904,7 @@ const Leads: React.FC = () => {
                                 <SelectItem value="New">New</SelectItem>
                                 <SelectItem value="Followup">Followup</SelectItem>
                                 <SelectItem value="won">Won</SelectItem>
+                                <SelectItem value="Client">Client</SelectItem>
                                 <SelectItem value="Not Interested">Not Interested</SelectItem>
                                 <SelectItem value="Others">Others</SelectItem>
                             </SelectContent>
@@ -2471,12 +2518,18 @@ const Leads: React.FC = () => {
                                                             <DropdownMenuItem
                                                                 key={status}
                                                                 onClick={async () => {
-                                                                    try {
-                                                                        await updateDoc('CRM Lead', row.name, { status });
-                                                                        toast.success(`Status updated to ${status}`);
-                                                                        refetchLeads();
-                                                                    } catch (err) {
-                                                                        toast.error('Failed to update status');
+                                                                    if (status === 'Not Interested') {
+                                                                        setSelectedLeadForNotInterested(row);
+                                                                        setLostNotesText('');
+                                                                        setIsNotInterestedModalOpen(true);
+                                                                    } else {
+                                                                        try {
+                                                                            await updateDoc('CRM Lead', row.name, { status });
+                                                                            toast.success(`Status updated to ${status}`);
+                                                                            refetchLeads();
+                                                                        } catch (err) {
+                                                                            toast.error('Failed to update status');
+                                                                        }
                                                                     }
                                                                 }}
                                                                 className="text-sm py-2 px-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
@@ -2560,7 +2613,60 @@ const Leads: React.FC = () => {
                         </Button>
                     </DialogFooter>
                 </DialogContent>
-            </Dialog>            {/* Floating Draggable Dialer Widget (Bottom-Left Call Monitor) */}
+            </Dialog>
+
+            {/* Not Interested Details Modal */}
+            <Dialog open={isNotInterestedModalOpen} onOpenChange={setIsNotInterestedModalOpen}>
+                <DialogContent className="sm:max-w-[440px] rounded-2xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                            <XCircle className="w-5 h-5 text-red-500 shrink-0" />
+                            Mark as Not Interested
+                        </DialogTitle>
+                        <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
+                            Please provide detailed notes for marking <span className="font-semibold text-slate-700 dark:text-slate-300">{selectedLeadForNotInterested?.first_name || selectedLeadForNotInterested?.lead_name || selectedLeadForNotInterested?.name}</span> as Not Interested.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="py-2 space-y-3">
+                        <div>
+                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                                Lost Notes / Description <span className="text-red-500">*</span>
+                            </label>
+                            <Textarea
+                                value={lostNotesText}
+                                onChange={(e) => setLostNotesText(e.target.value)}
+                                placeholder="Provide detailed description for why the lead is not interested..."
+                                rows={4}
+                                className="resize-none text-sm bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl focus:ring-purple-500 text-slate-900 dark:text-slate-100"
+                            />
+                        </div>
+                    </div>
+
+                    <DialogFooter className="flex sm:justify-end gap-2 border-t border-slate-100 dark:border-slate-800/80 pt-4">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setIsNotInterestedModalOpen(false)}
+                            disabled={isSubmittingNotInterested}
+                            className="rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="button"
+                            onClick={handleConfirmNotInterested}
+                            disabled={isSubmittingNotInterested || !lostNotesText.trim()}
+                            className="rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold px-4 gap-2"
+                        >
+                            {isSubmittingNotInterested && <Loader2 className="w-4 h-4 animate-spin" />}
+                            {isSubmittingNotInterested ? 'Saving...' : 'Save & Update'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Floating Draggable Dialer Widget (Bottom-Left Call Monitor) */}
             {isCallModalOpen && (
                 <div
                     onMouseDown={handleMouseDown}
