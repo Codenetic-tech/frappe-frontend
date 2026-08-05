@@ -213,92 +213,80 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         };
       }
 
-      // If login is successful
-      if (res.message === 'Logged In' || res.message === 'Logged In!') {
-        console.log('Login success, resolving logged-in user identity...');
+      // If login is successful (frappeLogin resolved without error)
+      console.log('Login success, resolving logged-in user identity... Response:', res);
 
-        // Reconnect socket first so that session is established
-        try {
-          const socket = frappeCtx?.socket;
-          if (socket) {
-            console.log('Reconnecting socket after login...');
-            socket.disconnect();
-            socket.connect();
-          }
-        } catch (socketErr) {
-          console.warn('Socket reconnect failed:', socketErr);
+      // Reconnect socket first so that session is established
+      try {
+        const socket = frappeCtx?.socket;
+        if (socket) {
+          console.log('Reconnecting socket after login...');
+          socket.disconnect();
+          socket.connect();
         }
+      } catch (socketErr) {
+        console.warn('Socket reconnect failed:', socketErr);
+      }
 
-        // Try to resolve logged in user identity (email/name)
-        let loggedInUserName = employeeId;
+      // Try to resolve logged in user identity (email/name)
+      let loggedInUserName = employeeId;
+      try {
+        await updateCurrentUser();
+        const fetchRes = await fetch('/api/method/frappe.auth.get_logged_user');
+        const data = await fetchRes.json();
+        if (data?.message) {
+          loggedInUserName = data.message;
+        }
+      } catch (sdkErr) {
+        console.warn('Could not resolve logged-in user name via SDK, using fallback:', sdkErr);
         try {
-          await updateCurrentUser();
           const fetchRes = await fetch('/api/method/frappe.auth.get_logged_user');
           const data = await fetchRes.json();
           if (data?.message) {
             loggedInUserName = data.message;
           }
-        } catch (sdkErr) {
-          console.warn('Could not resolve logged-in user name via SDK, using fallback:', sdkErr);
-          try {
-            const fetchRes = await fetch('/api/method/frappe.auth.get_logged_user');
-            const data = await fetchRes.json();
-            if (data?.message) {
-              loggedInUserName = data.message;
-            }
-          } catch (innerErr) {
-            console.warn('get_logged_user direct fetch failed:', innerErr);
-          }
+        } catch (innerErr) {
+          console.warn('get_logged_user direct fetch failed:', innerErr);
         }
-
-        console.log('Resolved user identity name:', loggedInUserName);
-
-        let userData: User = {
-          id: loggedInUserName,
-          email: loggedInUserName,
-          firstName: res.full_name || loggedInUserName.split('@')[0] || 'User',
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          role: 'employee',
-          user_code: loggedInUserName
-        };
-
-        // Fetch full User document from Frappe FIRST before marking login as complete
-        if (loggedInUserName) {
-          console.log('Fetching User profile for:', loggedInUserName);
-          const fullDoc = await fetchUserProfile(frappeCtx, loggedInUserName);
-          if (fullDoc) {
-            setFrappeUser(fullDoc);
-            sessionStorage.setItem('frappe_user', JSON.stringify(fullDoc));
-
-            // Sync full profile data like user_code and category from the User document
-            userData = {
-              ...userData,
-              id: loggedInUserName,
-              email: fullDoc.email || loggedInUserName,
-              user_code: fullDoc.username || fullDoc.name || userData.user_code,
-              category: fullDoc.category || userData.category,
-              firstName: fullDoc.first_name || userData.firstName
-            };
-          }
-        }
-
-        setUser(userData);
-        sessionStorage.setItem('user', JSON.stringify(userData));
-
-        return { success: true };
-      } else {
-        console.warn('Login message mismatch but no error thrown. Message:', res?.message);
-        // Attempt to update user anyway since auth might have succeeded
-        try {
-          await updateCurrentUser();
-        } catch (e) {
-          console.warn('Fallback updateCurrentUser failed:', e);
-        }
-
-        return { success: true };
       }
+
+      console.log('Resolved user identity name:', loggedInUserName);
+
+      let userData: User = {
+        id: loggedInUserName,
+        email: loggedInUserName,
+        firstName: res?.full_name || loggedInUserName.split('@')[0] || 'User',
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        role: 'employee',
+        user_code: loggedInUserName
+      };
+
+      // Fetch full User document from Frappe FIRST before marking login as complete
+      if (loggedInUserName) {
+        console.log('Fetching User profile for:', loggedInUserName);
+        const fullDoc = await fetchUserProfile(frappeCtx, loggedInUserName);
+        if (fullDoc) {
+          setFrappeUser(fullDoc);
+          sessionStorage.setItem('frappe_user', JSON.stringify(fullDoc));
+
+          // Sync full profile data like user_code and category from the User document
+          userData = {
+            ...userData,
+            id: loggedInUserName,
+            email: fullDoc.email || loggedInUserName,
+            user_code: fullDoc.username || fullDoc.name || userData.user_code,
+            category: fullDoc.category || userData.category,
+            firstName: fullDoc.first_name || userData.firstName
+          };
+        }
+      }
+
+      setUser(userData);
+      sessionStorage.setItem('user', JSON.stringify(userData));
+
+      return { success: true };
     } catch (error) {
       console.error('Login error:', error);
       throw error;

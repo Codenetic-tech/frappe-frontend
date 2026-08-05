@@ -782,7 +782,7 @@ const GopocketTickets: React.FC = () => {
             refresh: 1
         })],
         postFetcher,
-        { revalidateOnFocus: false, revalidateOnReconnect: true, dedupingInterval: 0 }
+        { revalidateOnFocus: false, revalidateOnReconnect: true, shouldRetryOnError: false, dedupingInterval: 5000 }
     );
 
     const chartCounts = useMemo(() => {
@@ -872,7 +872,7 @@ const GopocketTickets: React.FC = () => {
             limit_page_length: ITEMS_PER_PAGE
         })],
         postFetcher,
-        { revalidateOnFocus: false, revalidateOnReconnect: true, dedupingInterval: 0 }
+        { revalidateOnFocus: false, revalidateOnReconnect: true, shouldRetryOnError: false, dedupingInterval: 2000 }
     );
 
     useEffect(() => {

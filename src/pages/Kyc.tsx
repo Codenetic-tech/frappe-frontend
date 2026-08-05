@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback, useContext } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useContext, useRef } from 'react';
 import useSWR from 'swr';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFilter } from '@/contexts/FilterContext';
@@ -606,7 +606,7 @@ const Kyc: React.FC = () => {
             refresh: 1
         })],
         postFetcher,
-        { revalidateOnFocus: false, revalidateOnReconnect: true, dedupingInterval: 0 }
+        { revalidateOnFocus: false, revalidateOnReconnect: true, shouldRetryOnError: false, dedupingInterval: 5000 }
     );
 
     const { statusCount, totalCount } = useMemo(() => {
@@ -741,10 +741,19 @@ const Kyc: React.FC = () => {
     };
 
     // Real-time listener for KYC list updates
+    const listUpdateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     const handleListUpdate = useCallback((eventData: any) => {
         console.log('Realtime KYC event:', eventData);
-        mutateList();
-        mutateChart();
+
+        if (listUpdateTimeoutRef.current) {
+            clearTimeout(listUpdateTimeoutRef.current);
+        }
+
+        listUpdateTimeoutRef.current = setTimeout(() => {
+            mutateList();
+            mutateChart();
+        }, 1000);
 
         const modId = eventData?.name || eventData?.doc?.name || eventData?.application_id || eventData?.mobile_number;
         if (modId) {

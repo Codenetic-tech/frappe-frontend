@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -87,8 +87,14 @@ const Login = () => {
     const [totpSecKey, setTotpSecKey] = useState('');
     const [totpSetupCode, setTotpSetupCode] = useState('');
 
-    const { login, loginWithoutPassword } = useAuth();
+    const { login, loginWithoutPassword, isAuthenticated } = useAuth();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            navigate('/', { replace: true });
+        }
+    }, [isAuthenticated, navigate]);
 
     // Custom API Hooks for Forgot Password
     const { call: sendResetCodeApi, loading: isSendingCode } = useFrappePostCall('gopocket.api.send_reset_password_code');

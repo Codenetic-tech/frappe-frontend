@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -30,16 +29,9 @@ interface LeadFormTabProps {
   onLeadUpdate: (updatedLead: LeadItem) => void;
 }
 
-// CRM Lead Status is a dynamic Link field; these are the values observed in
-// production activity logs (New -> Followup -> RNR -> Call Back -> Won / Not Interested / Switch off).
+// CRM Lead Status options
 const statusOptions = ['Followup', 'RNR', 'Call Back', 'Won', 'Not Interested', 'Switch off'];
-const noOfEmployeesOptions = ['1-10', '11-50', '51-200', '201-500', '501-1000', '1000+'];
-const slaStatusOptions = ['First Response Due', 'Rolling Response Due', 'Failed', 'Fulfilled'];
 
-// Defined outside LeadFormTab so it keeps a stable component identity across
-// re-renders — declaring it inside the component body would remount every
-// input on each keystroke (since editedLead state changes trigger a re-render),
-// dropping focus after a single character.
 const RowField = ({
   label, value, editValue, onChange, type = 'text', placeholder, options, alwaysReadOnly = false, required = false,
 }: {
@@ -101,6 +93,11 @@ const LeadFormTab: React.FC<LeadFormTabProps> = ({ lead, leadId, onLeadUpdate })
   const { updateDoc, loading: updating } = useFrappeUpdateDoc();
   const [editedLead, setEditedLead] = useState<Partial<LeadItem>>({});
 
+  const isStatusClient = String(lead?.status ?? '').trim().toLowerCase() === 'client';
+  const currentStatusOptions = isStatusClient && lead.status && !statusOptions.includes(lead.status)
+    ? [lead.status, ...statusOptions]
+    : statusOptions;
+
   const updateLead = async () => {
     if (!leadId || updating || Object.keys(editedLead).length === 0) return;
     try {
@@ -128,7 +125,7 @@ const LeadFormTab: React.FC<LeadFormTabProps> = ({ lead, leadId, onLeadUpdate })
               <Users className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 truncate">{lead.lead_name}</h2>
+              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 truncate">{lead.lead_name || lead.first_name}</h2>
               {lead.industry && (
                 <Badge variant="outline" className="mt-1 px-2 py-0.5 rounded-full bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-350 border-slate-200 dark:border-slate-700 font-bold text-[9px] uppercase tracking-wider">
                   {lead.industry}
@@ -146,117 +143,80 @@ const LeadFormTab: React.FC<LeadFormTabProps> = ({ lead, leadId, onLeadUpdate })
         {lead.validity_date && <LeadTimer validityDate={lead.validity_date} />}
       </div>
 
-      {/* Scrollable field sections — mirrors the CRM Lead DocType's own tabs */}
+      {/* Scrollable field sections */}
       <ScrollArea className="flex-1 min-h-0">
         <form className="p-4" onSubmit={(e) => e.preventDefault()}>
           <FieldGroup className="gap-4">
-            {/* Person tab */}
-            <FieldSet className="gap-2">
-              <FieldLegend variant="label">Person</FieldLegend>
-              <FieldGroup className="gap-2">
-                <RowField label="Salutation" value={lead.salutation} editValue={editedLead.salutation} onChange={(val) => handleFieldChange('salutation', val)} />
-                <RowField label="First Name" value={lead.first_name} editValue={editedLead.first_name} onChange={(val) => handleFieldChange('first_name', val)} required />
-                <RowField label="Middle Name" value={lead.middle_name} editValue={editedLead.middle_name} onChange={(val) => handleFieldChange('middle_name', val)} />
-                <RowField label="Last Name" value={lead.last_name} editValue={editedLead.last_name} onChange={(val) => handleFieldChange('last_name', val)} />
-                <RowField label="Full Name" value={lead.lead_name} editValue={editedLead.lead_name} onChange={(val) => handleFieldChange('lead_name', val)} />
-                <RowField label="Gender" value={lead.gender} editValue={editedLead.gender} onChange={(val) => handleFieldChange('gender', val)} />
-                <RowField label="Email" value={lead.email} editValue={editedLead.email} onChange={(val) => handleFieldChange('email', val)} />
-                <RowField label="Mobile No." value={lead.mobile_no} editValue={editedLead.mobile_no} onChange={(val) => handleFieldChange('mobile_no', val)} />
-                <RowField label="Phone" value={lead.phone} editValue={editedLead.phone} onChange={(val) => handleFieldChange('phone', val)} />
-              </FieldGroup>
-            </FieldSet>
+            <RowField
+              label="First Name"
+              value={lead.first_name}
+              editValue={editedLead.first_name}
+              onChange={(val) => handleFieldChange('first_name', val)}
+              required
+            />
+            <RowField
+              label="Email"
+              value={lead.email}
+              editValue={editedLead.email}
+              onChange={(val) => handleFieldChange('email', val)}
+            />
+            <RowField
+              label="Mobile No."
+              value={lead.mobile_no}
+              editValue={editedLead.mobile_no}
+              onChange={(val) => handleFieldChange('mobile_no', val)}
+            />
+            <RowField
+              label="Source"
+              value={lead.source}
+              editValue={editedLead.source}
+              onChange={(val) => handleFieldChange('source', val)}
+              alwaysReadOnly
+            />
+            <RowField
+              label="Status"
+              value={lead.status}
+              editValue={editedLead.status}
+              onChange={(val) => handleFieldChange('status', val)}
+              options={currentStatusOptions}
+              alwaysReadOnly={isStatusClient}
+              required
+            />
+            <RowField
+              label="Facebook Lead ID"
+              value={lead.facebook_lead_id}
+              editValue={editedLead.facebook_lead_id}
+              onChange={(val) => handleFieldChange('facebook_lead_id', val)}
+              alwaysReadOnly
+            />
+            <RowField
+              label="Facebook Form ID"
+              value={lead.facebook_form_id}
+              editValue={editedLead.facebook_form_id}
+              onChange={(val) => handleFieldChange('facebook_form_id', val)}
+              alwaysReadOnly
+            />
 
             <FieldSeparator />
 
-            {/* Details tab */}
-            <FieldSet className="gap-2">
-              <FieldLegend variant="label">Details</FieldLegend>
-              <FieldGroup className="gap-2">
-                <RowField label="Organization" value={lead.organization} editValue={editedLead.organization} onChange={(val) => handleFieldChange('organization', val)} />
-                <RowField label="Website" value={lead.website} editValue={editedLead.website} onChange={(val) => handleFieldChange('website', val)} />
-                <RowField label="Territory" value={lead.territory} editValue={editedLead.territory} onChange={(val) => handleFieldChange('territory', val)} />
-                <RowField label="Industry" value={lead.industry} editValue={editedLead.industry} onChange={(val) => handleFieldChange('industry', val)} />
-                <RowField label="Job Title" value={lead.job_title} editValue={editedLead.job_title} onChange={(val) => handleFieldChange('job_title', val)} />
-                <RowField label="Source" value={lead.source} editValue={editedLead.source} onChange={(val) => handleFieldChange('source', val)} />
-                <RowField label="Lead Owner" value={lead.lead_owner} editValue={editedLead.lead_owner} onChange={(val) => handleFieldChange('lead_owner', val)} />
-              </FieldGroup>
-            </FieldSet>
-
-            <FieldSeparator />
-
-            {/* Others tab */}
-            <FieldSet className="gap-2">
-              <FieldLegend variant="label">Others</FieldLegend>
-              <FieldGroup className="gap-2">
-                <RowField label="Status" value={lead.status} editValue={editedLead.status} onChange={(val) => handleFieldChange('status', val)} options={statusOptions} required />
-                <RowField label="No. of Employees" value={lead.no_of_employees} editValue={editedLead.no_of_employees} onChange={(val) => handleFieldChange('no_of_employees', val)} options={noOfEmployeesOptions} />
-                <RowField label="Annual Revenue" value={lead.annual_revenue} editValue={editedLead.annual_revenue} onChange={(val) => handleFieldChange('annual_revenue', val)} type="number" />
-                <Field orientation="horizontal">
-                  <Checkbox
-                    checked={!!(editedLead.converted ?? lead.converted)}
-                    onCheckedChange={(checked) => handleFieldChange('converted', checked ? 1 : 0)}
-                  />
-                  <FieldLabel className="font-normal text-xs text-slate-600 dark:text-slate-300">Converted</FieldLabel>
-                </Field>
-              </FieldGroup>
-            </FieldSet>
-
-            <FieldSeparator />
-
-            {/* Products tab (table itself not shown here — summary totals only) */}
-            <FieldSet className="gap-2">
-              <FieldLegend variant="label">Products</FieldLegend>
-              <FieldGroup className="gap-2">
-                <RowField label="Total" value={lead.total} editValue={editedLead.total} onChange={(val) => handleFieldChange('total', val)} type="number" alwaysReadOnly />
-                <RowField label="Net Total" value={lead.net_total} editValue={editedLead.net_total} onChange={(val) => handleFieldChange('net_total', val)} type="number" alwaysReadOnly />
-              </FieldGroup>
-            </FieldSet>
-
-            <FieldSeparator />
-
-            {/* SLA tab */}
-            <FieldSet className="gap-2">
-              <FieldLegend variant="label">SLA</FieldLegend>
-              <FieldGroup className="gap-2">
-                <RowField label="SLA" value={lead.sla} editValue={editedLead.sla} onChange={(val) => handleFieldChange('sla', val)} />
-                <RowField label="SLA Creation" value={lead.sla_creation} editValue={editedLead.sla_creation} onChange={(val) => handleFieldChange('sla_creation', val)} alwaysReadOnly />
-                <RowField label="SLA Status" value={lead.sla_status} editValue={editedLead.sla_status} onChange={(val) => handleFieldChange('sla_status', val)} options={slaStatusOptions} alwaysReadOnly />
-                <RowField label="Communication Status" value={lead.communication_status} editValue={editedLead.communication_status} onChange={(val) => handleFieldChange('communication_status', val)} />
-
-                <FieldSet className="gap-2">
-                  <FieldLegend variant="label" className="text-[11px] text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-                    Response Details
-                  </FieldLegend>
-                  <FieldGroup className="gap-2">
-                    <RowField label="Response By" value={lead.response_by} editValue={editedLead.response_by} onChange={(val) => handleFieldChange('response_by', val)} alwaysReadOnly />
-                    <RowField label="First Response Time" value={lead.first_response_time} editValue={editedLead.first_response_time} onChange={(val) => handleFieldChange('first_response_time', val)} alwaysReadOnly />
-                    <RowField label="First Responded On" value={lead.first_responded_on} editValue={editedLead.first_responded_on} onChange={(val) => handleFieldChange('first_responded_on', val)} alwaysReadOnly />
-                    <RowField label="Last Response Time" value={lead.last_response_time} editValue={editedLead.last_response_time} onChange={(val) => handleFieldChange('last_response_time', val)} alwaysReadOnly />
-                    <RowField label="Last Responded On" value={lead.last_responded_on} editValue={editedLead.last_responded_on} onChange={(val) => handleFieldChange('last_responded_on', val)} alwaysReadOnly />
-                  </FieldGroup>
-                </FieldSet>
-              </FieldGroup>
-            </FieldSet>
-
-            <FieldSeparator />
-
-            {/* Syncing tab */}
-            <FieldSet className="gap-2">
-              <FieldLegend variant="label">Syncing</FieldLegend>
-              <FieldGroup className="gap-2">
-                <RowField label="Facebook Lead ID" value={lead.facebook_lead_id} editValue={editedLead.facebook_lead_id} onChange={(val) => handleFieldChange('facebook_lead_id', val)} />
-                <RowField label="Facebook Form ID" value={lead.facebook_form_id} editValue={editedLead.facebook_form_id} onChange={(val) => handleFieldChange('facebook_form_id', val)} />
-              </FieldGroup>
-            </FieldSet>
-
-            <FieldSeparator />
-
-            {/* Lost Details tab */}
+            {/* Lost Details */}
             <FieldSet className="gap-2">
               <FieldLegend variant="label">Lost Details</FieldLegend>
               <FieldGroup className="gap-2">
-                <RowField label="Lost Reason" value={lead.lost_reason} editValue={editedLead.lost_reason} onChange={(val) => handleFieldChange('lost_reason', val)} />
-                <RowField label="Lost Notes" value={lead.lost_notes} editValue={editedLead.lost_notes} onChange={(val) => handleFieldChange('lost_notes', val)} type="textarea" placeholder="Describe why this lead was lost..." />
+                <RowField
+                  label="Lost Reason"
+                  value={lead.lost_reason}
+                  editValue={editedLead.lost_reason}
+                  onChange={(val) => handleFieldChange('lost_reason', val)}
+                />
+                <RowField
+                  label="Lost Notes"
+                  value={lead.lost_notes}
+                  editValue={editedLead.lost_notes}
+                  onChange={(val) => handleFieldChange('lost_notes', val)}
+                  type="textarea"
+                  placeholder="Describe why this lead was lost..."
+                />
               </FieldGroup>
             </FieldSet>
           </FieldGroup>
@@ -267,3 +227,4 @@ const LeadFormTab: React.FC<LeadFormTabProps> = ({ lead, leadId, onLeadUpdate })
 };
 
 export default LeadFormTab;
+

@@ -513,8 +513,10 @@ const Leads: React.FC = () => {
             console.error(err);
             toast.error('Failed to assign some leads');
         } finally {
-            isBulkUpdatingRef.current = false;
             setIsRefreshing(false);
+            setTimeout(() => {
+                isBulkUpdatingRef.current = false;
+            }, 2000);
         }
     };
 
@@ -1017,7 +1019,7 @@ const Leads: React.FC = () => {
             refresh: 1
         })],
         postFetcher,
-        { revalidateOnFocus: false, revalidateOnReconnect: true, dedupingInterval: 0 }
+        { revalidateOnFocus: false, revalidateOnReconnect: true, shouldRetryOnError: false, dedupingInterval: 5000 }
     );
 
     const chartCounts = useMemo(() => {
@@ -1108,7 +1110,7 @@ const Leads: React.FC = () => {
             limit_page_length: ITEMS_PER_PAGE
         })],
         postFetcher,
-        { revalidateOnFocus: false, revalidateOnReconnect: true, dedupingInterval: 0 }
+        { revalidateOnFocus: false, revalidateOnReconnect: true, shouldRetryOnError: false, dedupingInterval: 2000 }
     );
 
     const count = totalCount;
@@ -1185,11 +1187,22 @@ const Leads: React.FC = () => {
     };
 
     // Real-time listener for CRM Lead updates via WebSocket
+    const listUpdateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     const handleListUpdate = useCallback((eventData: any) => {
         if (isBulkUpdatingRef.current) return;
         console.log('Realtime CRM Lead event:', eventData);
-        refetchLeads();
-        mutateChart();
+
+        if (listUpdateTimeoutRef.current) {
+            clearTimeout(listUpdateTimeoutRef.current);
+        }
+
+        listUpdateTimeoutRef.current = setTimeout(() => {
+            if (!isBulkUpdatingRef.current) {
+                refetchLeads();
+                mutateChart();
+            }
+        }, 1000);
     }, [refetchLeads, mutateChart]);
 
     // Unsubscribe from CRM Lead doctype room to avoid broad, noisy updates
