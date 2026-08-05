@@ -165,6 +165,39 @@ const DocActivityCard: React.FC<{ entry: LeadDocActivity; userInfo?: Record<stri
     const Icon = style.icon;
     const otherVersions = entry.other_versions || [];
 
+    const handleOpenAttachment = async (e: React.MouseEvent, fileUrl: string, fileName?: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!fileUrl) return;
+
+        let targetUrl = fileUrl;
+        if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://pulse.gopocket.in';
+            const cleanPath = targetUrl.startsWith('/') ? targetUrl : `/${targetUrl}`;
+            targetUrl = `${API_BASE_URL}${cleanPath}`;
+        }
+
+        try {
+            const response = await fetch(targetUrl);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            const newTab = window.open(blobUrl, '_blank');
+            if (!newTab) {
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = fileName || 'attachment';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+        } catch (err) {
+            console.error('Failed to fetch attachment blob, opening direct target URL:', err);
+            window.open(targetUrl, '_blank');
+        }
+    };
+
     return (
         <div className="relative flex items-start gap-4">
             <TimelineDot>
@@ -201,6 +234,7 @@ const DocActivityCard: React.FC<{ entry: LeadDocActivity; userInfo?: Record<stri
                                     <a
                                         key={att.name}
                                         href={att.file_url}
+                                        onClick={(e) => handleOpenAttachment(e, att.file_url, att.file_name)}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:border-purple-200 hover:text-purple-600 transition-colors"
