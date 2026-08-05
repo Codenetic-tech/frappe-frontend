@@ -195,7 +195,7 @@ const AnnouncementPage = () => {
             const classCode = `${dateParts[0]}${dateParts[1]}${dateParts[2]}-${timeString}`;
 
             const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-            const apiUrl = `${API_BASE_URL}/api/method/crm.api.seminar.get_class_registrations`;
+            const apiUrl = `${API_BASE_URL}/api/method/gopocket.seminar.get_class_registrations`;
 
             const response = await fetch(apiUrl, {
                 method: 'POST',
@@ -260,7 +260,7 @@ const AnnouncementPage = () => {
             const longLink = `https://gopocket.in/learn/${dateTimeId}/?refer=${user.user_code}`;
 
             const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-            const apiUrl = `${API_BASE_URL}/api/method/crm.api.referral._handle_short_link`;
+            const apiUrl = `${API_BASE_URL}/api/method/gopocket.seminar._handle_short_link`;
 
             const response = await fetch(apiUrl, {
                 method: 'POST',
