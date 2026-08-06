@@ -64,6 +64,7 @@ import {
     ChevronRight,
     ArrowUpDown,
     Check,
+    Copy,
     ChevronsUpDown,
     Calendar as CalendarIcon,
     X,
@@ -296,6 +297,34 @@ const postFetcher = async (key: string | [string, string] | { url: string; body:
     return data.message;
 };
 
+const formatDateTimeWithAmPm = (dateStr?: string) => {
+    if (!dateStr) return '';
+    try {
+        const cleanStr = dateStr.replace('T', ' ').trim();
+        const parts = cleanStr.split(' ');
+        if (parts.length < 2) return dateStr;
+
+        const datePart = parts[0];
+        const timePart = parts[1];
+
+        const timeSubparts = timePart.split(':');
+        let hours = parseInt(timeSubparts[0], 10);
+        const minutes = timeSubparts[1] || '00';
+
+        if (isNaN(hours)) return dateStr;
+
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        if (hours === 0) hours = 12;
+
+        const formattedHours = hours.toString().padStart(2, '0');
+
+        return `${datePart} ${formattedHours}:${minutes} ${ampm}`;
+    } catch {
+        return dateStr;
+    }
+};
+
 const Leads: React.FC = () => {
     const navigate = useNavigate();
     const { toast: radixToast, dismiss } = useToast();
@@ -315,6 +344,17 @@ const Leads: React.FC = () => {
     const frappe = useContext(FrappeContext);
     const { updateDoc } = useFrappeUpdateDoc();
     const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+    const [copiedCampaignIndex, setCopiedCampaignIndex] = useState<number | null>(null);
+
+    const handleCopyCampaign = (e: React.MouseEvent, campaignName: string, index: number) => {
+        e.stopPropagation();
+        if (!campaignName) return;
+        navigator.clipboard.writeText(campaignName);
+        setCopiedCampaignIndex(index);
+        setTimeout(() => setCopiedCampaignIndex(null), 2000);
+        toast.success(`Copied "${campaignName}" to clipboard`);
+    };
+
     const isBulkUpdatingRef = useRef(false);
 
     const [isCallModalOpen, setIsCallModalOpen] = useState(false);
@@ -1088,11 +1128,7 @@ const Leads: React.FC = () => {
     const filters = useMemo(() => {
         const activeFilters = [...totalFilters];
         if (statusFilter !== 'ALL') {
-            if (statusFilter === 'Others') {
-                activeFilters.push(['status', 'not in', ['New', 'Followup', 'won', 'Client', 'Not Interested']]);
-            } else {
-                activeFilters.push(['status', '=', statusFilter]);
-            }
+            activeFilters.push(['status', '=', statusFilter]);
         }
         return activeFilters;
     }, [totalFilters, statusFilter]);
@@ -1950,10 +1986,12 @@ const Leads: React.FC = () => {
                                 <SelectItem value="ALL">All Statuses</SelectItem>
                                 <SelectItem value="New">New</SelectItem>
                                 <SelectItem value="Followup">Followup</SelectItem>
+                                <SelectItem value="RNR">RNR</SelectItem>
+                                <SelectItem value="Call Back">Call Back</SelectItem>
+                                <SelectItem value="Switch off">Switch Off</SelectItem>
+                                <SelectItem value="Not Interested">Not Interested</SelectItem>
                                 <SelectItem value="won">Won</SelectItem>
                                 <SelectItem value="Client">Client</SelectItem>
-                                <SelectItem value="Not Interested">Not Interested</SelectItem>
-                                <SelectItem value="Others">Others</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -2520,9 +2558,27 @@ const Leads: React.FC = () => {
                                                 );
                                             }
                                             if (colId === 'campaign') {
+                                                const campaignVal = row.custom_campaign_name;
+                                                const isCopied = copiedCampaignIndex === index;
                                                 return (
                                                     <td key={colId} className="py-4 px-4 text-slate-500 dark:text-slate-400 truncate" style={{ width: columnWidths.campaign, minWidth: columnWidths.campaign, maxWidth: columnWidths.campaign }}>
-                                                        {formatValue(row.custom_campaign_name)}
+                                                        {campaignVal ? (
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => handleCopyCampaign(e, campaignVal, index)}
+                                                                className="inline-flex items-center gap-1.5 hover:text-purple-600 dark:hover:text-purple-400 transition-colors font-medium text-xs group/camp max-w-full truncate text-left focus:outline-none cursor-pointer"
+                                                                title="Click to copy campaign name"
+                                                            >
+                                                                <span className="truncate">{campaignVal}</span>
+                                                                {isCopied ? (
+                                                                    <Check className="w-3 h-3 text-green-500 shrink-0" />
+                                                                ) : (
+                                                                    <Copy className="w-3 h-3 opacity-0 group-hover/camp:opacity-100 transition-opacity text-slate-400 dark:text-slate-500 shrink-0" />
+                                                                )}
+                                                            </button>
+                                                        ) : (
+                                                            '-'
+                                                        )}
                                                     </td>
                                                 );
                                             }
@@ -2531,7 +2587,7 @@ const Leads: React.FC = () => {
                                                     <td key={colId} className="py-4 px-4" style={{ width: columnWidths.creation, minWidth: columnWidths.creation, maxWidth: columnWidths.creation }}>
                                                         <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 truncate">
                                                             <CalendarIcon className="w-3 h-3 text-slate-400 shrink-0" />
-                                                            <span className="text-[12px] font-medium truncate">{row.creation ? row.creation.split(' ')[0] : ''}</span>
+                                                            <span className="text-[12px] font-medium truncate">{formatDateTimeWithAmPm(row.creation)}</span>
                                                         </div>
                                                     </td>
                                                 );
@@ -2541,7 +2597,7 @@ const Leads: React.FC = () => {
                                                     <td key={colId} className="py-4 px-4" style={{ width: columnWidths.modified, minWidth: columnWidths.modified, maxWidth: columnWidths.modified }}>
                                                         <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 truncate">
                                                             <CalendarIcon className="w-3 h-3 text-slate-400 shrink-0" />
-                                                            <span className="text-[12px] font-medium truncate">{row.modified ? row.modified.split(' ')[0] : ''}</span>
+                                                            <span className="text-[12px] font-medium truncate">{formatDateTimeWithAmPm(row.modified)}</span>
                                                         </div>
                                                     </td>
                                                 );

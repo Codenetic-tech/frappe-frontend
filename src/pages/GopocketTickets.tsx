@@ -222,6 +222,34 @@ const postFetcher = async (key: string | [string, string] | { url: string; body:
     return data.message;
 };
 
+const formatDateTimeWithAmPm = (dateStr?: string) => {
+    if (!dateStr) return '';
+    try {
+        const cleanStr = dateStr.replace('T', ' ').trim();
+        const parts = cleanStr.split(' ');
+        if (parts.length < 2) return dateStr;
+
+        const datePart = parts[0];
+        const timePart = parts[1];
+
+        const timeSubparts = timePart.split(':');
+        let hours = parseInt(timeSubparts[0], 10);
+        const minutes = timeSubparts[1] || '00';
+
+        if (isNaN(hours)) return dateStr;
+
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        if (hours === 0) hours = 12;
+
+        const formattedHours = hours.toString().padStart(2, '0');
+
+        return `${datePart} ${formattedHours}:${minutes} ${ampm}`;
+    } catch {
+        return dateStr;
+    }
+};
+
 const GopocketTickets: React.FC = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -1958,7 +1986,7 @@ const GopocketTickets: React.FC = () => {
                                                     <td key={colId} className="py-3 px-4" style={{ width: columnWidths.creation, minWidth: columnWidths.creation, maxWidth: columnWidths.creation }}>
                                                         <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 truncate">
                                                             <CalendarIcon className="w-3 h-3 text-slate-400 shrink-0" />
-                                                            <span className="text-[12px] font-medium truncate">{row.creation ? row.creation.split(' ')[0] : ''}</span>
+                                                            <span className="text-[12px] font-medium truncate">{formatDateTimeWithAmPm(row.creation)}</span>
                                                         </div>
                                                     </td>
                                                 );
@@ -1968,7 +1996,7 @@ const GopocketTickets: React.FC = () => {
                                                     <td key={colId} className="py-3 px-4" style={{ width: columnWidths.modified, minWidth: columnWidths.modified, maxWidth: columnWidths.modified }}>
                                                         <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 truncate">
                                                             <CalendarIcon className="w-3 h-3 text-slate-400 shrink-0" />
-                                                            <span className="text-[12px] font-medium truncate">{row.modified ? row.modified.split(' ')[0] : ''}</span>
+                                                            <span className="text-[12px] font-medium truncate">{formatDateTimeWithAmPm(row.modified)}</span>
                                                         </div>
                                                     </td>
                                                 );
