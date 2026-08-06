@@ -114,7 +114,7 @@ const AnnouncementPage = () => {
         }
     );
 
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://pulse.gopocket.in';
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
     const classes = useMemo<TradingClass[]>(() => {
         if (!seminarsData) return [];
@@ -194,7 +194,7 @@ const AnnouncementPage = () => {
             const timeString = item.time.split(' ')[0].split(':').slice(0, 2).join('');
             const classCode = `${dateParts[0]}${dateParts[1]}${dateParts[2]}-${timeString}`;
 
-            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://pulse.gopocket.in';
+            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
             const apiUrl = `${API_BASE_URL}/api/method/gopocket.seminar.get_class_registrations`;
 
             const response = await fetch(apiUrl, {
@@ -259,7 +259,7 @@ const AnnouncementPage = () => {
 
             const longLink = `https://gopocket.in/learn/${dateTimeId}/?refer=${user.user_code}`;
 
-            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://pulse.gopocket.in';
+            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
             const apiUrl = `${API_BASE_URL}/api/method/gopocket.seminar._handle_short_link`;
 
             const response = await fetch(apiUrl, {
@@ -309,41 +309,23 @@ const AnnouncementPage = () => {
         }
     };
 
-    const handleDownloadImage = async (e: React.MouseEvent, imageUrl: string, title: string) => {
+    const handleDownloadImage = (e: React.MouseEvent, imageUrl: string) => {
         e.stopPropagation();
-        try {
-            // Prefer proxied relative path for same-origin download (works with Vite & Nginx proxies)
-            let fetchUrl = imageUrl;
-            if (fetchUrl.includes('/files/')) {
-                fetchUrl = `/files/${fetchUrl.split('/files/')[1]}`;
-            }
+        if (!imageUrl) return;
 
-            const response = await fetch(fetchUrl);
-            if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `${title.replace(/\s+/g, '_')}_banner.jpg`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
-            toast({
-                title: "Download Started",
-                description: "The class image is being downloaded.",
-                className: "bg-blue-50 border-blue-200 text-blue-900"
-            });
-        } catch (error) {
-            console.error("Error downloading image, opening in new tab:", error);
-            // Fallback: Open in new tab if CORS or fetch fails
-            window.open(imageUrl, '_blank');
-            toast({
-                title: "Opening Image",
-                description: "Direct download failed. Opening image in a new tab instead.",
-                className: "bg-amber-50 border-amber-200 text-amber-900"
-            });
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+        let targetUrl = imageUrl;
+        if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+            const cleanPath = targetUrl.startsWith('/') ? targetUrl : `/${targetUrl}`;
+            targetUrl = `${API_BASE_URL}${cleanPath}`;
         }
+
+        window.open(targetUrl, '_blank');
+        toast({
+            title: "Opening Image",
+            description: "Opening image in a new tab.",
+            className: "bg-blue-50 border-blue-200 text-blue-900"
+        });
     };
 
     const renderAnnouncements = () => (
@@ -537,7 +519,7 @@ const AnnouncementPage = () => {
                                     type="button"
                                     size="icon"
                                     variant="outline"
-                                    onClick={(e) => handleDownloadImage(e, item.image, item.title)}
+                                    onClick={(e) => handleDownloadImage(e, item.image)}
                                     className="h-10 w-10 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-350 shrink-0 shadow-sm bg-white dark:bg-slate-900"
                                     title="Download Image"
                                 >
