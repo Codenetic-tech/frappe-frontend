@@ -114,7 +114,7 @@ const AnnouncementPage = () => {
         }
     );
 
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://pulse.gopocket.in';
 
     const classes = useMemo<TradingClass[]>(() => {
         if (!seminarsData) return [];
@@ -194,7 +194,7 @@ const AnnouncementPage = () => {
             const timeString = item.time.split(' ')[0].split(':').slice(0, 2).join('');
             const classCode = `${dateParts[0]}${dateParts[1]}${dateParts[2]}-${timeString}`;
 
-            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://pulse.gopocket.in';
             const apiUrl = `${API_BASE_URL}/api/method/gopocket.seminar.get_class_registrations`;
 
             const response = await fetch(apiUrl, {
@@ -259,7 +259,7 @@ const AnnouncementPage = () => {
 
             const longLink = `https://gopocket.in/learn/${dateTimeId}/?refer=${user.user_code}`;
 
-            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://pulse.gopocket.in';
             const apiUrl = `${API_BASE_URL}/api/method/gopocket.seminar._handle_short_link`;
 
             const response = await fetch(apiUrl, {
@@ -456,6 +456,7 @@ const AnnouncementPage = () => {
                             src={item.image}
                             alt={item.title}
                             className="w-full h-full object-cover"
+                            onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/placeholder.svg'; }}
                         />
                     </div>
 
