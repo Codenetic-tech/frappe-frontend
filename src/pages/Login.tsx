@@ -34,26 +34,85 @@ const getPasswordStrength = (p: string) => {
 // ────────────────────────────────────────────────────────────────────────────
 
 const getErrorMessage = (error: any): string => {
-    if (error.message && error.message !== 'There was an error.') {
-        return error.message;
-    }
-    if (error._server_messages) {
+    if (!error) return "An error occurred. Please try again.";
+
+    // 1. Prioritize _server_messages (Frappe's standard exception payload)
+    const serverMessagesRaw = error._server_messages || error.data?._server_messages || error.response?.data?._server_messages;
+    if (serverMessagesRaw) {
         try {
-            const serverMsgs = JSON.parse(error._server_messages);
+            const serverMsgs = typeof serverMessagesRaw === 'string' ? JSON.parse(serverMessagesRaw) : serverMessagesRaw;
             if (Array.isArray(serverMsgs) && serverMsgs.length > 0) {
-                const firstMsg = typeof serverMsgs[0] === 'string' ? JSON.parse(serverMsgs[0]) : serverMsgs[0];
-                if (firstMsg && firstMsg.message) {
-                    return firstMsg.message;
+                let firstMsg = serverMsgs[0];
+                if (typeof firstMsg === 'string') {
+                    try {
+                        firstMsg = JSON.parse(firstMsg);
+                    } catch {
+                        const cleaned = firstMsg.replace(/<[^>]*>/g, '').trim();
+                        if (cleaned) return cleaned;
+                    }
+                }
+                if (firstMsg && typeof firstMsg === 'object' && firstMsg.message) {
+                    const cleaned = firstMsg.message.replace(/<[^>]*>/g, '').trim();
+                    if (cleaned) return cleaned;
                 }
             }
         } catch (e) {
             console.error("Failed to parse _server_messages", e);
         }
     }
-    if (error.exception) {
-        return error.exception;
+
+    // 2. Check for explicit error message or response data message
+    const explicitMsg = error.data?.message || error.response?.data?.message || error.message;
+    if (explicitMsg && typeof explicitMsg === 'string') {
+        const genericPhrases = [
+            'there was an error.',
+            'there was an error',
+            'request failed with status code 500',
+            'request failed with status code 400',
+            'request failed with status code 403',
+            'request failed with status code 404',
+            'internal server error'
+        ];
+        if (!genericPhrases.includes(explicitMsg.toLowerCase().trim())) {
+            return explicitMsg.replace(/<[^>]*>/g, '').trim();
+        }
     }
+
+    // 3. Fallback to exception name if available
+    const exc = error.exc_type || error.exception || error.data?.exc_type || error.response?.data?.exc_type;
+    if (exc && typeof exc === 'string') {
+        const cleanExc = exc.split('.').pop() || exc;
+        if (cleanExc && cleanExc !== 'Error') {
+            return cleanExc;
+        }
+    }
+
     return "An error occurred. Please try again.";
+};
+
+const getErrorTitle = (error: any, fallbackTitle: string = "Error"): string => {
+    if (!error) return fallbackTitle;
+
+    // 1. Check for exc_type directly (e.g. "DoesNotExistError", "ValidationError")
+    const excType = error.exc_type || error.data?.exc_type || error.response?.data?.exc_type;
+    if (excType && typeof excType === 'string' && excType.trim()) {
+        const cleanExc = excType.split('.').pop() || excType;
+        if (cleanExc && cleanExc !== 'Error' && cleanExc !== 'Exception') {
+            return cleanExc.trim();
+        }
+    }
+
+    // 2. Check for exception string (e.g. "frappe.exceptions.DoesNotExistError")
+    const exception = error.exception || error.data?.exception || error.response?.data?.exception;
+    if (exception && typeof exception === 'string' && exception.trim()) {
+        const firstPart = exception.split(':')[0];
+        const cleanExc = firstPart.split('.').pop() || firstPart;
+        if (cleanExc && cleanExc !== 'Error' && cleanExc !== 'Exception') {
+            return cleanExc.trim();
+        }
+    }
+
+    return fallbackTitle;
 };
 
 const Login = () => {
@@ -135,10 +194,12 @@ const Login = () => {
             }
         } catch (error: any) {
             console.error("Login failed:", error);
+            const errorMsg = getErrorMessage(error);
+            const errorTitle = getErrorTitle(error, "Login Failed");
             toast({
                 variant: "destructive",
-                title: "Login Failed",
-                description: error.message || "Invalid username or password. Please try again.",
+                title: errorTitle,
+                description: errorMsg,
             });
         } finally {
             setIsLoading(false);
@@ -161,10 +222,12 @@ const Login = () => {
             navigate('/');
         } catch (error: any) {
             console.error("OTP verification failed:", error);
+            const errorMsg = getErrorMessage(error);
+            const errorTitle = getErrorTitle(error, "Verification Failed");
             toast({
                 variant: "destructive",
-                title: "Verification Failed",
-                description: error.message || "Invalid or expired verification code.",
+                title: errorTitle,
+                description: errorMsg,
             });
         } finally {
             setIsLoading(false);
@@ -185,10 +248,12 @@ const Login = () => {
             setForgotCode(''); // Reset code input
         } catch (error: any) {
             console.error("Failed to send reset code:", error);
+            const errorMsg = getErrorMessage(error);
+            const errorTitle = getErrorTitle(error, "Error Sending Code");
             toast({
                 variant: "destructive",
-                title: "Error Sending Code",
-                description: error.message || "Could not send verification code. Please check your email and try again.",
+                title: errorTitle,
+                description: errorMsg,
             });
         }
     };
@@ -209,10 +274,12 @@ const Login = () => {
             setConfirmNewPassword('');
         } catch (error: any) {
             console.error("Failed to verify reset code:", error);
+            const errorMsg = getErrorMessage(error);
+            const errorTitle = getErrorTitle(error, "Verification Failed");
             toast({
                 variant: "destructive",
-                title: "Verification Failed",
-                description: error.message || "Invalid or expired verification code.",
+                title: errorTitle,
+                description: errorMsg,
             });
         }
     };
@@ -249,10 +316,12 @@ const Login = () => {
             navigate('/');
         } catch (error: any) {
             console.error("Password reset failed:", error);
+            const errorMsg = getErrorMessage(error);
+            const errorTitle = getErrorTitle(error, "Password Reset Failed");
             toast({
                 variant: "destructive",
-                title: "Password Reset Failed",
-                description: error.message || "An error occurred during password reset. Please try again.",
+                title: errorTitle,
+                description: errorMsg,
             });
         }
     };
@@ -273,9 +342,10 @@ const Login = () => {
         } catch (error: any) {
             console.error("Failed to send TOTP setup code:", error);
             const errorMsg = getErrorMessage(error);
+            const errorTitle = getErrorTitle(error, "Error Sending Code");
             toast({
                 variant: "destructive",
-                title: "Error Sending Code",
+                title: errorTitle,
                 description: errorMsg,
             });
         }
@@ -304,9 +374,10 @@ const Login = () => {
         } catch (error: any) {
             console.error("Failed to verify TOTP setup code:", error);
             const errorMsg = getErrorMessage(error);
+            const errorTitle = getErrorTitle(error, "Verification Failed");
             toast({
                 variant: "destructive",
-                title: "Verification Failed",
+                title: errorTitle,
                 description: errorMsg,
             });
             setStep('totp-setup-email');
@@ -328,10 +399,12 @@ const Login = () => {
             navigate('/');
         } catch (error: any) {
             console.error("Failed to confirm TOTP:", error);
+            const errorMsg = getErrorMessage(error);
+            const errorTitle = getErrorTitle(error, "Setup Confirmation Failed");
             toast({
                 variant: "destructive",
-                title: "Setup Confirmation Failed",
-                description: error.message || "Invalid TOTP code. Please check your authenticator app.",
+                title: errorTitle,
+                description: errorMsg,
             });
         }
     };
@@ -352,10 +425,11 @@ const Login = () => {
         } catch (error: any) {
             console.error("Failed to login with TOTP:", error);
             const errorMsg = getErrorMessage(error);
+            const errorTitle = getErrorTitle(error, "Authentication Failed");
 
             toast({
                 variant: "destructive",
-                title: "Authentication Failed",
+                title: errorTitle,
                 description: errorMsg,
             });
 
@@ -394,9 +468,10 @@ const Login = () => {
         } catch (error: any) {
             console.error("Credentials verification failed:", error);
             const errorMsg = getErrorMessage(error);
+            const errorTitle = getErrorTitle(error, "Verification Failed");
             toast({
                 variant: "destructive",
-                title: "Verification Failed",
+                title: errorTitle,
                 description: errorMsg,
             });
         }
