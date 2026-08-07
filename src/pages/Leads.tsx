@@ -1128,7 +1128,11 @@ const Leads: React.FC = () => {
     const filters = useMemo(() => {
         const activeFilters = [...totalFilters];
         if (statusFilter !== 'ALL') {
-            activeFilters.push(['status', '=', statusFilter]);
+            if (statusFilter === 'Others') {
+                activeFilters.push(['status', 'not in', ['New', 'Followup', 'won', 'Not Interested']]);
+            } else {
+                activeFilters.push(['status', '=', statusFilter]);
+            }
         }
         return activeFilters;
     }, [totalFilters, statusFilter]);
@@ -1139,7 +1143,7 @@ const Leads: React.FC = () => {
     const { data: chartData, error: chartError, mutate: mutateChart } = useSWR<any>(
         [`${API_BASE_URL}/api/method/frappe.desk.doctype.dashboard_chart.dashboard_chart.get`, JSON.stringify({
             chart_name: 'Status-1',
-            filters: JSON.stringify(totalFilters),
+            filters: JSON.stringify(filters),
             refresh: 1
         })],
         postFetcher,

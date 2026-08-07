@@ -145,6 +145,15 @@ const ClientDetails: React.FC = () => {
     </div>
   );
 
+  const formatSegmentStatus = (status: string | null | undefined): string => {
+    if (!status) return 'NOT ENABLED';
+    const normalized = status.toUpperCase().trim();
+    if (normalized === 'INACTIVE' || normalized === 'IN ACTIVE') {
+      return 'NOT ENABLED';
+    }
+    return status;
+  };
+
   const SegmentCard = ({ label, status }: { label: string, status: string | undefined }) => {
     const s = status?.toUpperCase() || 'INACTIVE';
     const isAct = s === 'ACTIVE';
@@ -158,7 +167,7 @@ const ClientDetails: React.FC = () => {
             isDor ? "bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/50" :
               "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
         )}>
-          {status || 'INACTIVE'}
+          {formatSegmentStatus(status)}
         </Badge>
       </div>
     );
@@ -173,7 +182,7 @@ const ClientDetails: React.FC = () => {
           "text-[10px] font-bold px-2 py-0 h-5 border-none",
           isActive ? "bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400" : "bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-450"
         )}>
-          {status || 'N/A'}
+          {formatSegmentStatus(status)}
         </Badge>
       </div>
     );

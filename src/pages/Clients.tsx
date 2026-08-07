@@ -215,7 +215,12 @@ const TableWrapper = ({ scrollWholePage, children }: { scrollWholePage: boolean;
             </ScrollArea>
         );
     }
-    return <ScrollArea className="flex-1">{children}</ScrollArea>;
+    return (
+        <ScrollArea className="flex-1 w-full">
+            {children}
+            <ScrollBar orientation="horizontal" />
+        </ScrollArea>
+    );
 };
 
 const postFetcher = async (payload: { url: string; body: Record<string, any> }) => {
@@ -901,11 +906,11 @@ const Clients: React.FC = () => {
                     'Opened Date': item.account_opened_date,
                     'Trade Done': item.trade_done,
                     'Last Trade': item.last_traded_day,
-                    'NSE': item.nse,
-                    'BSE': item.bse,
-                    'MCX': item.mcx,
-                    'NFO': item.nfo,
-                    'BFO': item.bfo,
+                    'NSE': formatSegmentStatus(item.nse),
+                    'BSE': formatSegmentStatus(item.bse),
+                    'MCX': formatSegmentStatus(item.mcx),
+                    'NFO': formatSegmentStatus(item.nfo),
+                    'BFO': formatSegmentStatus(item.bfo),
                     'Status': item.activation_status
                 }));
 
@@ -963,6 +968,15 @@ const Clients: React.FC = () => {
         return '-';
     };
 
+    const formatSegmentStatus = (status: string | null | undefined): string => {
+        if (!status) return 'NOT ENABLED';
+        const normalized = status.toUpperCase().trim();
+        if (normalized === 'INACTIVE' || normalized === 'IN ACTIVE') {
+            return 'NOT ENABLED';
+        }
+        return status;
+    };
+
     const renderExchangeBadge = (status: string | null | undefined) => {
         if (!status) return '-';
 
@@ -991,7 +1005,7 @@ const Clients: React.FC = () => {
         const currentStyle = containerClasses[normalizedStatus] || 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300';
         const currentDot = dotClasses[normalizedStatus] || 'bg-slate-500';
 
-        const displayText = normalizedStatus === 'INACTIVE' ? 'NOT ENABLED' : status;
+        const displayText = formatSegmentStatus(status);
 
         return (
             <div className="flex items-center justify-center gap-2">
@@ -1601,21 +1615,21 @@ const Clients: React.FC = () => {
                 scrollWholePage ? "" : "flex-1 min-h-0 overflow-hidden"
             )}>
                 <TableWrapper scrollWholePage={scrollWholePage}>
-                    <table className="w-full text-sm">
+                    <table className="w-full text-sm whitespace-nowrap">
                         <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">
-                            <tr className="border-b border-slate-100 dark:border-slate-800">
-                                <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col sticky top-0 bg-slate-50 dark:bg-slate-900 z-30" onClick={() => handleSort('client_code')}>
-                                    <div className="flex items-center gap-2">
+                            <tr className="border-b border-slate-100 dark:border-slate-800 whitespace-nowrap">
+                                <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col sticky top-0 bg-slate-50 dark:bg-slate-900 z-30 whitespace-nowrap" onClick={() => handleSort('client_code')}>
+                                    <div className="flex items-center gap-2 whitespace-nowrap">
                                         Client Code
                                         {sortConfig?.key === 'client_code' ? (
                                             sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600 dark:text-purple-400" /> : <ChevronDown className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                                         ) : <ArrowUpDown className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover/col:text-slate-400" />}
                                     </div>
                                 </th>
-                                {columnVisibility.mobile && <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">Mobile</th>}
+                                {columnVisibility.mobile && <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30 whitespace-nowrap">Mobile</th>}
                                 {columnVisibility.client_name && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col sticky top-0 bg-slate-50 dark:bg-slate-900 z-30" onClick={() => handleSort('client_name')}>
-                                        <div className="flex items-center gap-2">
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col sticky top-0 bg-slate-50 dark:bg-slate-900 z-30 whitespace-nowrap" onClick={() => handleSort('client_name')}>
+                                        <div className="flex items-center gap-2 whitespace-nowrap">
                                             Client Name
                                             {sortConfig?.key === 'client_name' ? (
                                                 sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600 dark:text-purple-400" /> : <ChevronDown className="w-4 h-4 text-purple-600 dark:text-purple-400" />
@@ -1624,8 +1638,8 @@ const Clients: React.FC = () => {
                                     </th>
                                 )}
                                 {columnVisibility.opened_date && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col sticky top-0 bg-slate-50 dark:bg-slate-900 z-30" onClick={() => handleSort('account_opened_date')}>
-                                        <div className="flex items-center gap-2">
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col sticky top-0 bg-slate-50 dark:bg-slate-900 z-30 whitespace-nowrap" onClick={() => handleSort('account_opened_date')}>
+                                        <div className="flex items-center gap-2 whitespace-nowrap">
                                             Opened Date
                                             {sortConfig?.key === 'account_opened_date' ? (
                                                 sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600 dark:text-purple-400" /> : <ChevronDown className="w-4 h-4 text-purple-600 dark:text-purple-400" />
@@ -1633,10 +1647,10 @@ const Clients: React.FC = () => {
                                         </div>
                                     </th>
                                 )}
-                                {columnVisibility.trade_done && <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">First Trade</th>}
+                                {columnVisibility.trade_done && <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30 whitespace-nowrap">First Trade</th>}
                                 {columnVisibility.last_trade && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col sticky top-0 bg-slate-50 dark:bg-slate-900 z-30" onClick={() => handleSort('last_traded_day')}>
-                                        <div className="flex items-center gap-2">
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col sticky top-0 bg-slate-50 dark:bg-slate-900 z-30 whitespace-nowrap" onClick={() => handleSort('last_traded_day')}>
+                                        <div className="flex items-center gap-2 whitespace-nowrap">
                                             Last Trade Date
                                             {sortConfig?.key === 'last_traded_day' ? (
                                                 sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600 dark:text-purple-400" /> : <ChevronDown className="w-4 h-4 text-purple-600 dark:text-purple-400" />
@@ -1645,8 +1659,8 @@ const Clients: React.FC = () => {
                                     </th>
                                 )}
                                 {columnVisibility.parent && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col sticky top-0 bg-slate-50 dark:bg-slate-900 z-30" onClick={() => handleSort('parent1')}>
-                                        <div className="flex items-center gap-2">
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col sticky top-0 bg-slate-50 dark:bg-slate-900 z-30 whitespace-nowrap" onClick={() => handleSort('parent1')}>
+                                        <div className="flex items-center gap-2 whitespace-nowrap">
                                             Parent
                                             {sortConfig?.key === 'parent1' ? (
                                                 sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600 dark:text-purple-400" /> : <ChevronDown className="w-4 h-4 text-purple-600 dark:text-purple-400" />
@@ -1654,14 +1668,14 @@ const Clients: React.FC = () => {
                                         </div>
                                     </th>
                                 )}
-                                {columnVisibility.nse && <th className="text-center py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">NSE</th>}
-                                {columnVisibility.bse && <th className="text-center py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">BSE</th>}
-                                {columnVisibility.mcx && <th className="text-center py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">MCX</th>}
-                                {columnVisibility.nfo && <th className="text-center py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">NFO</th>}
-                                {columnVisibility.bfo && <th className="text-center py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">BFO</th>}
+                                {columnVisibility.nse && <th className="text-center py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30 whitespace-nowrap">NSE</th>}
+                                {columnVisibility.bse && <th className="text-center py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30 whitespace-nowrap">BSE</th>}
+                                {columnVisibility.mcx && <th className="text-center py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30 whitespace-nowrap">MCX</th>}
+                                {columnVisibility.nfo && <th className="text-center py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30 whitespace-nowrap">NFO</th>}
+                                {columnVisibility.bfo && <th className="text-center py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30 whitespace-nowrap">BFO</th>}
                                 {columnVisibility.status && (
-                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col sticky top-0 bg-slate-50 dark:bg-slate-900 z-30" onClick={() => handleSort('activation_status')}>
-                                        <div className="flex items-center gap-2">
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col sticky top-0 bg-slate-50 dark:bg-slate-900 z-30 whitespace-nowrap" onClick={() => handleSort('activation_status')}>
+                                        <div className="flex items-center gap-2 whitespace-nowrap">
                                             Status
                                             {sortConfig?.key === 'activation_status' ? (
                                                 sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600 dark:text-purple-400" /> : <ChevronDown className="w-4 h-4 text-purple-600 dark:text-purple-400" />
@@ -1669,8 +1683,8 @@ const Clients: React.FC = () => {
                                         </div>
                                     </th>
                                 )}
-                                {columnVisibility._comments && <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">Comments</th>}
-                                <th className="text-right py-4 px-4 font-semibold text-slate-600 dark:text-slate-300 sticky top-0 right-0 bg-slate-50 dark:bg-slate-900 border-l border-l-slate-100 dark:border-l-slate-800/50 z-40" style={{ width: 80, minWidth: 80, maxWidth: 80 }}>Actions</th>
+                                {columnVisibility._comments && <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30 whitespace-nowrap">Comments</th>}
+                                <th className="text-right py-4 px-4 font-semibold text-slate-600 dark:text-slate-300 sticky top-0 right-0 bg-slate-50 dark:bg-slate-900 border-l border-l-slate-100 dark:border-l-slate-800/50 z-40 whitespace-nowrap" style={{ width: 80, minWidth: 80, maxWidth: 80 }}>Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50 dark:divide-slate-800/40">
@@ -1686,19 +1700,19 @@ const Clients: React.FC = () => {
                                 sortedData.map((row: ClientItem, index: number) => (
                                     <tr
                                         key={index}
-                                        className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group"
+                                        className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group whitespace-nowrap"
                                     >
-                                        <td className="py-4 px-4 font-semibold text-slate-900 dark:text-slate-100 leading-tight">
+                                        <td className="py-4 px-4 font-semibold text-slate-900 dark:text-slate-100 leading-tight whitespace-nowrap">
                                             <button
                                                 onClick={() => navigate(`/clients/${row.client_code}`)}
-                                                className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors text-left focus:outline-none bg-transparent"
+                                                className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors text-left focus:outline-none bg-transparent whitespace-nowrap"
                                             >
                                                 {formatValue(row.client_code)}
                                             </button>
                                         </td>
                                         {columnVisibility.mobile && (
-                                            <td className="py-4 px-4 font-semibold text-slate-900 dark:text-slate-100 leading-tight">
-                                                <div className="flex items-center gap-2">
+                                            <td className="py-4 px-4 font-semibold text-slate-900 dark:text-slate-100 leading-tight whitespace-nowrap">
+                                                <div className="flex items-center gap-2 whitespace-nowrap">
                                                     {row.mobile_number}
                                                     <button
                                                         onClick={(e) => {
@@ -1715,16 +1729,16 @@ const Clients: React.FC = () => {
                                                 </div>
                                             </td>
                                         )}
-                                        {columnVisibility.client_name && <td className="py-4 px-4 text-slate-500 dark:text-slate-400">{formatValue(row.client_name)}</td>}
-                                        {columnVisibility.opened_date && <td className="py-4 px-4 text-slate-500 dark:text-slate-400 font-mono text-xs">{formatValue(row.account_opened_date)}</td>}
+                                        {columnVisibility.client_name && <td className="py-4 px-4 text-slate-500 dark:text-slate-400 whitespace-nowrap">{formatValue(row.client_name)}</td>}
+                                        {columnVisibility.opened_date && <td className="py-4 px-4 text-slate-500 dark:text-slate-400 font-mono text-xs whitespace-nowrap">{formatValue(row.account_opened_date)}</td>}
                                         {columnVisibility.trade_done && (
-                                            <td className="py-4 px-4">
+                                            <td className="py-4 px-4 whitespace-nowrap">
                                                 {(() => {
                                                     const isTrue = row.trade_done === 'TRUE';
                                                     return (
-                                                        <div className="flex items-center gap-2">
+                                                        <div className="flex items-center gap-2 whitespace-nowrap">
                                                             <div className={cn(
-                                                                "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5",
+                                                                "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 whitespace-nowrap",
                                                                 isTrue ? "bg-green-100 dark:bg-green-950/20 text-green-700 dark:text-green-400" : "bg-red-100 dark:bg-red-950/20 text-red-700 dark:text-red-400"
                                                             )}>
                                                                 <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", isTrue ? "bg-green-500" : "bg-red-500")} />
@@ -1735,19 +1749,19 @@ const Clients: React.FC = () => {
                                                 })()}
                                             </td>
                                         )}
-                                        {columnVisibility.last_trade && <td className="py-4 px-4 text-slate-500 dark:text-slate-400 font-mono text-xs">{formatValue(row.last_traded_day)}</td>}
+                                        {columnVisibility.last_trade && <td className="py-4 px-4 text-slate-500 dark:text-slate-400 font-mono text-xs whitespace-nowrap">{formatValue(row.last_traded_day)}</td>}
                                         {columnVisibility.parent && (
-                                            <td className="py-4 px-4 text-slate-500 dark:text-slate-400">
+                                            <td className="py-4 px-4 text-slate-500 dark:text-slate-400 whitespace-nowrap">
                                                 {row.parent1 ? (userCodeMap.get(row.parent1) || row.parent1) : '-'}
                                             </td>
                                         )}
-                                        {columnVisibility.nse && <td className="py-4 px-4 text-center">{renderExchangeBadge(row.nse)}</td>}
-                                        {columnVisibility.bse && <td className="py-4 px-4 text-center">{renderExchangeBadge(row.bse)}</td>}
-                                        {columnVisibility.mcx && <td className="py-4 px-4 text-center">{renderExchangeBadge(row.mcx)}</td>}
-                                        {columnVisibility.nfo && <td className="py-4 px-4 text-center">{renderExchangeBadge(row.nfo)}</td>}
-                                        {columnVisibility.bfo && <td className="py-4 px-4 text-center">{renderExchangeBadge(row.bfo)}</td>}
+                                        {columnVisibility.nse && <td className="py-4 px-4 text-center whitespace-nowrap">{renderExchangeBadge(row.nse)}</td>}
+                                        {columnVisibility.bse && <td className="py-4 px-4 text-center whitespace-nowrap">{renderExchangeBadge(row.bse)}</td>}
+                                        {columnVisibility.mcx && <td className="py-4 px-4 text-center whitespace-nowrap">{renderExchangeBadge(row.mcx)}</td>}
+                                        {columnVisibility.nfo && <td className="py-4 px-4 text-center whitespace-nowrap">{renderExchangeBadge(row.nfo)}</td>}
+                                        {columnVisibility.bfo && <td className="py-4 px-4 text-center whitespace-nowrap">{renderExchangeBadge(row.bfo)}</td>}
                                         {columnVisibility.status && (
-                                            <td className="py-4 px-4">
+                                            <td className="py-4 px-4 whitespace-nowrap">
                                                 {(() => {
                                                     const st = (row.activation_status || '').toUpperCase();
                                                     const isGreen = st === 'ACTIVE';
@@ -1759,9 +1773,9 @@ const Clients: React.FC = () => {
                                                             : "bg-amber-100 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400";
                                                     const currentDot = isGreen ? "bg-green-500" : isRed ? "bg-red-500" : "bg-amber-500";
                                                     return (
-                                                        <div className="flex items-center gap-2">
+                                                        <div className="flex items-center gap-2 whitespace-nowrap">
                                                             <div className={cn(
-                                                                "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5",
+                                                                "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 whitespace-nowrap",
                                                                 currentStyle
                                                             )}>
                                                                 <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", currentDot)} />
@@ -1773,11 +1787,11 @@ const Clients: React.FC = () => {
                                             </td>
                                         )}
                                         {columnVisibility._comments && (
-                                            <td className="py-4 px-4 text-slate-600 dark:text-slate-400 truncate max-w-[200px]" title={formatComment(row._comments)}>
+                                            <td className="py-4 px-4 text-slate-600 dark:text-slate-400 truncate max-w-[200px] whitespace-nowrap" title={formatComment(row._comments)}>
                                                 {formatComment(row._comments)}
                                             </td>
                                         )}
-                                        <td className="py-4 px-4 text-right sticky right-0 bg-white dark:bg-slate-900 border-l border-l-slate-100 dark:border-l-slate-800/50 z-10 group-hover:bg-slate-50 dark:group-hover:bg-slate-800" onClick={(e) => e.stopPropagation()} style={{ width: 80, minWidth: 80, maxWidth: 80 }}>
+                                        <td className="py-4 px-4 text-right sticky right-0 bg-white dark:bg-slate-900 border-l border-l-slate-100 dark:border-l-slate-800/50 z-10 group-hover:bg-slate-50 dark:group-hover:bg-slate-800 whitespace-nowrap" onClick={(e) => e.stopPropagation()} style={{ width: 80, minWidth: 80, maxWidth: 80 }}>
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                     <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
