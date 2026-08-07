@@ -357,18 +357,42 @@ const Kyc: React.FC = () => {
             });
     }, [orgTreeData]);
 
-    const referCodeMap = useMemo(() => {
+    const { referCodeMap, referCodeOnlyMap, referNameOnlyMap } = useMemo(() => {
         const tree = orgTreeData;
-        if (!tree) return new Map<string, string>();
-        const map = new Map<string, string>();
-        tree.forEach((node: any) => {
-            if (node.name) {
+        const codeMap = new Map<string, string>();
+        const codeOnlyMap = new Map<string, string>();
+        const nameOnlyMap = new Map<string, string>();
+
+        const setEntry = (key: string, displayName: string, code: string, name1: string) => {
+            if (!key) return;
+            const upperKey = key.toUpperCase();
+            codeMap.set(key, displayName);
+            codeMap.set(upperKey, displayName);
+            codeOnlyMap.set(key, code);
+            codeOnlyMap.set(upperKey, code);
+            nameOnlyMap.set(key, name1);
+            nameOnlyMap.set(upperKey, name1);
+        };
+
+        if (tree && Array.isArray(tree)) {
+            tree.forEach((node: any) => {
                 const code = node.code || node.org_code || node.name;
-                map.set(node.name, code);
-            }
-        });
-        return map;
-    }, [orgTreeData]);
+                const name1 = node.name1 || '';
+                const isRM = node.org_type === 'RM' || node.category === 'RM';
+                const displayName = isRM ? `${code} ${name1}`.trim() : (name1 ? `${code} ${name1}`.trim() : code);
+
+                setEntry(node.name, displayName, code, name1);
+                if (node.code) setEntry(node.code, displayName, code, name1);
+                if (node.org_code) setEntry(node.org_code, displayName, code, name1);
+            });
+        }
+        const loggedInCode = user?.user_code || user?.id || frappeUser?.username || frappeUser?.name;
+        if (loggedInCode && !codeMap.has(loggedInCode)) {
+            const name1 = frappeUser?.full_name || [frappeUser?.first_name, frappeUser?.last_name].filter(Boolean).join(' ') || user?.firstName || loggedInCode;
+            setEntry(loggedInCode, `${loggedInCode} ${name1}`.trim(), loggedInCode, name1);
+        }
+        return { referCodeMap: codeMap, referCodeOnlyMap: codeOnlyMap, referNameOnlyMap: nameOnlyMap };
+    }, [orgTreeData, user, frappeUser]);
 
     // Optimized visible options for refer selection to prevent performance issues with large data
     const visibleReferOptions = useMemo(() => {
@@ -379,8 +403,10 @@ const Kyc: React.FC = () => {
         return referOptions
             .filter(opt => {
                 const code = (opt as any).code || (opt as any).org_code || '';
+                const name1 = (opt as any).name1 || '';
                 return opt.name.toLowerCase().includes(searchLower) ||
                     code.toLowerCase().includes(searchLower) ||
+                    name1.toLowerCase().includes(searchLower) ||
                     (opt.category && opt.category.toLowerCase().includes(searchLower));
             })
             .slice(0, 100);
@@ -853,7 +879,8 @@ const Kyc: React.FC = () => {
                     'Mobile': item.mobile_number,
                     'UCC': item.ucc,
                     'User Name': item.user_name,
-                    'Refer': item.refer,
+                    'Refer': item.refer ? (referCodeOnlyMap.get(item.refer) || item.refer) : '',
+                    'Refer Name': item.refer ? (referNameOnlyMap.get(item.refer) || '') : '',
                     'Stage': item.kyc_stage === 'END PAGE' ? 'ESIGN COMPLETED' : item.kyc_stage,
                     'Status': item.application_status || 'IN PROGRESS',
                     'Comments': formatComment(item._comments),
@@ -1259,7 +1286,7 @@ const Kyc: React.FC = () => {
                         </PopoverContent>
                     </Popover>
 
-                    <div className="w-[260px]">
+                    <div className="w-[190px]">
                         <DateRangePicker
                             value={dateRange}
                             onChange={setDateRange}
@@ -1319,16 +1346,13 @@ const Kyc: React.FC = () => {
                                         <span className="truncate">
                                             {referFilter === "ALL"
                                                 ? "Select Refer"
-                                                : (referOptions.find((opt) => opt.name === referFilter) as any)?.code ||
-                                                (referOptions.find((opt) => opt.name === referFilter) as any)?.org_code ||
-                                                (referOptions.find((opt) => opt.name === referFilter) as any)?.name ||
-                                                referFilter}
+                                                : referCodeMap.get(referFilter) || referFilter}
                                         </span>
                                     </div>
                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-[220px] p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl">
+                            <PopoverContent className="w-[300px] p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl">
                                 <Command shouldFilter={false} className="bg-white dark:bg-slate-900">
                                     <CommandInput
                                         placeholder="Search refer..."
@@ -1355,7 +1379,7 @@ const Kyc: React.FC = () => {
                                             {visibleReferOptions.map((opt) => (
                                                 <CommandItem
                                                     key={opt.name}
-                                                    value={opt.name}
+                                                    value={`${(opt as any).code || (opt as any).org_code || opt.name} ${opt.name} ${(opt as any).name1 || ''}`}
                                                     onSelect={() => {
                                                         setReferFilter(opt.name === referFilter ? "ALL" : opt.name);
                                                         setOpenReferBox(false);
@@ -1363,7 +1387,9 @@ const Kyc: React.FC = () => {
                                                     className="flex items-center justify-between gap-2 text-slate-700 dark:text-slate-300"
                                                 >
                                                     <span className="truncate text-sm">
-                                                        {(opt as any).code || (opt as any).org_code || opt.name}
+                                                        {(opt as any).category === 'RM' || (opt as any).org_type === 'RM'
+                                                            ? `${(opt as any).code || (opt as any).org_code || opt.name} ${(opt as any).name1 || ''}`.trim()
+                                                            : ((opt as any).code || (opt as any).org_code || opt.name)}
                                                     </span>
                                                     <div className="flex items-center gap-1 shrink-0">
                                                         {opt.category && (
@@ -1499,6 +1525,7 @@ const Kyc: React.FC = () => {
                                     </div>
                                 </th>
                                 <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">Refer</th>
+                                <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">Refer Name</th>
                                 <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">Stage</th>
                                 <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">Status</th>
                                 <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">Comments</th>
@@ -1515,6 +1542,7 @@ const Kyc: React.FC = () => {
                                         <td className="py-3 px-4"><Skeleton className="h-4 w-16 bg-slate-200 dark:bg-slate-800" /></td>
                                         <td className="py-3 px-4"><Skeleton className="h-4 w-32 bg-slate-200 dark:bg-slate-800" /></td>
                                         <td className="py-3 px-4"><Skeleton className="h-4 w-24 bg-slate-200 dark:bg-slate-800" /></td>
+                                        <td className="py-3 px-4"><Skeleton className="h-4 w-28 bg-slate-200 dark:bg-slate-800" /></td>
                                         <td className="py-3 px-4"><Skeleton className="h-4 w-28 bg-slate-200 dark:bg-slate-800" /></td>
                                         <td className="py-3 px-4"><Skeleton className="h-5 w-20 rounded-full bg-slate-200 dark:bg-slate-800" /></td>
                                         <td className="py-3 px-4"><Skeleton className="h-4 w-32 bg-slate-200 dark:bg-slate-800" /></td>
@@ -1545,7 +1573,8 @@ const Kyc: React.FC = () => {
                                             </td>
                                             <td className="py-3 px-4 font-mono text-xs text-slate-600 dark:text-slate-400">{row.ucc || '-'}</td>
                                             <td className="py-3 px-4 text-slate-700 dark:text-slate-300">{formatValue(row.user_name)}</td>
-                                            <td className="py-3 px-4 text-slate-700 dark:text-slate-300">{row.refer ? (referCodeMap.get(row.refer) || row.refer) : '-'}</td>
+                                            <td className="py-3 px-4 font-mono text-xs text-slate-600 dark:text-slate-400">{row.refer ? (referCodeOnlyMap.get(row.refer) || referCodeOnlyMap.get(row.refer.toUpperCase()) || row.refer.toUpperCase()) : '-'}</td>
+                                            <td className="py-3 px-4 text-slate-700 dark:text-slate-300">{row.refer ? (referNameOnlyMap.get(row.refer) || referNameOnlyMap.get(row.refer.toUpperCase()) || '-') : '-'}</td>
                                             <td className="py-3 px-4">
                                                 <div className="flex items-center gap-2">
                                                     <div className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 bg-purple-100 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400 whitespace-nowrap shrink-0">

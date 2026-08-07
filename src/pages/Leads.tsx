@@ -44,7 +44,7 @@ import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { exportToExcel } from '@/utils/excelExport';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from '@/hooks/use-toast';
-import { FrappeContext, useFrappeEventListener, useFrappeUpdateDoc } from 'frappe-react-sdk';
+import { FrappeContext, useFrappeEventListener, useFrappeUpdateDoc, useFrappeGetCall } from 'frappe-react-sdk';
 import useSWR from 'swr';
 import { cn } from '@/lib/utils';
 import {
@@ -113,6 +113,11 @@ export interface LeadItem {
     status: string;
     custom_city?: string;
     custom_campaign_name?: string;
+    custom_last_campaign?: string;
+    custom_client_code?: string;
+    custom_branch?: string;
+    custom_parent?: string;
+    custom_repeated_lead?: number | boolean;
     creation: string;
     modified: string;
     lead_name?: string;
@@ -199,6 +204,11 @@ const CRM_LEAD_FILTER_FIELDS = [
     { value: 'status', label: 'Status', type: 'select', options: ['New', 'Followup', 'Not Interested', 'Call Back', 'Switch off', 'RNR', 'won', 'Client'] },
     { value: 'custom_city', label: 'City', type: 'string' },
     { value: 'custom_campaign_name', label: 'Campaign Name', type: 'string' },
+    { value: 'custom_last_campaign', label: 'Last Campaign', type: 'string' },
+    { value: 'custom_client_code', label: 'Client Code', type: 'string' },
+    { value: 'custom_branch', label: 'Branch', type: 'string' },
+    { value: 'custom_parent', label: 'Parent', type: 'string' },
+    { value: 'custom_repeated_lead', label: 'Repeated Lead', type: 'select', options: ['1', '0'] },
     { value: 'creation', label: 'Creation Date', type: 'date' },
     { value: 'modified', label: 'Modified Date', type: 'date' },
 ] as const;
@@ -568,6 +578,32 @@ const Leads: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState(() => sessionStorage.getItem('leadsSearchQuery') || '');
     const [campaignSearchQuery, setCampaignSearchQuery] = useState(() => sessionStorage.getItem('leadsCampaignSearchQuery') || '');
     const debouncedCampaignSearchQuery = useDebounce(campaignSearchQuery, 400);
+
+    const { data: campaignApiData, isLoading: isCampaignsLoading } = useFrappeGetCall<{
+        message?: {
+            status?: string;
+            user?: string;
+            campaigns?: string[];
+        };
+        status?: string;
+        user?: string;
+        campaigns?: string[];
+    }>('gopocket.lead.get_campaign_names');
+
+    const campaignOptions = useMemo(() => {
+        const list = campaignApiData?.message?.campaigns || campaignApiData?.campaigns;
+        if (Array.isArray(list)) return list;
+        return [];
+    }, [campaignApiData]);
+
+    const [openCampaignBox, setOpenCampaignBox] = useState(false);
+    const [campaignSearchInput, setCampaignSearchInput] = useState('');
+
+    useEffect(() => {
+        if (!openCampaignBox) {
+            setCampaignSearchInput('');
+        }
+    }, [openCampaignBox]);
     const [dateRange, setDateRange] = useState<[Date, Date] | null>(() => {
         const stored = sessionStorage.getItem('leadsDateRange');
         if (stored) {
@@ -582,8 +618,13 @@ const Leads: React.FC = () => {
     });
     const [statusFilter, setStatusFilter] = useState<string>(() => sessionStorage.getItem('leadsStatusFilter') || 'ALL');
     const [parentFilter, setParentFilter] = useState<string>(() => sessionStorage.getItem('leadsParentFilter') || 'ALL');
+    const [repeatedLeadFilter, setRepeatedLeadFilter] = useState<boolean>(() => sessionStorage.getItem('leadsRepeatedLeadFilter') === 'true');
     const [openParentBox, setOpenParentBox] = useState(false);
     const [parentSearch, setParentSearch] = useState('');
+
+    useEffect(() => {
+        sessionStorage.setItem('leadsRepeatedLeadFilter', String(repeatedLeadFilter));
+    }, [repeatedLeadFilter]);
 
     useEffect(() => {
         if (!openParentBox) {
@@ -669,6 +710,10 @@ const Leads: React.FC = () => {
             _comments: true,
             city: true,
             campaign: false,
+            last_campaign: true,
+            client_code: true,
+            branch: true,
+            parent: true,
             creation: true,
             modified: false,
         };
@@ -690,6 +735,10 @@ const Leads: React.FC = () => {
             _comments: 240,
             city: 180,
             campaign: 180,
+            last_campaign: 180,
+            client_code: 150,
+            branch: 150,
+            parent: 180,
             creation: 180,
             modified: 180,
         };
@@ -752,6 +801,10 @@ const Leads: React.FC = () => {
             '_comments',
             'city',
             'campaign',
+            'last_campaign',
+            'client_code',
+            'branch',
+            'parent',
             'creation',
             'modified'
         ];
@@ -983,20 +1036,26 @@ const Leads: React.FC = () => {
     const userCodeMap = useMemo(() => {
         const tree = orgTreeData;
         const map = new Map<string, string>();
+        const setEntry = (key: string, val: string) => {
+            if (!key) return;
+            map.set(key, val);
+            map.set(key.toUpperCase(), val);
+        };
         if (tree && Array.isArray(tree)) {
             tree.forEach((node: any) => {
                 const code = node.code || node.org_code || node.name;
-                const isRM = node.org_type === 'RM' || node.category === 'RM';
-                const displayName = isRM ? `${code} ${node.name1 || ''}`.trim() : code;
-                map.set(node.name, displayName);
-                if (node.code) map.set(node.code, displayName);
-                if (node.org_code) map.set(node.org_code, displayName);
+                const name1 = node.name1 || '';
+                const displayName = name1 && name1 !== code ? `${name1} (${code})` : code;
+                setEntry(node.name, displayName);
+                if (node.code) setEntry(node.code, displayName);
+                if (node.org_code) setEntry(node.org_code, displayName);
             });
         }
         const loggedInCode = user?.user_code || user?.id || frappeUser?.username || frappeUser?.name;
         if (loggedInCode && !map.has(loggedInCode)) {
-            const name1 = frappeUser?.full_name || [frappeUser?.first_name, frappeUser?.last_name].filter(Boolean).join(' ') || user?.firstName || loggedInCode;
-            map.set(loggedInCode, `${loggedInCode} ${name1}`.trim());
+            const name1 = frappeUser?.full_name || [frappeUser?.first_name, frappeUser?.last_name].filter(Boolean).join(' ') || user?.firstName;
+            const displayName = name1 && name1 !== loggedInCode ? `${name1} (${loggedInCode})` : loggedInCode;
+            setEntry(loggedInCode, displayName);
         }
         return map;
     }, [orgTreeData, user, frappeUser]);
@@ -1096,6 +1155,11 @@ const Leads: React.FC = () => {
         // Campaign Search Query
         if (debouncedCampaignSearchQuery) {
             activeFilters.push(['custom_campaign_name', 'like', `%${debouncedCampaignSearchQuery}%`]);
+        }
+
+        // Repeated Lead Checkbox Filter
+        if (repeatedLeadFilter) {
+            activeFilters.push(['custom_repeated_lead', '=', 1]);
         }
 
         // Date Range
@@ -1229,6 +1293,11 @@ const Leads: React.FC = () => {
                 '_comments',
                 'custom_city',
                 'custom_campaign_name',
+                'custom_last_campaign',
+                'custom_client_code',
+                'custom_branch',
+                'custom_parent',
+                'custom_repeated_lead',
                 'creation',
                 'modified',
             ],
@@ -1451,6 +1520,11 @@ const Leads: React.FC = () => {
                             '_comments',
                             'custom_city',
                             'custom_campaign_name',
+                            'custom_last_campaign',
+                            'custom_client_code',
+                            'custom_branch',
+                            'custom_parent',
+                            'custom_repeated_lead',
                             'creation',
                             'modified',
                         ],
@@ -1971,7 +2045,7 @@ const Leads: React.FC = () => {
                         </PopoverContent>
                     </Popover>
 
-                    <div className="w-[260px]">
+                    <div className="w-[190px]">
                         <DateRangePicker
                             value={dateRange}
                             onChange={setDateRange}
@@ -2000,24 +2074,95 @@ const Leads: React.FC = () => {
                         </Select>
                     </div>
 
-                    {/* Campaign Search Input */}
-                    <div className="relative w-[180px]">
-                        <Tag className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <Input
-                            placeholder="Campaign..."
-                            value={campaignSearchQuery}
-                            onChange={(e) => setCampaignSearchQuery(e.target.value)}
-                            className="pl-9 pr-7 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 focus:ring-purple-500 rounded-xl h-10 text-sm"
-                        />
-                        {campaignSearchQuery && (
-                            <button
-                                type="button"
-                                onClick={() => setCampaignSearchQuery('')}
-                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                            >
-                                <X className="w-3.5 h-3.5" />
-                            </button>
-                        )}
+                    {/* Campaign Combobox */}
+                    <div className="w-[200px]">
+                        <Popover open={openCampaignBox} onOpenChange={setOpenCampaignBox}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={openCampaignBox}
+                                    className="w-full justify-between bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 focus:ring-purple-500 rounded-xl h-10 px-3 font-normal text-sm"
+                                >
+                                    <div className="flex items-center gap-2 truncate">
+                                        <Tag className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                        <span className="truncate text-sm">
+                                            {campaignSearchQuery || "Select Campaign"}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-1 shrink-0 ml-1">
+                                        {campaignSearchQuery && (
+                                            <span
+                                                role="button"
+                                                tabIndex={0}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setCampaignSearchQuery('');
+                                                }}
+                                                className="p-0.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                            >
+                                                <X className="w-3.5 h-3.5" />
+                                            </span>
+                                        )}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </div>
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[280px] p-0 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl">
+                                <Command className="bg-white dark:bg-slate-900">
+                                    <CommandInput
+                                        placeholder="Search campaign..."
+                                        className="h-9 text-sm text-slate-800 dark:text-slate-100"
+                                        value={campaignSearchInput}
+                                        onValueChange={setCampaignSearchInput}
+                                    />
+                                    <CommandList>
+                                        {isCampaignsLoading ? (
+                                            <div className="flex items-center justify-center py-6 gap-2 text-sm text-slate-500 dark:text-slate-400">
+                                                <Loader2 className="w-4 h-4 animate-spin text-purple-600 dark:text-purple-400" />
+                                                Loading campaigns...
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <CommandEmpty className="py-2 text-center text-sm text-slate-500 dark:text-slate-400">
+                                                    No campaign found.
+                                                </CommandEmpty>
+                                                <CommandGroup>
+                                                    <CommandItem
+                                                        value="ALL_CAMPAIGNS_OPTION"
+                                                        onSelect={() => {
+                                                            setCampaignSearchQuery('');
+                                                            setOpenCampaignBox(false);
+                                                        }}
+                                                        className="flex items-center justify-between focus:bg-slate-100 dark:focus:bg-slate-800 cursor-pointer text-slate-700 dark:text-slate-300 text-sm"
+                                                    >
+                                                        <span className="text-sm font-normal">All Campaigns</span>
+                                                        {!campaignSearchQuery && <Check className="h-4 w-4 text-purple-600 dark:text-purple-400" />}
+                                                    </CommandItem>
+                                                    {campaignOptions.map((campaignName: string) => {
+                                                        const isSelected = campaignSearchQuery === campaignName;
+                                                        return (
+                                                            <CommandItem
+                                                                key={campaignName}
+                                                                value={campaignName}
+                                                                onSelect={() => {
+                                                                    setCampaignSearchQuery(isSelected ? '' : campaignName);
+                                                                    setOpenCampaignBox(false);
+                                                                }}
+                                                                className="flex items-center justify-between gap-2 focus:bg-slate-100 dark:focus:bg-slate-800 cursor-pointer text-slate-700 dark:text-slate-300 text-sm"
+                                                            >
+                                                                <span className="truncate text-sm font-normal">{campaignName}</span>
+                                                                {isSelected && <Check className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0" />}
+                                                            </CommandItem>
+                                                        );
+                                                    })}
+                                                </CommandGroup>
+                                            </>
+                                        )}
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
                     </div>
 
                     {/* Parent Filter Combobox */}
@@ -2076,8 +2221,8 @@ const Leads: React.FC = () => {
                                                     className="flex items-center justify-between gap-2 focus:bg-slate-100 dark:focus:bg-slate-800 cursor-pointer text-slate-700 dark:text-slate-300"
                                                 >
                                                     <span className="truncate text-sm">
-                                                        {opt.category === 'RM' || opt.org_type === 'RM'
-                                                            ? `${opt.code || opt.org_code || opt.name} ${opt.name1 || ''}`.trim()
+                                                        {opt.name1 && opt.name1 !== (opt.code || opt.org_code || opt.name)
+                                                            ? `${opt.name1} (${opt.code || opt.org_code || opt.name})`
                                                             : (opt.code || opt.org_code || opt.name)}
                                                     </span>
                                                     <div className="flex items-center gap-1 shrink-0">
@@ -2101,6 +2246,21 @@ const Leads: React.FC = () => {
                                 </Command>
                             </PopoverContent>
                         </Popover>
+                    </div>
+
+                    {/* Repeated Lead Checkbox Filter */}
+                    <div className="flex items-center gap-2 h-10 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
+                        <Checkbox
+                            id="repeated-lead-filter"
+                            checked={repeatedLeadFilter}
+                            onCheckedChange={(checked) => setRepeatedLeadFilter(Boolean(checked))}
+                        />
+                        <label
+                            htmlFor="repeated-lead-filter"
+                            className="text-sm font-normal text-slate-700 dark:text-slate-200 cursor-pointer select-none whitespace-nowrap"
+                        >
+                            Repeated Lead
+                        </label>
                     </div>
 
                     {selectedRows.size > 0 && (
@@ -2133,8 +2293,8 @@ const Leads: React.FC = () => {
                                                     >
                                                         <div className="flex flex-col min-w-0">
                                                             <span className="font-bold text-xs text-slate-700 dark:text-slate-200 truncate">
-                                                                {opt.category === 'RM' || opt.org_type === 'RM'
-                                                                    ? `${opt.code || opt.org_code || opt.name} ${opt.name1 || ''}`.trim()
+                                                                {opt.name1 && opt.name1 !== (opt.code || opt.org_code || opt.name)
+                                                                    ? `${opt.name1} (${opt.code || opt.org_code || opt.name})`
                                                                     : (opt.code || opt.org_code || opt.name)}
                                                             </span>
                                                             <span className="text-[9px] text-slate-400 dark:text-slate-500 uppercase font-bold tracking-tighter">{opt.category}</span>
@@ -2223,6 +2383,10 @@ const Leads: React.FC = () => {
                                     { id: '_comments', label: 'Comments' },
                                     { id: 'city', label: 'City' },
                                     { id: 'campaign', label: 'Campaign' },
+                                    { id: 'last_campaign', label: 'Last Campaign' },
+                                    { id: 'client_code', label: 'Client Code' },
+                                    { id: 'branch', label: 'Branch' },
+                                    { id: 'parent', label: 'Parent' },
                                     { id: 'creation', label: 'Created At' },
                                     { id: 'modified', label: 'Modified At' },
                                 ].map((col) => (
@@ -2241,11 +2405,21 @@ const Leads: React.FC = () => {
                         </DropdownMenuContent>
                     </DropdownMenu>
 
-                    {(searchQuery || campaignSearchQuery || statusFilter !== 'ALL' || parentFilter !== 'ALL' || dateRange !== null || advancedFilters.length > 0) && (
+                    {(searchQuery || campaignSearchQuery || statusFilter !== 'ALL' || parentFilter !== 'ALL' || repeatedLeadFilter || dateRange !== null || advancedFilters.length > 0) && (
                         <Button
                             type="button"
                             variant="ghost"
-                            onClick={handleResetFilters}
+                            onClick={() => {
+                                setSearchQuery('');
+                                setCampaignSearchQuery('');
+                                setStatusFilter('ALL');
+                                setParentFilter('ALL');
+                                setRepeatedLeadFilter(false);
+                                setDateRange(null);
+                                setAdvancedFilters([]);
+                                setDraftFilters([{ id: crypto.randomUUID(), field: '', operator: '', value: '' }]);
+                                setCurrentPage(1);
+                            }}
                             className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 font-semibold px-3 py-2 rounded-xl transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
                         >
                             Reset
@@ -2365,6 +2539,14 @@ const Leads: React.FC = () => {
                                         content = <div className="truncate pr-2">City</div>;
                                     } else if (colId === 'campaign') {
                                         content = <div className="truncate pr-2">Campaign</div>;
+                                    } else if (colId === 'last_campaign') {
+                                        content = <div className="truncate pr-2">Last Campaign</div>;
+                                    } else if (colId === 'client_code') {
+                                        content = <div className="truncate pr-2">Client Code</div>;
+                                    } else if (colId === 'branch') {
+                                        content = <div className="truncate pr-2">Branch</div>;
+                                    } else if (colId === 'parent') {
+                                        content = <div className="truncate pr-2">Parent</div>;
                                     } else if (colId === 'creation') {
                                         onClickHandler = () => handleSort('creation');
                                         content = (
@@ -2562,27 +2744,43 @@ const Leads: React.FC = () => {
                                                 );
                                             }
                                             if (colId === 'campaign') {
-                                                const campaignVal = row.custom_campaign_name;
-                                                const isCopied = copiedCampaignIndex === index;
                                                 return (
-                                                    <td key={colId} className="py-4 px-4 text-slate-500 dark:text-slate-400 truncate" style={{ width: columnWidths.campaign, minWidth: columnWidths.campaign, maxWidth: columnWidths.campaign }}>
-                                                        {campaignVal ? (
-                                                            <button
-                                                                type="button"
-                                                                onClick={(e) => handleCopyCampaign(e, campaignVal, index)}
-                                                                className="inline-flex items-center gap-1.5 hover:text-purple-600 dark:hover:text-purple-400 transition-colors font-medium text-xs group/camp max-w-full truncate text-left focus:outline-none cursor-pointer"
-                                                                title="Click to copy campaign name"
-                                                            >
-                                                                <span className="truncate">{campaignVal}</span>
-                                                                {isCopied ? (
-                                                                    <Check className="w-3 h-3 text-green-500 shrink-0" />
-                                                                ) : (
-                                                                    <Copy className="w-3 h-3 opacity-0 group-hover/camp:opacity-100 transition-opacity text-slate-400 dark:text-slate-500 shrink-0" />
-                                                                )}
-                                                            </button>
-                                                        ) : (
-                                                            '-'
-                                                        )}
+                                                    <td key={colId} className="py-4 px-4 text-slate-600 dark:text-slate-400 truncate" style={{ width: columnWidths.campaign, minWidth: columnWidths.campaign, maxWidth: columnWidths.campaign }}>
+                                                        <span className="text-xs truncate">{formatValue(row.custom_campaign_name)}</span>
+                                                    </td>
+                                                );
+                                            }
+                                            if (colId === 'last_campaign') {
+                                                return (
+                                                    <td key={colId} className="py-4 px-4 text-slate-600 dark:text-slate-400 truncate" style={{ width: columnWidths.last_campaign, minWidth: columnWidths.last_campaign, maxWidth: columnWidths.last_campaign }}>
+                                                        <span className="text-xs truncate">{formatValue(row.custom_last_campaign)}</span>
+                                                    </td>
+                                                );
+                                            }
+                                            if (colId === 'client_code') {
+                                                return (
+                                                    <td key={colId} className="py-4 px-4 font-mono text-xs text-slate-600 dark:text-slate-400 truncate" style={{ width: columnWidths.client_code, minWidth: columnWidths.client_code, maxWidth: columnWidths.client_code }}>
+                                                        <span className="truncate">{formatValue(row.custom_client_code)}</span>
+                                                    </td>
+                                                );
+                                            }
+                                            if (colId === 'branch') {
+                                                return (
+                                                    <td key={colId} className="py-4 px-4 text-slate-600 dark:text-slate-400 truncate" style={{ width: columnWidths.branch, minWidth: columnWidths.branch, maxWidth: columnWidths.branch }}>
+                                                        <span className="text-xs truncate">{formatValue(row.custom_branch)}</span>
+                                                    </td>
+                                                );
+                                            }
+                                            if (colId === 'parent') {
+                                                const parentVal = row.custom_parent ? (userCodeMap.get(row.custom_parent) || row.custom_parent) : '-';
+                                                return (
+                                                    <td key={colId} className="py-4 px-4" style={{ width: columnWidths.parent, minWidth: columnWidths.parent, maxWidth: columnWidths.parent }}>
+                                                        <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 font-medium text-xs truncate">
+                                                            <div className="w-5 h-5 rounded bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-[10px] shrink-0">
+                                                                <Users className="w-3 h-3 text-slate-500 dark:text-slate-400" />
+                                                            </div>
+                                                            <span className="truncate">{parentVal}</span>
+                                                        </div>
                                                     </td>
                                                 );
                                             }
