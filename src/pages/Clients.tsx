@@ -449,16 +449,55 @@ const Clients: React.FC = () => {
     // Filtered hierarchy for parent selection, sorted by category order
     const parentOptions = useMemo(() => {
         const tree = orgTreeData;
-        if (!tree) return [];
-        return (tree as Array<any>)
-            .filter(item => item.is_group === 1)
-            .sort((a, b) => {
-                const pa = CATEGORY_ORDER[a.category?.toUpperCase() || ''] || 99;
-                const pb = CATEGORY_ORDER[b.category?.toUpperCase() || ''] || 99;
-                if (pa !== pb) return pa - pb;
-                return a.name.localeCompare(b.name);
+        const loggedInCode = user?.user_code || user?.id || frappeUser?.username || frappeUser?.name;
+
+        let list: any[] = [];
+        if (tree && Array.isArray(tree)) {
+            list = tree.filter(item => {
+                if (item.is_group === 1) return true;
+                if (loggedInCode && (
+                    item.name === loggedInCode ||
+                    item.code === loggedInCode ||
+                    item.org_code === loggedInCode
+                )) {
+                    return true;
+                }
+                return false;
             });
-    }, [orgTreeData]);
+        }
+
+        // Ensure logged-in user's code is present even if not in orgTreeData or marked as group
+        if (loggedInCode && !list.some(item => item.name === loggedInCode || item.code === loggedInCode || item.org_code === loggedInCode)) {
+            const userNode = tree && Array.isArray(tree) ? tree.find((item: any) =>
+                item.name === loggedInCode || item.code === loggedInCode || item.org_code === loggedInCode
+            ) : null;
+
+            if (userNode) {
+                list.push(userNode);
+            } else {
+                list.push({
+                    name: loggedInCode,
+                    code: loggedInCode,
+                    org_code: loggedInCode,
+                    name1: frappeUser?.full_name || [frappeUser?.first_name, frappeUser?.last_name].filter(Boolean).join(' ') || user?.firstName || loggedInCode,
+                    category: 'USER',
+                    is_group: 0
+                });
+            }
+        }
+
+        return list.sort((a, b) => {
+            const isALoggedIn = Boolean(loggedInCode && (a.name === loggedInCode || a.code === loggedInCode || a.org_code === loggedInCode));
+            const isBLoggedIn = Boolean(loggedInCode && (b.name === loggedInCode || b.code === loggedInCode || b.org_code === loggedInCode));
+            if (isALoggedIn && !isBLoggedIn) return -1;
+            if (!isALoggedIn && isBLoggedIn) return 1;
+
+            const pa = CATEGORY_ORDER[a.category?.toUpperCase() || ''] || 99;
+            const pb = CATEGORY_ORDER[b.category?.toUpperCase() || ''] || 99;
+            if (pa !== pb) return pa - pb;
+            return a.name.localeCompare(b.name);
+        });
+    }, [orgTreeData, user, frappeUser]);
 
     const userNameMap = useMemo(() => {
         if (!orgTreeData) return new Map<string, string>();

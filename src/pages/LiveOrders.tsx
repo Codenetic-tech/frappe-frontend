@@ -1,4 +1,5 @@
-import React, { useMemo, useState, useEffect, useCallback, useContext } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useContext, useRef } from 'react';
+import useSWR from 'swr';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFilter } from '@/contexts/FilterContext';
@@ -269,9 +270,46 @@ const TableWrapper = ({ scrollWholePage, children }: { scrollWholePage: boolean;
     return <ScrollArea className="flex-1">{children}</ScrollArea>;
 };
 
+const postFetcher = async (key: string | [string, string] | { url: string; body: Record<string, any> }) => {
+    let url = '';
+    let bodyStr = '';
+
+    if (Array.isArray(key)) {
+        url = key[0];
+        bodyStr = key[1];
+    } else if (typeof key === 'object' && key !== null) {
+        url = key.url;
+        bodyStr = JSON.stringify(key.body);
+    } else {
+        url = key as string;
+    }
+
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: bodyStr || undefined
+    });
+    if (!response.ok) {
+        let errData;
+        try {
+            errData = await response.json();
+        } catch (e) {
+            errData = { message: response.statusText || 'Fetch failed' };
+        }
+        const error: any = new Error(errData.message || 'Fetch failed');
+        error.status = response.status;
+        error.info = errData;
+        throw error;
+    }
+    const data = await response.json();
+    return data.message;
+};
+
 const LiveOrders: React.FC = () => {
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, frappeUser } = useAuth();
     const { selectedHierarchy } = useFilter();
     const { orgTreeData } = useOrgTree();
     const frappe = useContext(FrappeContext);
@@ -317,32 +355,6 @@ const LiveOrders: React.FC = () => {
         return stored ? JSON.parse(stored).length === 0 : true;
     });
     const [listError, setListError] = useState<any>(null);
-
-    // Counts States
-    const [totalCount, setTotalCount] = useState<number>(() => {
-        const stored = sessionStorage.getItem('ordersTotalCount');
-        return stored ? Number(stored) : 0;
-    });
-    const [completeCount, setCompleteCount] = useState<number>(() => {
-        const stored = sessionStorage.getItem('ordersCompleteCount');
-        return stored ? Number(stored) : 0;
-    });
-    const [openCount, setOpenCount] = useState<number>(() => {
-        const stored = sessionStorage.getItem('ordersOpenCount');
-        return stored ? Number(stored) : 0;
-    });
-    const [canceledCount, setCanceledCount] = useState<number>(() => {
-        const stored = sessionStorage.getItem('ordersCanceledCount');
-        return stored ? Number(stored) : 0;
-    });
-    const [rejectedCount, setRejectedCount] = useState<number>(() => {
-        const stored = sessionStorage.getItem('ordersRejectedCount');
-        return stored ? Number(stored) : 0;
-    });
-    const [triggerCount, setTriggerCount] = useState<number>(() => {
-        const stored = sessionStorage.getItem('ordersTriggerCount');
-        return stored ? Number(stored) : 0;
-    });
 
     const [scrollWholePage, setScrollWholePage] = useState<boolean>(() => {
         return localStorage.getItem("scroll-whole-page") === "true";
@@ -473,15 +485,55 @@ const LiveOrders: React.FC = () => {
     // Filtered hierarchy for parent selection, sorted by category order
     const parentOptions = useMemo(() => {
         const tree = orgTreeData;
-        if (!tree) return [];
-        return [...tree]
-            .sort((a, b) => {
-                const pa = CATEGORY_ORDER[a.category?.toUpperCase() || ''] || 99;
-                const pb = CATEGORY_ORDER[b.category?.toUpperCase() || ''] || 99;
-                if (pa !== pb) return pa - pb;
-                return a.name.localeCompare(b.name);
+        const loggedInCode = user?.user_code || user?.id || frappeUser?.username || frappeUser?.name;
+
+        let list: any[] = [];
+        if (tree && Array.isArray(tree)) {
+            list = tree.filter(item => {
+                if (item.is_group === 1) return true;
+                if (loggedInCode && (
+                    item.name === loggedInCode ||
+                    item.code === loggedInCode ||
+                    item.org_code === loggedInCode
+                )) {
+                    return true;
+                }
+                return false;
             });
-    }, [orgTreeData]);
+        }
+
+        // Ensure logged-in user's code is present even if not in orgTreeData or marked as group
+        if (loggedInCode && !list.some(item => item.name === loggedInCode || item.code === loggedInCode || item.org_code === loggedInCode)) {
+            const userNode = tree && Array.isArray(tree) ? tree.find((item: any) =>
+                item.name === loggedInCode || item.code === loggedInCode || item.org_code === loggedInCode
+            ) : null;
+
+            if (userNode) {
+                list.push(userNode);
+            } else {
+                list.push({
+                    name: loggedInCode,
+                    code: loggedInCode,
+                    org_code: loggedInCode,
+                    name1: frappeUser?.full_name || [frappeUser?.first_name, frappeUser?.last_name].filter(Boolean).join(' ') || user?.firstName || loggedInCode,
+                    category: 'USER',
+                    is_group: 0
+                });
+            }
+        }
+
+        return list.sort((a, b) => {
+            const isALoggedIn = Boolean(loggedInCode && (a.name === loggedInCode || a.code === loggedInCode || a.org_code === loggedInCode));
+            const isBLoggedIn = Boolean(loggedInCode && (b.name === loggedInCode || b.code === loggedInCode || b.org_code === loggedInCode));
+            if (isALoggedIn && !isBLoggedIn) return -1;
+            if (!isALoggedIn && isBLoggedIn) return 1;
+
+            const pa = CATEGORY_ORDER[a.category?.toUpperCase() || ''] || 99;
+            const pb = CATEGORY_ORDER[b.category?.toUpperCase() || ''] || 99;
+            if (pa !== pb) return pa - pb;
+            return a.name.localeCompare(b.name);
+        });
+    }, [orgTreeData, user, frappeUser]);
 
     const visibleParentOptions = useMemo(() => {
         if (!parentOptions) return [];
@@ -618,6 +670,99 @@ const LiveOrders: React.FC = () => {
 
     const hasPermissionError = !!permissionError;
 
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
+    // Fetch dashboard chart data for status breakdown (1 API call instead of 6 separate count queries)
+    const { data: chartData, error: chartError, mutate: mutateChart } = useSWR<any>(
+        hasPermissionError ? null : [`${API_BASE_URL}/api/method/frappe.desk.doctype.dashboard_chart.dashboard_chart.get`, JSON.stringify({
+            chart_name: 'Order status',
+            filters: JSON.stringify(filters),
+            refresh: 1
+        })],
+        postFetcher,
+        { revalidateOnFocus: false, revalidateOnReconnect: true, shouldRetryOnError: false, dedupingInterval: 5000 }
+    );
+
+    const chartCounts = useMemo(() => {
+        let total = 0;
+        let completeC = 0;
+        let openC = 0;
+        let canceledC = 0;
+        let rejectedC = 0;
+        let triggerC = 0;
+
+        if (chartData && chartData.labels && chartData.datasets?.[0]?.values) {
+            const labels = chartData.labels;
+            const values = chartData.datasets[0].values;
+
+            for (let i = 0; i < labels.length; i++) {
+                const label = (labels[i] || '').toUpperCase();
+                const value = Number(values[i]) || 0;
+                total += value;
+
+                if (label === 'OPEN') {
+                    openC += value;
+                } else if (label === 'COMPLETE' || label === 'COMPLETED') {
+                    completeC += value;
+                } else if (label === 'CANCELED' || label === 'CANCELLED') {
+                    canceledC += value;
+                } else if (label === 'REJECTED') {
+                    rejectedC += value;
+                } else if (label === 'TRIGGER_PENDING' || label === 'TRIGGER PENDING' || label === 'PENDING') {
+                    triggerC += value;
+                }
+            }
+        }
+
+        return {
+            totalCount: total,
+            completeCount: completeC,
+            openCount: openC,
+            canceledCount: canceledC,
+            rejectedCount: rejectedC,
+            triggerCount: triggerC
+        };
+    }, [chartData]);
+
+    const {
+        totalCount,
+        completeCount,
+        openCount,
+        canceledCount,
+        rejectedCount,
+        triggerCount
+    } = chartCounts;
+
+    // Watch for permission errors
+    useEffect(() => {
+        const errors = [listError, chartError];
+        for (const err of errors) {
+            if (err) {
+                const errAny = err as any;
+                const status = errAny.status || errAny.httpStatus;
+                const info = errAny.info || {};
+                const exception = info.exception || errAny.exception || "";
+                const exc_type = info.exc_type || errAny.exc_type || "";
+                const _server_messages = info._server_messages || errAny._server_messages || "";
+                const message = info.message || errAny.message || "";
+
+                const is403 = status === 403 || message.includes('403');
+                const isPermissionError =
+                    exception.includes('PermissionError') ||
+                    exc_type === 'PermissionError' ||
+                    _server_messages.includes('PermissionError') ||
+                    _server_messages.includes('Insufficient Permission') ||
+                    message.includes('PermissionError') ||
+                    message.includes('Insufficient Permission');
+
+                if (is403 || isPermissionError) {
+                    setPermissionError(message || "Insufficient Permission for Sky Order Feed doctype");
+                    break;
+                }
+            }
+        }
+    }, [listError, chartError]);
+
     // Row sorting config
     const orderByObj = useMemo(() => {
         if (!sortConfig) {
@@ -643,144 +788,78 @@ const LiveOrders: React.FC = () => {
         }
         setListError(null);
         try {
-            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
             const headers: Record<string, string> = {
                 'Content-Type': 'application/json',
             };
 
-            // Fetch list and counts in parallel via POST payload
-            const [
-                listRes,
-                totalRes,
-                completeRes,
-                openRes,
-                canceledRes,
-                rejectedRes,
-                triggerRes
-            ] = await Promise.all([
-                fetch(`${API_BASE_URL}/api/method/frappe.client.get_list`, {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify({
-                        doctype: 'Sky Order Feed',
-                        fields: [
-                            'norenordno',
-                            'uid',
-                            'actid',
-                            'token',
-                            'partid',
-                            'qty',
-                            'ls',
-                            'prc',
-                            'remarks',
-                            'flqty',
-                            'flprc',
-                            'flid',
-                            'fltm',
-                            'prctyp',
-                            'ret',
-                            'exchordid',
-                            'dscqty',
-                            'branch',
-                            'exch_tm',
-                            'amo',
-                            'ti',
-                            'ordenttm',
-                            'targetbroker',
-                            'uidc',
-                            'reporttype',
-                            'os',
-                            'parent1',
-                            'status',
-                            'exui',
-                            'instname',
-                            'pp',
-                            'mult',
-                            'prcftr',
-                            'st_intrn',
-                            'tm',
-                            'client_name',
-                            'exch',
-                            'tsym',
-                            'trantype',
-                            'pcode',
-                            'avgprc',
-                            'ntm',
-                            'kidid',
-                            'fillshares',
-                            'norentm',
-                            'rejreason'
-                        ],
-                        filters,
-                        order_by: `${orderByObj.field} ${orderByObj.order}`,
-                        limit_start,
-                        limit_page_length: limit
-                    })
-                }).then(r => {
-                    if (!r.ok) throw new Error(`HTTP error ${r.status}`);
-                    return r.json();
-                }),
-                fetch(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify({ doctype: 'Sky Order Feed', filters: totalFilters })
-                }).then(r => {
-                    if (!r.ok) throw new Error(`HTTP error ${r.status}`);
-                    return r.json();
-                }),
-                fetch(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify({ doctype: 'Sky Order Feed', filters: [...totalFilters, ['status', '=', 'COMPLETE']] })
-                }).then(r => {
-                    if (!r.ok) throw new Error(`HTTP error ${r.status}`);
-                    return r.json();
-                }),
-                fetch(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify({ doctype: 'Sky Order Feed', filters: [...totalFilters, ['status', '=', 'OPEN']] })
-                }).then(r => {
-                    if (!r.ok) throw new Error(`HTTP error ${r.status}`);
-                    return r.json();
-                }),
-                fetch(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify({ doctype: 'Sky Order Feed', filters: [...totalFilters, ['status', '=', 'CANCELED']] })
-                }).then(r => {
-                    if (!r.ok) throw new Error(`HTTP error ${r.status}`);
-                    return r.json();
-                }),
-                fetch(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify({ doctype: 'Sky Order Feed', filters: [...totalFilters, ['status', '=', 'REJECTED']] })
-                }).then(r => {
-                    if (!r.ok) throw new Error(`HTTP error ${r.status}`);
-                    return r.json();
-                }),
-                fetch(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify({ doctype: 'Sky Order Feed', filters: [...totalFilters, ['status', '=', 'TRIGGER_PENDING']] })
-                }).then(r => {
-                    if (!r.ok) throw new Error(`HTTP error ${r.status}`);
-                    return r.json();
+            const res = await fetch(`${API_BASE_URL}/api/method/frappe.client.get_list`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    doctype: 'Sky Order Feed',
+                    fields: [
+                        'norenordno',
+                        'uid',
+                        'actid',
+                        'token',
+                        'partid',
+                        'qty',
+                        'ls',
+                        'prc',
+                        'remarks',
+                        'flqty',
+                        'flprc',
+                        'flid',
+                        'fltm',
+                        'prctyp',
+                        'ret',
+                        'exchordid',
+                        'dscqty',
+                        'branch',
+                        'exch_tm',
+                        'amo',
+                        'ti',
+                        'ordenttm',
+                        'targetbroker',
+                        'uidc',
+                        'reporttype',
+                        'os',
+                        'parent1',
+                        'status',
+                        'exui',
+                        'instname',
+                        'pp',
+                        'mult',
+                        'prcftr',
+                        'st_intrn',
+                        'tm',
+                        'client_name',
+                        'exch',
+                        'tsym',
+                        'trantype',
+                        'pcode',
+                        'avgprc',
+                        'ntm',
+                        'kidid',
+                        'fillshares',
+                        'norentm',
+                        'rejreason'
+                    ],
+                    filters,
+                    order_by: `${orderByObj.field} ${orderByObj.order}`,
+                    limit_start,
+                    limit_page_length: limit
                 })
-            ]);
+            });
 
-            if (listRes.message) {
-                setOrdersData(listRes.message);
-                sessionStorage.setItem('ordersData', JSON.stringify(listRes.message));
+            if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+            const data = await res.json();
+
+            if (data.message) {
+                setOrdersData(data.message);
+                sessionStorage.setItem('ordersData', JSON.stringify(data.message));
                 sessionStorage.setItem('ordersCacheFilters', JSON.stringify(filters));
             }
-            if (totalRes.hasOwnProperty('message')) setTotalCount(totalRes.message || 0);
-            if (completeRes.hasOwnProperty('message')) setCompleteCount(completeRes.message || 0);
-            if (openRes.hasOwnProperty('message')) setOpenCount(openRes.message || 0);
-            if (canceledRes.hasOwnProperty('message')) setCanceledCount(canceledRes.message || 0);
-            if (rejectedRes.hasOwnProperty('message')) setRejectedCount(rejectedRes.message || 0);
-            if (triggerRes.hasOwnProperty('message')) setTriggerCount(triggerRes.message || 0);
 
         } catch (err: any) {
             console.error('Error fetching orders data:', err);
@@ -800,7 +879,7 @@ const LiveOrders: React.FC = () => {
             setIsLoading(false);
             setIsRefreshing(false);
         }
-    }, [filters, totalFilters, orderByObj, limit_start, limit, setIsRefreshing]);
+    }, [filters, orderByObj, limit_start, limit, setIsRefreshing, API_BASE_URL]);
 
     useEffect(() => {
         if (!hasPermissionError) {
@@ -859,7 +938,10 @@ const LiveOrders: React.FC = () => {
     const handleRefresh = async () => {
         setIsRefreshing(true);
         try {
-            await fetchData();
+            await Promise.all([
+                fetchData(),
+                mutateChart(),
+            ]);
             toast.success('Live orders refreshed successfully');
         } finally {
             setIsRefreshing(false);
@@ -867,10 +949,48 @@ const LiveOrders: React.FC = () => {
     };
 
     // Real-time listener for Sky Order Feed updates via WebSocket
+    // Throttled to maximum 3 mutations per second (334ms minimum interval)
+    const lastExecutionTimeRef = useRef<number>(0);
+    const pendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const triggerUpdate = useCallback(() => {
+        fetchData();
+        mutateChart();
+    }, [fetchData, mutateChart]);
+
     const handleListUpdate = useCallback((eventData: any) => {
         console.log('Realtime Sky Order Feed event:', eventData);
-        fetchData();
-    }, [fetchData]);
+
+        const now = Date.now();
+        const elapsed = now - lastExecutionTimeRef.current;
+        const minInterval = 334; // Maximum 3 mutations per second (1000ms / 3 ≈ 334ms)
+
+        if (elapsed >= minInterval) {
+            if (pendingTimerRef.current) {
+                clearTimeout(pendingTimerRef.current);
+                pendingTimerRef.current = null;
+            }
+            lastExecutionTimeRef.current = now;
+            triggerUpdate();
+        } else {
+            if (!pendingTimerRef.current) {
+                const remaining = minInterval - elapsed;
+                pendingTimerRef.current = setTimeout(() => {
+                    lastExecutionTimeRef.current = Date.now();
+                    pendingTimerRef.current = null;
+                    triggerUpdate();
+                }, remaining);
+            }
+        }
+    }, [triggerUpdate]);
+
+    useEffect(() => {
+        return () => {
+            if (pendingTimerRef.current) {
+                clearTimeout(pendingTimerRef.current);
+            }
+        };
+    }, []);
 
     // Unsubscribe from Sky Order Feed doctype room to avoid broad, noisy updates
     useEffect(() => {
@@ -1107,8 +1227,14 @@ const LiveOrders: React.FC = () => {
             <div className="shrink-0 space-y-4">
                 {/* Summary Cards Grid */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                    <Card className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group relative overflow-hidden">
-                        <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-purple-500 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <Card
+                        onClick={() => setStatusFilter('ALL')}
+                        className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-all cursor-pointer group relative overflow-hidden rounded-2xl"
+                    >
+                        <div className={cn(
+                            "absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-purple-500 to-indigo-600 transition-opacity",
+                            statusFilter === 'ALL' ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                        )}></div>
                         <div className="flex items-center justify-between mb-2">
                             <span className="text-[12px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Total Orders</span>
                             <div className="p-2 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
@@ -1124,8 +1250,14 @@ const LiveOrders: React.FC = () => {
                         </div>
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group relative overflow-hidden">
-                        <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-green-500 to-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <Card
+                        onClick={() => setStatusFilter(prev => prev === 'COMPLETE' ? 'ALL' : 'COMPLETE')}
+                        className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-all cursor-pointer group relative overflow-hidden rounded-2xl"
+                    >
+                        <div className={cn(
+                            "absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-green-500 to-emerald-600 transition-opacity",
+                            statusFilter === 'COMPLETE' ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                        )}></div>
                         <div className="flex items-center justify-between mb-2">
                             <span className="text-[12px] font-bold text-green-600 dark:text-green-455 uppercase tracking-wider">Complete</span>
                             <div className="p-2 bg-green-50 dark:bg-green-950/20 rounded-lg">
@@ -1141,8 +1273,14 @@ const LiveOrders: React.FC = () => {
                         </div>
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group relative overflow-hidden">
-                        <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <Card
+                        onClick={() => setStatusFilter(prev => prev === 'OPEN' ? 'ALL' : 'OPEN')}
+                        className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-all cursor-pointer group relative overflow-hidden rounded-2xl"
+                    >
+                        <div className={cn(
+                            "absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-600 transition-opacity",
+                            statusFilter === 'OPEN' ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                        )}></div>
                         <div className="flex items-center justify-between mb-2">
                             <span className="text-[12px] font-bold text-blue-600 dark:text-blue-455 uppercase tracking-wider">Open</span>
                             <div className="p-2 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
@@ -1158,8 +1296,14 @@ const LiveOrders: React.FC = () => {
                         </div>
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group relative overflow-hidden">
-                        <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-amber-500 to-orange-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <Card
+                        onClick={() => setStatusFilter(prev => prev === 'CANCELED' ? 'ALL' : 'CANCELED')}
+                        className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-all cursor-pointer group relative overflow-hidden rounded-2xl"
+                    >
+                        <div className={cn(
+                            "absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-amber-500 to-orange-600 transition-opacity",
+                            statusFilter === 'CANCELED' ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                        )}></div>
                         <div className="flex items-center justify-between mb-2">
                             <span className="text-[12px] font-bold text-amber-600 dark:text-amber-455 uppercase tracking-wider">Canceled</span>
                             <div className="p-2 bg-amber-50 dark:bg-amber-950/20 rounded-lg">
@@ -1175,8 +1319,14 @@ const LiveOrders: React.FC = () => {
                         </div>
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group relative overflow-hidden">
-                        <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-red-500 to-rose-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <Card
+                        onClick={() => setStatusFilter(prev => prev === 'REJECTED' ? 'ALL' : 'REJECTED')}
+                        className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-all cursor-pointer group relative overflow-hidden rounded-2xl"
+                    >
+                        <div className={cn(
+                            "absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-red-500 to-rose-600 transition-opacity",
+                            statusFilter === 'REJECTED' ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                        )}></div>
                         <div className="flex items-center justify-between mb-2">
                             <span className="text-[12px] font-bold text-red-600 dark:text-red-455 uppercase tracking-wider">Rejected</span>
                             <div className="p-2 bg-red-50 dark:bg-red-950/20 rounded-lg">
@@ -1192,8 +1342,14 @@ const LiveOrders: React.FC = () => {
                         </div>
                     </Card>
 
-                    <Card className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group relative overflow-hidden">
-                        <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-purple-400 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <Card
+                        onClick={() => setStatusFilter(prev => prev === 'TRIGGER_PENDING' ? 'ALL' : 'TRIGGER_PENDING')}
+                        className="p-4 border-border shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition-all cursor-pointer group relative overflow-hidden rounded-2xl"
+                    >
+                        <div className={cn(
+                            "absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-purple-400 to-pink-500 transition-opacity",
+                            statusFilter === 'TRIGGER_PENDING' ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                        )}></div>
                         <div className="flex items-center justify-between mb-2">
                             <span className="text-[12px] font-bold text-purple-600 dark:text-purple-455 uppercase tracking-wider">Trigger Pending</span>
                             <div className="p-2 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
