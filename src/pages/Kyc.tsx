@@ -351,17 +351,7 @@ const Kyc: React.FC = () => {
 
         let list: any[] = [];
         if (tree && Array.isArray(tree)) {
-            list = tree.filter(item => {
-                if (item.is_group === 1) return true;
-                if (loggedInCode && (
-                    item.name === loggedInCode ||
-                    item.code === loggedInCode ||
-                    item.org_code === loggedInCode
-                )) {
-                    return true;
-                }
-                return false;
-            });
+            list = [...tree];
         }
 
         // Ensure logged-in user's code is present even if not in orgTreeData or marked as group
@@ -528,17 +518,24 @@ const Kyc: React.FC = () => {
     const hierarchyFilters = useMemo(() => {
         const activeFilters: any[] = [];
         if (referFilter !== 'ALL') {
-            const tree = orgTreeData;
-            const node = tree?.find((opt: any) => opt.name === referFilter);
-            const code = (node as any)?.code || (node as any)?.org_code || referFilter;
-            activeFilters.push(['refer', '=', code]);
+            const expandedNames = expandBranches([referFilter]);
+            const expandedCodes = getHierarchyCodes(expandedNames);
+            if (expandedCodes.length === 1) {
+                activeFilters.push(['refer', '=', expandedCodes[0]]);
+            } else if (expandedCodes.length > 1) {
+                activeFilters.push(['refer', 'in', expandedCodes]);
+            }
         } else if (selectedHierarchy && selectedHierarchy.length > 0) {
             const expandedNames = expandBranches(selectedHierarchy);
             const expandedCodes = getHierarchyCodes(expandedNames);
-            activeFilters.push(['refer', 'in', expandedCodes]);
+            if (expandedCodes.length === 1) {
+                activeFilters.push(['refer', '=', expandedCodes[0]]);
+            } else if (expandedCodes.length > 1) {
+                activeFilters.push(['refer', 'in', expandedCodes]);
+            }
         }
         return activeFilters;
-    }, [selectedHierarchy, referFilter, expandBranches, getHierarchyCodes, orgTreeData]);
+    }, [selectedHierarchy, referFilter, expandBranches, getHierarchyCodes]);
 
     const debouncedSearchQuery = useDebounce(searchQuery, 400);
 
@@ -612,35 +609,41 @@ const Kyc: React.FC = () => {
         };
     }, [sortConfig]);
 
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
     const {
-        data: kycListData,
-        isLoading: isDocListLoading,
+        data: kycListData = [],
         error: swrListError,
+        isLoading: isDocListLoading,
         mutate: mutateList,
-    } = useFrappeGetDocList<any>(
-        'KYC',
-        {
-            fields: [
-                'name',
-                'application_id',
-                'user_name',
-                'kyc_stage',
-                'refer',
-                'application_created_date',
-                'application_modified_date_time',
-                'application_status',
-                'src',
-                'tag',
-                'ucc',
-                'mobile_number',
-                '_comments'
-            ],
-            filters,
-            orderBy: orderByObj,
-            limit_start,
-            limit,
+    } = useSWR<any[]>(
+        hasPermissionError ? null : {
+            url: `${API_BASE_URL}/api/method/frappe.client.get_list`,
+            body: {
+                doctype: 'KYC',
+                fields: [
+                    'name',
+                    'application_id',
+                    'user_name',
+                    'kyc_stage',
+                    'refer',
+                    'application_created_date',
+                    'application_modified_date_time',
+                    'application_status',
+                    'src',
+                    'tag',
+                    'ucc',
+                    'mobile_number',
+                    '_comments'
+                ],
+                filters,
+                order_by: `${orderByObj.field} ${orderByObj.order}`,
+                limit_start,
+                limit_page_length: limit
+            }
         },
-        hasPermissionError ? null : undefined
+        postFetcher,
+        { revalidateOnFocus: false, revalidateOnReconnect: true }
     );
 
     // Sync loading state
@@ -661,8 +664,6 @@ const Kyc: React.FC = () => {
             setListError(swrListError);
         }
     }, [swrListError]);
-
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
     // Fetch dashboard chart data for status breakdown (1 API call instead of 6 separate ones)
     const { data: chartData, error: chartError, mutate: mutateChart } = useSWR<any>(

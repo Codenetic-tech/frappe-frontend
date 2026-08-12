@@ -398,6 +398,7 @@ const Clients: React.FC = () => {
         return stored ? JSON.parse(stored) : {
             mobile: true,
             client_name: true,
+            pan_number: false,
             opened_date: true,
             trade_done: true,
             last_trade: true,
@@ -763,6 +764,7 @@ const Clients: React.FC = () => {
                     'name',
                     'client_code',
                     'client_name',
+                    'pan_number',
                     'mobile_number',
                     'parent1',
                     'account_opened_date',
@@ -1575,6 +1577,7 @@ const Clients: React.FC = () => {
                                 {[
                                     { id: 'mobile', label: 'Mobile' },
                                     { id: 'client_name', label: 'Client Name' },
+                                    { id: 'pan_number', label: 'PAN Number' },
                                     { id: 'opened_date', label: 'Opened Date' },
                                     { id: 'trade_done', label: 'Trade Done' },
                                     { id: 'last_trade', label: 'Last Trade' },
@@ -1676,6 +1679,16 @@ const Clients: React.FC = () => {
                                         </div>
                                     </th>
                                 )}
+                                {columnVisibility.pan_number && (
+                                    <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col sticky top-0 bg-slate-50 dark:bg-slate-900 z-30 whitespace-nowrap" onClick={() => handleSort('pan_number')}>
+                                        <div className="flex items-center gap-2 whitespace-nowrap">
+                                            PAN Number
+                                            {sortConfig?.key === 'pan_number' ? (
+                                                sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600 dark:text-purple-400" /> : <ChevronDown className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                                            ) : <ArrowUpDown className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover/col:text-slate-400" />}
+                                        </div>
+                                    </th>
+                                )}
                                 {columnVisibility.opened_date && (
                                     <th className="text-left py-4 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col sticky top-0 bg-slate-50 dark:bg-slate-900 z-30 whitespace-nowrap" onClick={() => handleSort('account_opened_date')}>
                                         <div className="flex items-center gap-2 whitespace-nowrap">
@@ -1769,6 +1782,7 @@ const Clients: React.FC = () => {
                                             </td>
                                         )}
                                         {columnVisibility.client_name && <td className="py-4 px-4 text-slate-500 dark:text-slate-400 whitespace-nowrap">{formatValue(row.client_name)}</td>}
+                                        {columnVisibility.pan_number && <td className="py-4 px-4 text-slate-500 dark:text-slate-400 font-mono text-xs whitespace-nowrap">{formatValue(row.pan_number)}</td>}
                                         {columnVisibility.opened_date && <td className="py-4 px-4 text-slate-500 dark:text-slate-400 font-mono text-xs whitespace-nowrap">{formatValue(row.account_opened_date)}</td>}
                                         {columnVisibility.trade_done && (
                                             <td className="py-4 px-4 whitespace-nowrap">
