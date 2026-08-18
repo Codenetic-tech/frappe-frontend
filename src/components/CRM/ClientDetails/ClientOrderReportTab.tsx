@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   ChevronRight, ArrowUpRight, ArrowDownRight, Filter,
   ChevronDown, Landmark, Hexagon, Monitor, Leaf, Zap,
-  Building2, Globe, PackageOpen, AlertCircle, FileText
+  Building2, Globe, PackageOpen, AlertCircle, FileText, Clock
 } from "lucide-react";
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { cn } from "@/lib/utils";
@@ -16,6 +16,8 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+
+const SHOW_COMING_SOON = true;
 
 interface ClientOrderReportTabProps {
   clientCode: string;
@@ -76,6 +78,11 @@ const ClientOrderReportTab: React.FC<ClientOrderReportTabProps> = ({ clientCode,
   ]);
 
   useEffect(() => {
+    if (SHOW_COMING_SOON) {
+      setIsLoading(false);
+      return;
+    }
+
     let isMounted = true;
 
     const fetchOrderReport = async () => {
@@ -176,6 +183,20 @@ const ClientOrderReportTab: React.FC<ClientOrderReportTabProps> = ({ clientCode,
       setPage(prev => prev + 1);
     }
   };
+
+  if (SHOW_COMING_SOON) {
+    return (
+      <div className="flex flex-col items-center justify-center text-center w-full animate-in fade-in duration-500 h-[500px]">
+        <div className="w-20 h-20 bg-purple-50 dark:bg-purple-950/30 rounded-3xl flex items-center justify-center text-purple-600 dark:text-purple-400 mb-5 shadow-sm border border-purple-100 dark:border-purple-900/30">
+          <Clock className="w-10 h-10 animate-pulse" />
+        </div>
+        <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">Order Report Coming Soon</h3>
+        <p className="text-slate-500 dark:text-slate-400 text-sm max-w-sm leading-relaxed">
+          Order report analytics for this client are currently under development. Stay tuned!
+        </p>
+      </div>
+    );
+  }
 
   if (isLoading && trades.length === 0) {
     return (

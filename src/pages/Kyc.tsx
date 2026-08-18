@@ -139,7 +139,6 @@ const KYC_FILTER_FIELDS = [
     { value: 'tag', label: 'Tag', type: 'string' },
     { value: 'application_created_date', label: 'Created Date', type: 'date' },
     { value: 'application_modified_date_time', label: 'Modified Datetime', type: 'date' },
-    { value: 'client_mapping', label: 'Client Mapping', type: 'select', options: ['1', '0'] },
 ] as const;
 
 const STRING_OPERATORS = ['like', '=', '!=', 'not like'] as const;
@@ -879,12 +878,6 @@ const Kyc: React.FC = () => {
                             'src',
                             'tag',
                             'ucc',
-                            'nse',
-                            'bse',
-                            'nfo',
-                            'bfo',
-                            'mcx',
-                            'client_mapping',
                             'mobile_number',
                             '_comments'
                         ],
@@ -926,13 +919,7 @@ const Kyc: React.FC = () => {
                     'Status': item.application_status || 'IN PROGRESS',
                     'Comments': formatComment(item._comments),
                     'Created At': item.application_created_date,
-                    'Modified At': item.application_modified_date_time,
-                    'NSE': item.nse === 'Active' ? 'Active' : '-',
-                    'BSE': item.bse === 'Active' ? 'Active' : '-',
-                    'NFO': item.nfo === 'Active' ? 'Active' : '-',
-                    'BFO': item.bfo === 'Active' ? 'Active' : '-',
-                    'MCX': item.mcx === 'Active' ? 'Active' : '-',
-                    'Ready': item.client_mapping ? 'YES' : 'NO'
+                    'Modified At': item.application_modified_date_time
                 }));
 
                 const today = new Date();
@@ -1254,7 +1241,7 @@ const Kyc: React.FC = () => {
                                                         <SelectItem value="last year" className="text-xs">Last Year</SelectItem>
                                                     </SelectContent>
                                                 </Select>
-                                            ) : filter.field === 'kyc_stage' || filter.field === 'application_status' || filter.field === 'client_mapping' ? (
+                                            ) : filter.field === 'kyc_stage' || filter.field === 'application_status' ? (
                                                 <Select
                                                     value={typeof filter.value === 'string' ? filter.value : ''}
                                                     onValueChange={(val) => updateDraftFilter(filter.id, { value: val })}
@@ -1473,12 +1460,12 @@ const Kyc: React.FC = () => {
                         <RefreshCcw className={cn("w-4 h-4", (isRefreshing || isLoading) && "animate-spin")} />
                     </Button>
 
-                    {(user?.user_code === 'HO' || user?.user_code === 'DRCT' || user?.user_code === 'Business' || user?.user_code === 'RMRL' || user?.category === 'admin') && (
+                    {(user?.user_code === 'HO' || user?.user_code === 'Business' || user?.user_code === 'administrator' || user?.user_code === 'RMRL') && (
                         <Button
-                             onClick={handleExport}
-                             disabled={isExporting || isLoading || isRefreshing}
-                             variant="outline"
-                             className="rounded-xl px-4 font-semibold gap-2 h-10 border-emerald-250 dark:border-emerald-950 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-105 dark:hover:bg-emerald-900/30 hover:border-emerald-300 dark:hover:border-emerald-800 transition-all shadow-sm"
+                            onClick={handleExport}
+                            disabled={isExporting || isLoading || isRefreshing}
+                            variant="outline"
+                            className="rounded-xl px-4 font-semibold gap-2 h-10 border-emerald-250 dark:border-emerald-950 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-105 dark:hover:bg-emerald-900/30 hover:border-emerald-300 dark:hover:border-emerald-800 transition-all shadow-sm"
                         >
                             {isExporting ? (
                                 <>
@@ -1570,7 +1557,6 @@ const Kyc: React.FC = () => {
                                 <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">Stage</th>
                                 <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">Status</th>
                                 <th className="text-left py-3 px-4 font-semibold text-slate-655 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">Comments</th>
-                                <th className="text-center py-3 px-4 font-semibold text-slate-655 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-900 z-30">Ready</th>
                                 <th className="text-right py-3 px-4 font-semibold text-slate-655 dark:text-slate-400 sticky top-0 right-0 bg-slate-50 dark:bg-slate-900 border-l border-l-slate-100 dark:border-l-slate-800/50 z-40" style={{ width: 80, minWidth: 80, maxWidth: 80 }}>Actions</th>
                             </tr>
                         </thead>
@@ -1587,16 +1573,15 @@ const Kyc: React.FC = () => {
                                         <td className="py-3 px-4"><Skeleton className="h-4 w-28 bg-slate-200 dark:bg-slate-800" /></td>
                                         <td className="py-3 px-4"><Skeleton className="h-5 w-20 rounded-full bg-slate-200 dark:bg-slate-800" /></td>
                                         <td className="py-3 px-4"><Skeleton className="h-4 w-32 bg-slate-200 dark:bg-slate-800" /></td>
-                                        <td className="py-3 px-4 text-center"><Skeleton className="w-2 h-2 rounded-full mx-auto bg-slate-200 dark:bg-slate-800" /></td>
                                         <td className="py-3 px-4 text-right sticky right-0 bg-white dark:bg-slate-900 border-l border-l-slate-100 dark:border-l-slate-800/50 z-10"><Skeleton className="h-8 w-8 rounded-lg ml-auto bg-slate-200 dark:bg-slate-800" /></td>
                                     </tr>
                                 ))
                             ) : kycData && kycData.length > 0 ? (
                                 kycData.map((row: any, index: number) => {
                                     const isHighlighted = highlightedRowIds.has(String(row.name)) ||
-                                                          highlightedRowIds.has(String(row.application_id)) ||
-                                                          highlightedRowIds.has(String(row.mobile_number)) ||
-                                                          (row.ucc && highlightedRowIds.has(String(row.ucc)));
+                                        highlightedRowIds.has(String(row.application_id)) ||
+                                        highlightedRowIds.has(String(row.mobile_number)) ||
+                                        (row.ucc && highlightedRowIds.has(String(row.ucc)));
                                     return (
                                         <tr
                                             key={index}
@@ -1630,16 +1615,16 @@ const Kyc: React.FC = () => {
                                                     const isApproved = status === 'ACCOUNT OPENED' || status === 'APPROVED';
                                                     const isRejected = status === 'REJECTED';
                                                     const isPending = status === 'PENDING FOR APPROVAL';
-                                                    
-                                                    const currentStyle = isApproved 
-                                                        ? "bg-green-100 dark:bg-green-950/20 text-green-700 dark:text-green-400" 
-                                                        : isRejected 
-                                                            ? "bg-red-100 dark:bg-red-950/20 text-red-700 dark:text-red-400" 
-                                                            : isPending 
-                                                                ? "bg-purple-100 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400" 
+
+                                                    const currentStyle = isApproved
+                                                        ? "bg-green-100 dark:bg-green-950/20 text-green-700 dark:text-green-400"
+                                                        : isRejected
+                                                            ? "bg-red-100 dark:bg-red-950/20 text-red-700 dark:text-red-400"
+                                                            : isPending
+                                                                ? "bg-purple-100 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400"
                                                                 : "bg-amber-100 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400";
                                                     const currentDot = isApproved ? "bg-green-500" : isRejected ? "bg-red-500" : isPending ? "bg-purple-500" : "bg-amber-500";
-                                                    
+
                                                     return (
                                                         <div className="flex items-center gap-2">
                                                             <div className={cn(
@@ -1656,38 +1641,32 @@ const Kyc: React.FC = () => {
                                             <td className="py-3 px-4 text-slate-600 dark:text-slate-400 truncate max-w-[200px]" title={formatComment(row._comments)}>
                                                 {formatComment(row._comments)}
                                             </td>
-                                            <td className="py-3 px-4 text-center">
-                                                <div className={cn(
-                                                    "w-2 h-2 rounded-full mx-auto",
-                                                    row.client_mapping ? "bg-green-500" : "bg-red-400 opacity-30"
-                                                )} />
-                                            </td>
                                             <td className={cn(
                                                 "py-3 px-4 text-right sticky right-0 border-l border-l-slate-100 dark:border-l-slate-800/50 z-10 transition-colors duration-700",
                                                 isHighlighted
                                                     ? "bg-emerald-50/80 dark:bg-emerald-950/30"
                                                     : "bg-white dark:bg-slate-900 group-hover:bg-slate-50 dark:group-hover:bg-slate-800"
                                             )} onClick={(e) => e.stopPropagation()} style={{ width: 80, minWidth: 80, maxWidth: 80 }}>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
-                                                        <MoreHorizontal className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="w-44 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-xl p-1.5">
-                                                    <DropdownMenuItem
-                                                        onClick={() => {
-                                                            setActiveKycForComment(row);
-                                                            setCommentText('');
-                                                            setIsCommentModalOpen(true);
-                                                        }}
-                                                        className="text-sm py-2 px-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer font-semibold text-purple-600 dark:text-purple-400 flex items-center gap-2"
-                                                    >
-                                                        <MessageSquare className="w-4 h-4" />
-                                                        Add Comment
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
+                                                            <MoreHorizontal className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end" className="w-44 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-xl p-1.5">
+                                                        <DropdownMenuItem
+                                                            onClick={() => {
+                                                                setActiveKycForComment(row);
+                                                                setCommentText('');
+                                                                setIsCommentModalOpen(true);
+                                                            }}
+                                                            className="text-sm py-2 px-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer font-semibold text-purple-600 dark:text-purple-400 flex items-center gap-2"
+                                                        >
+                                                            <MessageSquare className="w-4 h-4" />
+                                                            Add Comment
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
                                             </td>
                                         </tr>
                                     );

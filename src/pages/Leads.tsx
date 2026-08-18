@@ -117,7 +117,7 @@ export interface LeadItem {
     custom_client_code?: string;
     custom_branch?: string;
     custom_parent?: string;
-    custom_repeated_lead?: number | boolean;
+    custom_repeated_lead?: number | boolean | string;
     creation: string;
     modified: string;
     lead_name?: string;
@@ -1159,7 +1159,7 @@ const Leads: React.FC = () => {
 
         // Repeated Lead Checkbox Filter
         if (repeatedLeadFilter) {
-            activeFilters.push(['custom_repeated_lead', '=', 1]);
+            activeFilters.push(['custom_repeated_lead', 'in', [1, '1']]);
         }
 
         // Date Range
@@ -1187,7 +1187,7 @@ const Leads: React.FC = () => {
         }
 
         return activeFilters;
-    }, [selectedHierarchy, parentFilter, expandBranches, getHierarchyCodes, debouncedSearchQuery, debouncedCampaignSearchQuery, dateRange, advancedFilters]);
+    }, [selectedHierarchy, parentFilter, expandBranches, getHierarchyCodes, debouncedSearchQuery, debouncedCampaignSearchQuery, repeatedLeadFilter, dateRange, advancedFilters]);
 
     const filters = useMemo(() => {
         const activeFilters = [...totalFilters];
@@ -1485,6 +1485,7 @@ const Leads: React.FC = () => {
         setCampaignSearchQuery('');
         setStatusFilter('ALL');
         setParentFilter('ALL');
+        setRepeatedLeadFilter(false);
         setDateRange(null);
         setAdvancedFilters([]);
         setCurrentPage(1);
@@ -1585,7 +1586,7 @@ const Leads: React.FC = () => {
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [debouncedSearchQuery, statusFilter, parentFilter, dateRange]);
+    }, [debouncedSearchQuery, statusFilter, parentFilter, dateRange, repeatedLeadFilter, debouncedCampaignSearchQuery, advancedFilters]);
 
     const sortedData = useMemo(() => {
         if (!leadsData) return [];
@@ -2645,12 +2646,19 @@ const Leads: React.FC = () => {
                                                     <div className="w-8 h-8 rounded-full bg-purple-50 dark:bg-purple-950/30 flex items-center justify-center text-purple-600 dark:text-purple-400 font-bold text-xs uppercase shrink-0">
                                                         {(row.first_name || row.lead_name || 'U')[0]}
                                                     </div>
-                                                    <button
-                                                        onClick={() => navigate(`/leads/${row.name}`)}
-                                                        className="font-semibold text-slate-900 dark:text-slate-100 leading-tight hover:text-purple-600 transition-colors text-left focus:outline-none truncate block w-full"
-                                                    >
-                                                        {formatValue(row.first_name || row.lead_name)}
-                                                    </button>
+                                                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                                        <button
+                                                            onClick={() => navigate(`/leads/${row.name}`)}
+                                                            className="font-semibold text-slate-900 dark:text-slate-100 leading-tight hover:text-purple-600 transition-colors text-left focus:outline-none truncate block"
+                                                        >
+                                                            {formatValue(row.first_name || row.lead_name)}
+                                                        </button>
+                                                        {!!row.custom_repeated_lead && (
+                                                            <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900/40 shrink-0 font-semibold">
+                                                                Repeated
+                                                            </Badge>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </td>
                                         )}

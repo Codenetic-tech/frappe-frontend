@@ -106,6 +106,14 @@ const allMenuItems = [
     roles: ['manager', 'employee', 'admin']
   },
   {
+    title: 'Position Book',
+    url: '/live-positions',
+    icon: LineChart,
+    color: 'text-slate-600 dark:text-slate-400',
+    bgColor: 'bg-slate-50 dark:bg-slate-800/60',
+    roles: ['manager', 'employee', 'admin']
+  },
+  {
     title: 'Client Holdings',
     url: '/client-holdings',
     icon: Wallet,
@@ -246,7 +254,7 @@ export function AppSidebar() {
         icon: Building2,
         color: 'text-emerald-600',
         gradient: 'from-emerald-600 to-teal-700',
-        items: ['Dashboard', 'Leads', 'KYC Status', 'Clients', 'Live Orders', 'Client Holdings', 'Revenue', 'Subscription', 'Announcement', "What's New"],
+        items: ['Dashboard', 'Leads', 'KYC Status', 'Clients', 'Live Orders', 'Position Book', 'Client Holdings', 'Revenue', 'Subscription', 'Announcement', "What's New"],
         url: '/leads'
       },
       {
@@ -273,7 +281,7 @@ export function AppSidebar() {
 
   const [activeAppId, setActiveAppId] = useState(() => {
     if (currentPath.includes('settings')) return 'settings';
-    if (currentPath.includes('kyc') || currentPath.includes('leads') || currentPath.includes('clients') || currentPath.includes('live-orders') || currentPath.includes('revenue') || currentPath.includes('activity-log')) return 'crm';
+    if (currentPath.includes('kyc') || currentPath.includes('leads') || currentPath.includes('clients') || currentPath.includes('live-orders') || currentPath.includes('live-positions') || currentPath.includes('revenue') || currentPath.includes('activity-log')) return 'crm';
     if (currentPath.includes('ticketing')) return 'Ticketing';
     if (currentPath.includes('hrms')) return 'HRMS';
     if (currentPath.includes('orderbook') || currentPath.includes('positions') || currentPath.includes('holdings') || currentPath.includes('mutualfunds') || currentPath.includes('strategy-builder') || currentPath.includes('dashboard')) return 'Trading';
@@ -284,7 +292,7 @@ export function AppSidebar() {
   // Sync activeAppId with URL
   React.useEffect(() => {
     if (currentPath.includes('settings')) setActiveAppId('settings');
-    else if (currentPath.includes('kyc') || currentPath.includes('leads') || currentPath.includes('clients') || currentPath.includes('live-orders') || currentPath.includes('revenue') || currentPath.includes('activity-log')) setActiveAppId('crm');
+    else if (currentPath.includes('kyc') || currentPath.includes('leads') || currentPath.includes('clients') || currentPath.includes('live-orders') || currentPath.includes('live-positions') || currentPath.includes('revenue') || currentPath.includes('activity-log')) setActiveAppId('crm');
     else if (currentPath.includes('ticketing')) setActiveAppId('Ticketing');
     else if (currentPath.includes('hrms')) setActiveAppId('HRMS');
     else if (currentPath.includes('orderbook') || currentPath.includes('positions') || currentPath.includes('holdings') || currentPath.includes('mutualfunds') || currentPath.includes('strategy-builder') || currentPath.includes('dashboard')) setActiveAppId('Trading');

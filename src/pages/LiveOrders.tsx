@@ -419,10 +419,11 @@ const LiveOrders: React.FC = () => {
 
     const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
         const stored = localStorage.getItem('ordersColumnVisibility');
-        return stored ? JSON.parse(stored) : {
+        const defaultVisibility = {
             uid: true,
             client_name: true,
             tsym: true,
+            token: false,
             trantype: true,
             qty: true,
             prc: true,
@@ -436,6 +437,15 @@ const LiveOrders: React.FC = () => {
             parent1: false,
             rejreason: false,
         };
+        if (stored) {
+            try {
+                const parsed = JSON.parse(stored);
+                return { ...defaultVisibility, ...parsed };
+            } catch (e) {
+                return defaultVisibility;
+            }
+        }
+        return defaultVisibility;
     });
 
     useEffect(() => {
@@ -925,6 +935,10 @@ const LiveOrders: React.FC = () => {
         sessionStorage.setItem('ordersTriggerCount', String(triggerCount));
     }, [triggerCount]);
 
+    useEffect(() => {
+        sessionStorage.setItem('ordersSearchQuery', searchQuery);
+    }, [searchQuery]);
+
     const error = listError ? (listError.message || 'An error occurred') : permissionError;
 
     const handleSort = (key: string) => {
@@ -1040,6 +1054,7 @@ const LiveOrders: React.FC = () => {
                             'norenordno',
                             'uid',
                             'actid',
+                            'token',
                             'client_name',
                             'tsym',
                             'trantype',
@@ -1082,6 +1097,7 @@ const LiveOrders: React.FC = () => {
                     'Order No': item.norenordno,
                     'Client ID': item.uid,
                     'Account ID': item.actid,
+                    'Token': item.token,
                     'Client Name': item.client_name,
                     'Symbol': item.tsym,
                     'Type': item.trantype === 'B' ? 'BUY' : item.trantype === 'S' ? 'SELL' : item.trantype,
@@ -1895,6 +1911,16 @@ const LiveOrders: React.FC = () => {
                                         </div>
                                     </th>
                                 )}
+                                {columnVisibility.token && (
+                                    <th className="text-left py-3 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('token')}>
+                                        <div className="flex items-center gap-2">
+                                            Token
+                                            {sortConfig?.key === 'token' ? (
+                                                sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-purple-600" /> : <ChevronDown className="w-4 h-4 text-purple-600" />
+                                            ) : <ArrowUpDown className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover/col:text-slate-450" />}
+                                        </div>
+                                    </th>
+                                )}
                                 {columnVisibility.trantype && (
                                     <th className="text-left py-3 px-4 font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none group/col" onClick={() => handleSort('trantype')}>
                                         <div className="flex items-center gap-2">
@@ -1980,6 +2006,7 @@ const LiveOrders: React.FC = () => {
                                         {columnVisibility.uid && <td className="py-3 px-4"><Skeleton className="h-4 w-16 bg-slate-200 dark:bg-slate-800" /></td>}
                                         {columnVisibility.client_name && <td className="py-3 px-4"><Skeleton className="h-4 w-28 bg-slate-200 dark:bg-slate-800" /></td>}
                                         {columnVisibility.tsym && <td className="py-3 px-4"><Skeleton className="h-4 w-20 bg-slate-200 dark:bg-slate-800" /></td>}
+                                        {columnVisibility.token && <td className="py-3 px-4"><Skeleton className="h-4 w-16 bg-slate-200 dark:bg-slate-800" /></td>}
                                         {columnVisibility.trantype && <td className="py-3 px-4"><Skeleton className="h-4 w-12 bg-slate-200 dark:bg-slate-800" /></td>}
                                         {columnVisibility.qty && <td className="py-3 px-4 text-right"><Skeleton className="h-4 w-16 ml-auto bg-slate-200 dark:bg-slate-800" /></td>}
                                         {columnVisibility.prc && <td className="py-3 px-4 text-right"><Skeleton className="h-4 w-16 ml-auto bg-slate-200 dark:bg-slate-800" /></td>}
@@ -2004,6 +2031,7 @@ const LiveOrders: React.FC = () => {
                                         {columnVisibility.uid && <td className="py-3 px-4 text-slate-700 dark:text-slate-350 font-mono text-xs">{formatValue(row.uid)}</td>}
                                         {columnVisibility.client_name && <td className="py-3 px-4 text-slate-800 dark:text-slate-200 font-semibold">{formatValue(row.client_name)}</td>}
                                         {columnVisibility.tsym && <td className="py-3 px-4 font-mono text-xs text-slate-600 dark:text-slate-400 font-bold">{formatValue(row.tsym)}</td>}
+                                        {columnVisibility.token && <td className="py-3 px-4 font-mono text-xs text-slate-600 dark:text-slate-400">{formatValue(row.token)}</td>}
                                         {columnVisibility.trantype && <td className="py-3 px-4">{renderTranTypeBadge(row.trantype)}</td>}
                                         {columnVisibility.qty && (
                                             <td className="py-3 px-4 text-right font-medium">

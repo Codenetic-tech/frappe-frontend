@@ -173,13 +173,13 @@ const DocActivityCard: React.FC<{ entry: LeadDocActivity; userInfo?: Record<stri
 
         let targetUrl = fileUrl;
         if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
-            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://pulse.gopocket.in';
+            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
             const cleanPath = targetUrl.startsWith('/') ? targetUrl : `/${targetUrl}`;
-            targetUrl = `${API_BASE_URL}${cleanPath}`;
+            targetUrl = API_BASE_URL ? `${API_BASE_URL}${cleanPath}` : cleanPath;
         }
 
         try {
-            const response = await fetch(targetUrl);
+            const response = await fetch(targetUrl, { credentials: 'include' });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const blob = await response.blob();
             const blobUrl = window.URL.createObjectURL(blob);

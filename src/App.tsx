@@ -41,6 +41,8 @@ import { SWRConfig } from "swr";
 import Comments from "./pages/Comments";
 import CommentDetails from "./pages/CommentDetails";
 import ClientHoldings from "./pages/ClientHoldings";
+import LivePositions from "./pages/LivePositions";
+import { KambalaFeedProvider } from "@/contexts/KambalaFeedContext";
 
 
 const queryClient = new QueryClient();
@@ -207,6 +209,14 @@ const AppContent = () => {
         }
       />
       <Route
+        path="/live-positions"
+        element={
+          <ProtectedRoute>
+            <LivePositions />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/clients/:clientId"
         element={
           <ProtectedRoute>
@@ -334,21 +344,23 @@ const App = () => {
       <SWRConfig value={{ revalidateOnFocus: false }}>
         <FrappeProvider url='' socketPort='8081' siteName='pulse.gopocket.in'>
           <AuthProvider>
-            <OrgTreeProvider>
-              <FilterProvider>
-                <TooltipProvider>
-                  <RevenueProvider>
-                    <TaskProvider>
-                      <Toaster />
-                      <Sonner />
-                      <BrowserRouter>
-                        <AppContent />
-                      </BrowserRouter>
-                    </TaskProvider>
-                  </RevenueProvider>
-                </TooltipProvider>
-              </FilterProvider>
-            </OrgTreeProvider>
+            <KambalaFeedProvider>
+              <OrgTreeProvider>
+                <FilterProvider>
+                  <TooltipProvider>
+                    <RevenueProvider>
+                      <TaskProvider>
+                        <Toaster />
+                        <Sonner />
+                        <BrowserRouter>
+                          <AppContent />
+                        </BrowserRouter>
+                      </TaskProvider>
+                    </RevenueProvider>
+                  </TooltipProvider>
+                </FilterProvider>
+              </OrgTreeProvider>
+            </KambalaFeedProvider>
           </AuthProvider>
         </FrappeProvider>
       </SWRConfig>
