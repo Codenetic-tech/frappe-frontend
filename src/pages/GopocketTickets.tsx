@@ -75,6 +75,7 @@ import {
     Plus,
 } from 'lucide-react';
 import { TicketModal } from '@/components/TicketPage/TicketModal';
+import { TicketRatingModal } from '@/components/TicketPage/TicketRatingModal';
 import { CreateTicketFloatingButton } from '@/components/TicketPage/CreateTicketFloatingButton';
 import { AssigneeCombobox, type AssignedToOption } from '@/components/TicketPage/AssigneeCombobox';
 import { useAuth } from '@/contexts/AuthContext';
@@ -252,10 +253,18 @@ const formatDateTimeWithAmPm = (dateStr?: string) => {
 
 const GopocketTickets: React.FC = () => {
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, frappeUser } = useAuth();
     const { updateDoc } = useFrappeUpdateDoc();
     const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
     const [isBulkAssigning, setIsBulkAssigning] = useState(false);
+    const [ratingTicket, setRatingTicket] = useState<TicketItem | null>(null);
+    const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
+
+    const isAgent = Boolean(
+        frappeUser?.roles?.some((r: any) => (typeof r === 'string' ? r : r?.role)?.toLowerCase().includes('agent')) ||
+        (user as any)?.roles?.some((r: any) => (typeof r === 'string' ? r : r?.role)?.toLowerCase().includes('agent')) ||
+        user?.role?.toLowerCase().includes('agent')
+    );
 
     const handleBulkAssign = async (option: AssignedToOption) => {
         const ticketNames = Array.from(selectedRows);
@@ -2020,13 +2029,22 @@ const GopocketTickets: React.FC = () => {
                                                             <DropdownMenuItem
                                                                 key={status}
                                                                 onClick={async () => {
-                                                                    if (status === 'Closed' && row.raised_by !== user?.email) {
-                                                                        toastHook({
-                                                                            variant: "destructive",
-                                                                            title: "Not Allowed",
-                                                                            description: "You are not allowed to close the ticket.",
-                                                                        });
-                                                                        return;
+                                                                    if (status === 'Closed') {
+                                                                        if (!isAgent) {
+                                                                            const userEmailNorm = (user?.email || '').toLowerCase().trim();
+                                                                            const raisedByNorm = (row.raised_by || '').toLowerCase().trim();
+                                                                            if (userEmailNorm !== raisedByNorm) {
+                                                                                toastHook({
+                                                                                    variant: "destructive",
+                                                                                    title: "Not Allowed",
+                                                                                    description: "You are not allowed to close the ticket.",
+                                                                                });
+                                                                                return;
+                                                                            }
+                                                                            setRatingTicket(row);
+                                                                            setIsRatingModalOpen(true);
+                                                                            return;
+                                                                        }
                                                                     }
                                                                     try {
                                                                         await updateDoc('HD Ticket', row.name, { status });
@@ -2128,6 +2146,23 @@ const GopocketTickets: React.FC = () => {
                 onSubmit={handleCreateTicket}
                 loading={isSubmittingTicket}
             />
+
+            {/* Ticket Rating Modal when non-agent user closes ticket */}
+            {ratingTicket && (
+                <TicketRatingModal
+                    isOpen={isRatingModalOpen}
+                    onClose={() => {
+                        setIsRatingModalOpen(false);
+                        setRatingTicket(null);
+                    }}
+                    ticketName={ratingTicket.name}
+                    ticketSubject={ratingTicket.subject}
+                    onSuccess={() => {
+                        refetchTickets();
+                        mutateChart();
+                    }}
+                />
+            )}
         </div>
     );
 };

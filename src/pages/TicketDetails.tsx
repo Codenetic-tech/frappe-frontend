@@ -21,6 +21,8 @@ import { toast } from '@/hooks/use-toast';
 import { useTicketActivities } from '@/hooks/useTicketActivities';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+import { TicketRatingModal } from '@/components/TicketPage/TicketRatingModal';
+
 interface Tab {
     id: string;
     label: string;
@@ -47,9 +49,16 @@ const TicketDetails: React.FC = () => {
     const { ticketId } = useParams<{ ticketId: string }>();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('activity');
+    const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
     const { updateDoc } = useFrappeUpdateDoc();
 
-    const { user } = useAuth();
+    const { user, frappeUser } = useAuth();
+
+    const isAgent = Boolean(
+        frappeUser?.roles?.some((r: any) => (typeof r === 'string' ? r : r?.role)?.toLowerCase().includes('agent')) ||
+        (user as any)?.roles?.some((r: any) => (typeof r === 'string' ? r : r?.role)?.toLowerCase().includes('agent')) ||
+        user?.role?.toLowerCase().includes('agent')
+    );
 
     const { data: ticket, isLoading, mutate } = useFrappeGetDoc<any>('HD Ticket', ticketId || '', {
         fields: [
@@ -70,14 +79,23 @@ const TicketDetails: React.FC = () => {
 
     const handleStatusUpdate = async (newStatus: string) => {
         if (!ticket) return;
-        if (newStatus === 'Closed' && user?.email !== ticket.raised_by) {
-            toast({
-                variant: "destructive",
-                title: "Not Allowed",
-                description: "You are not allowed to close the ticket.",
-            });
-            return;
+        if (newStatus === 'Closed') {
+            if (!isAgent) {
+                const userEmailNorm = (user?.email || '').toLowerCase().trim();
+                const ticketRaisedByNorm = (ticket.raised_by || '').toLowerCase().trim();
+                if (userEmailNorm !== ticketRaisedByNorm) {
+                    toast({
+                        variant: "destructive",
+                        title: "Not Allowed",
+                        description: "You are not allowed to close the ticket.",
+                    });
+                    return;
+                }
+                setIsRatingModalOpen(true);
+                return;
+            }
         }
+
         try {
             await updateDoc('HD Ticket', ticket.name, { status: newStatus });
             mutate();
@@ -221,6 +239,17 @@ const TicketDetails: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            <TicketRatingModal
+                isOpen={isRatingModalOpen}
+                onClose={() => setIsRatingModalOpen(false)}
+                ticketName={ticket?.name || ''}
+                ticketSubject={ticket?.subject}
+                onSuccess={() => {
+                    mutate();
+                    refreshActivities();
+                }}
+            />
         </div>
     );
 };
