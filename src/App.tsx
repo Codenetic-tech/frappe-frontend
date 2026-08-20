@@ -43,6 +43,8 @@ import CommentDetails from "./pages/CommentDetails";
 import ClientHoldings from "./pages/ClientHoldings";
 import LivePositions from "./pages/LivePositions";
 import { KambalaFeedProvider } from "@/contexts/KambalaFeedContext";
+import { useVersionCheck } from "@/hooks/useVersionCheck";
+import { VersionUpdateModal } from "@/components/VersionUpdateModal";
 
 
 const queryClient = new QueryClient();
@@ -339,6 +341,8 @@ const AppContent = () => {
 };
 
 const App = () => {
+  const { hasUpdate, forceRefresh } = useVersionCheck();
+
   return (
     <QueryClientProvider client={queryClient}>
       <SWRConfig value={{ revalidateOnFocus: false }}>
@@ -350,6 +354,7 @@ const App = () => {
                   <TooltipProvider>
                     <RevenueProvider>
                       <TaskProvider>
+                        <VersionUpdateModal isOpen={hasUpdate} onRefresh={forceRefresh} />
                         <Toaster />
                         <Sonner />
                         <BrowserRouter>
