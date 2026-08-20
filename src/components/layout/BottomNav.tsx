@@ -7,7 +7,6 @@ const bottomNavItems = [
   { label: "Leads", path: "/", icon: Home },
   { label: "kyc", path: "/kyc", icon: ClipboardList },
   { label: "Clients", path: "/clients", icon: BarChart2 },
-  { label: "Tasks", path: "/tasks", icon: CheckSquare },
   { label: "Alerts", path: "/announcements", icon: Megaphone },
   { label: "Updates", path: "/updates", icon: Sparkles },
 ];

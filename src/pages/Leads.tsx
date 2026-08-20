@@ -435,21 +435,21 @@ const Leads: React.FC = () => {
     const handleMakeCall = async (leadOrNumber: LeadItem | string) => {
         const isString = typeof leadOrNumber === 'string';
         const mobile_no = isString ? leadOrNumber : leadOrNumber.mobile_no;
-        
+
         if (!mobile_no) {
             toast.error('Mobile number is missing');
             return;
         }
-        
+
         const cleanNumber = mobile_no.replace(/\s+/g, '');
         const to_number = cleanNumber.startsWith('+') ? cleanNumber : `+91${cleanNumber}`;
 
-        const displayName = isString 
-            ? to_number 
+        const displayName = isString
+            ? to_number
             : ((leadOrNumber as LeadItem).first_name || (leadOrNumber as LeadItem).lead_name || to_number);
 
         const loadingToastId = toast.loading(`Initiating call to ${displayName}...`);
-        
+
         try {
             const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
             const response = await fetch(`${API_BASE_URL}/api/method/crm.integrations.exotel.handler.make_a_call`, {
@@ -461,9 +461,9 @@ const Leads: React.FC = () => {
                     to_number
                 })
             });
-            
+
             const data = await response.json();
-            
+
             if (!response.ok || data.exc || data.exception) {
                 let errMsg = '';
                 if (data._server_messages) {
@@ -477,27 +477,27 @@ const Leads: React.FC = () => {
                         } else if (typeof msgs === 'object' && msgs.message) {
                             errMsg = msgs.message;
                         }
-                    } catch (e) {}
+                    } catch (e) { }
                 }
-                
+
                 if (!errMsg && data.exception) {
                     const match = data.exception.match(/^(?:[\w.]+):\s*(.*)$/);
                     errMsg = match ? match[1] : data.exception;
                 }
-                
+
                 if (!errMsg && data.message && typeof data.message === 'string') {
                     errMsg = data.message;
                 }
-                
+
                 if (!errMsg) {
                     errMsg = 'Failed to initiate call';
                 }
-                
+
                 throw new Error(errMsg);
             }
-            
+
             toast.dismiss(loadingToastId);
-            
+
             let matchingLead: LeadItem | null = null;
             if (isString) {
                 const cleanFrom = cleanNumber.replace(/^\+?91|^0/, '');
@@ -728,7 +728,7 @@ const Leads: React.FC = () => {
         const stored = localStorage.getItem('leadsColumnWidths');
         const defaults = {
             first_name: 180,
-            mobile_no: 180,
+            mobile_no: 220,
             source: 180,
             status: 180,
             assigned_to: 180,
@@ -742,7 +742,18 @@ const Leads: React.FC = () => {
             creation: 180,
             modified: 180,
         };
-        return stored ? { ...defaults, ...JSON.parse(stored) } : defaults;
+        if (stored) {
+            try {
+                const parsed = JSON.parse(stored);
+                if (parsed.mobile_no && parsed.mobile_no < 220) {
+                    parsed.mobile_no = 220;
+                }
+                return { ...defaults, ...parsed };
+            } catch (e) {
+                return defaults;
+            }
+        }
+        return defaults;
     });
 
     useEffect(() => {
@@ -816,7 +827,7 @@ const Leads: React.FC = () => {
                 let filtered = parsed
                     .map((c: string) => c === '_comment' ? '_comments' : c)
                     .filter((c: string) => c !== 'first_name');
-                
+
                 // Merge in any missing default columns to avoid them being hidden/lost
                 defaultOrder.forEach(col => {
                     if (!filtered.includes(col)) {
@@ -1418,7 +1429,7 @@ const Leads: React.FC = () => {
     const handleExotelCall = useCallback((eventData: any) => {
         console.log('Realtime Exotel Call event:', eventData);
         if (!eventData) return;
-        
+
         let isMyCall = false;
         if (eventData.AgentEmail && user?.email) {
             isMyCall = eventData.AgentEmail.toLowerCase() === user.email.toLowerCase();
@@ -1435,14 +1446,14 @@ const Leads: React.FC = () => {
 
         if (eventType === 'dial') {
             const cleanFrom = eventData.CallFrom.replace(/^\+?91|^0/, '');
-            
+
             // Look for matching lead inside current leadsData
             let matchingLead = leadsData.find((l: LeadItem) => {
                 if (!l.mobile_no) return false;
                 const cleanMobile = l.mobile_no.replace(/^\+?91|^0/, '');
                 return cleanMobile === cleanFrom;
             });
-            
+
             // Fallback to temp lead info if caller number doesn't match existing leads
             if (!matchingLead) {
                 matchingLead = {
@@ -1456,7 +1467,7 @@ const Leads: React.FC = () => {
                     modified: new Date().toISOString()
                 };
             }
-            
+
             setActiveCallLead(matchingLead);
             setCallStatus('in-progress');
             setCallOutcome(null);
@@ -1470,7 +1481,7 @@ const Leads: React.FC = () => {
             const outcome = eventData.Status || 'ended';
             setCallStatus('ended');
             setCallOutcome(outcome);
-            
+
             // Auto close after 3 seconds so agent can see the final status in the UI
             setTimeout(() => {
                 setIsCallModalOpen(false);
@@ -2667,8 +2678,8 @@ const Leads: React.FC = () => {
                                             if (colId === 'mobile_no') {
                                                 return (
                                                     <td key={colId} className="py-4 px-4" style={{ width: columnWidths.mobile_no, minWidth: columnWidths.mobile_no, maxWidth: columnWidths.mobile_no }}>
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 truncate w-full">
+                                                        <div className="flex items-center gap-2 min-w-0">
+                                                            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 min-w-0 flex-1">
                                                                 {row.mobile_no ? (
                                                                     <button
                                                                         onClick={(e) => {
@@ -2683,7 +2694,7 @@ const Leads: React.FC = () => {
                                                                 ) : (
                                                                     <Phone className="w-3 h-3 text-slate-400 shrink-0" />
                                                                 )}
-                                                                <span className="font-semibold text-slate-900 dark:text-slate-100 leading-tight truncate">{row.mobile_no || '-'}</span>
+                                                                <span className="font-semibold text-slate-900 dark:text-slate-100 leading-tight truncate" title={row.mobile_no}>{row.mobile_no || '-'}</span>
                                                             </div>
                                                             {row.mobile_no && (
                                                                 <button
@@ -3228,7 +3239,7 @@ const Leads: React.FC = () => {
                         </div>
                     </div>
                 )}
-                               {/* Sub-docked Items in Arc (180 deg to 90 deg) */}
+                {/* Sub-docked Items in Arc (180 deg to 90 deg) */}
                 {isDockerOpen && (
                     <>
                         {/* 1. Dialer Sub-item (180 deg - directly left) */}
