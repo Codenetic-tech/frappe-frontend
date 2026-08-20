@@ -687,7 +687,7 @@ const LiveOrders: React.FC = () => {
         hasPermissionError ? null : [`${API_BASE_URL}/api/method/frappe.desk.doctype.dashboard_chart.dashboard_chart.get`, JSON.stringify({
             chart_name: 'Order status',
             filters: JSON.stringify(filters),
-            refresh: 1
+            refresh: 0
         })],
         postFetcher,
         { revalidateOnFocus: false, revalidateOnReconnect: true, shouldRetryOnError: false, dedupingInterval: 5000 }
@@ -1215,7 +1215,7 @@ const LiveOrders: React.FC = () => {
         if (!type) return '-';
         const t = type.toUpperCase();
         const isBuy = t === 'B' || t === 'BUY';
-        
+
         const currentStyle = isBuy
             ? 'bg-emerald-100 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400'
             : 'bg-rose-100 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400';

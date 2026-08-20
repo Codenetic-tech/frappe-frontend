@@ -669,7 +669,7 @@ const Kyc: React.FC = () => {
         hasPermissionError ? null : [`${API_BASE_URL}/api/method/frappe.desk.doctype.dashboard_chart.dashboard_chart.get`, JSON.stringify({
             chart_name: 'Kyc Status',
             filters: JSON.stringify(totalFilters),
-            refresh: 1
+            refresh: 0
         })],
         postFetcher,
         { revalidateOnFocus: false, revalidateOnReconnect: true, shouldRetryOnError: false, dedupingInterval: 5000 }
