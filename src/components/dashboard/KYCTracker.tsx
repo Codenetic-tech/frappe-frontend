@@ -26,6 +26,7 @@ interface KYCData {
   nse_CD?: string;
   bse_CM?: string;
   bse_FO?: string;
+  nse_CO?: string;
   TradeDone?: string;
   // For In-Progress or Not Found
   Application?: string;
@@ -270,6 +271,10 @@ export const KYCTracker: React.FC = () => {
                       <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 transition-colors">
                         <span className="text-sm font-medium text-gray-700">BSE F&O</span>
                         {getStatusBadge(kycData.bse_FO)}
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 transition-colors">
+                        <span className="text-sm font-medium text-gray-700">NSE Commodity</span>
+                        {getStatusBadge(kycData.nse_CO)}
                       </div>
                     </div>
                   </div>
